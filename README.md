@@ -9,7 +9,7 @@ Inspired by https://github.com/ryanpcmcquen/obsidian-org-mode and https://github
 
 ## Features
 
-- collapsable headers
+- collapsable headings
 - customizable todo keywords in the settings
 - customizable colors via css (use the [styles.css](./styles.css) as a [css snippet](https://help.obsidian.md/Extending+Obsidian/CSS+snippets) and tweak it)
 

@@ -3,7 +3,7 @@
   "name": "Orgmode (cm6)",
   "version": "1.0.0",
   "minAppVersion": "1.4.0",
-  "description": "Orgmode for Obsidian",
+  "description": "Edit Orgmode files in Obsidian.",
   "author": "Benoit Bazard",
   "authorUrl": "https://github.com/bbazard",
   "isDesktopOnly": false
