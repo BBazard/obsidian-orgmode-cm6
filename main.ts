@@ -49,9 +49,7 @@ export class OrgmodeSettingTab extends PluginSettingTab {
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
-    containerEl.createEl('h1', { text: 'Orgmode' });
-    const selectorDiv = containerEl.createDiv('my div');
-    new Setting(selectorDiv)
+    new Setting(containerEl)
       .setName('Keywords for active (todo) tasks')
       .addTextArea((text) => {
         text.setValue(this.plugin.settings.todoKeywords.toString())
@@ -61,7 +59,7 @@ export class OrgmodeSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           })
       })
-    new Setting(selectorDiv)
+    new Setting(containerEl)
       .setName('Keywords for completed (done) tasks')
       .addTextArea((text) => {
         text.setValue(this.plugin.settings.doneKeywords.toString())
