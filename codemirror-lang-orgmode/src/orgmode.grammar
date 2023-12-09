@@ -1,0 +1,42 @@
+@top Program {
+  Comment*
+  PropertyDrawer?
+  Section?
+  Block*
+}
+
+// https://orgmode.org/worg/org-syntax.html#Headings
+Heading {
+  stars TodoKeyword? Priority? Title Tags? endofline
+}
+
+// https://orgmode.org/worg/org-syntax.html#Planning
+Planning { planningStart endofline }
+
+// https://orgmode.org/worg/org-syntax.html#Comments
+Comment { commentStart endofline }
+
+Block {
+  Heading (Comment|Planning)* PropertyDrawer? Section*
+}
+
+// https://orgmode.org/worg/org-syntax.html#Property_Drawers
+@external tokens propertydrawer_tokenizer from "./external-tokens" { PropertyDrawer }
+
+@tokens {
+  Priority { $[ \t]* "[" "#" $[a-zA-Z0-9] "]" $[ \t]* }
+  Tags { ":" ($[a-zA-Z0-9_@#%]+ ":")+ }
+  stars { "*"+ $[ \t]+ }
+  planningStart { ("DEADLINE:"|"SCHEDULED:"|"CLOSED:") }
+  commentStart { "#" }
+}
+
+@external tokens title_tokenizer from "./external-tokens" { Title }
+
+@external tokens todokeyword_tokenizer from "./external-tokens" { TodoKeyword }
+
+// https://orgmode.org/worg/org-syntax.html#Sections
+@external tokens section_tokenizer from "./external-tokens" { Section }
+
+// need to be last to not override something else
+@external tokens endofline_tokenizer from "./external-tokens" { endofline }

@@ -1,0 +1,34 @@
+{
+	"main": "main.js",
+	"type": "module",
+	"scripts": {
+		"prepare": "lezer-generator --typeScript codemirror-lang-orgmode/src/orgmode.grammar -o codemirror-lang-orgmode/src/parser && rollup -c",
+		"dev": "npm run prepare && node esbuild.config.mjs",
+		"build": "npm run prepare && node esbuild.config.mjs production",
+		"test": "mocha codemirror-lang-orgmode/test/test.js"
+	},
+	"devDependencies": {
+		"@codemirror/state": "^6.0.0",
+		"@codemirror/view": "^6.0.0",
+		"@codemirror/commands": "^6.0.0",
+		"@codemirror/language": "^6.0.0",
+		"@codemirror/search": "^6.0.0",
+		"@types/node": "^20.10.0",
+		"@typescript-eslint/eslint-plugin": "^5.29.0",
+		"@typescript-eslint/parser": "^5.29.0",
+		"@codemirror/highlight": "^0.19.8",
+		"@lezer/generator": "^1.5.1",
+		"@lezer/highlight": "^1.2.0",
+		"@lezer/lr": "^1.3.14",
+		"@replit/codemirror-vim": "^6.1.0",
+		"builtin-modules": "^3.3.0",
+		"esbuild": "0.17.3",
+		"obsidian": "^1.3.7",
+		"tslib": "2.4.0",
+		"typescript": "4.7.4",
+		"mocha": "^9.0.1",
+		"rollup": "^2.60.2",
+		"rollup-plugin-dts": "^4.0.1",
+		"rollup-plugin-ts": "^3.0.2"
+	}
+}
