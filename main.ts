@@ -145,15 +145,28 @@ class OrgView extends TextFileView {
         makeHeadingsFoldable,
         foldGutter({
           markerDOM: (open) => {
-            const foldIcon = document.createElement("div");
             // icon copied from obsidian minimal theme
-            foldIcon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon right-triangle"><path d="M3 8L12 17L21 8"></path></svg>'
+            const foldIcon = document.createElement("div");
+            const foldIcon_svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            const foldIcon_svg_path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            foldIcon_svg.setAttributeNS(null, "width", "24");
+            foldIcon_svg.setAttributeNS(null, "height", "24");
+            foldIcon_svg.setAttributeNS(null, "viewBox", "0 0 24 24");
+            foldIcon_svg.setAttributeNS(null, "fill", "none");
+            foldIcon_svg.setAttributeNS(null, "stroke", "currentColor");
+            foldIcon_svg.setAttributeNS(null, "stroke-width", "2");
+            foldIcon_svg.setAttributeNS(null, "stroke-linecap", "round");
+            foldIcon_svg.setAttributeNS(null, "stroke-linejoin", "round");
+            foldIcon_svg.setAttributeNS(null, "class", "svg-icon");
+            foldIcon_svg_path.setAttribute("d", "M3 8L12 17L21 8");
+            foldIcon_svg.appendChild(foldIcon_svg_path);
             if (open) {
-              foldIcon.addClass('open-fold-icon')
+              foldIcon_svg.addClass("open-fold-icon");
             } else {
-              foldIcon.addClass('closed-fold-icon')
-              foldIcon.setCssStyles({ "transform": "rotate(-90deg)" })
+              foldIcon_svg.addClass("closed-fold-icon");
+              foldIcon_svg.setCssStyles({ "transform": "rotate(-90deg)" });
             }
+            foldIcon.appendChild(foldIcon_svg);
             return foldIcon
           }
         }),
