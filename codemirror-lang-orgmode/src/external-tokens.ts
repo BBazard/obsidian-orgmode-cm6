@@ -289,6 +289,10 @@ export const section_tokenizer = new ExternalTokenizer((input, stack) => {
       log('== ACCEPT Section before newline')
       input.acceptToken(Section)
       return
+    } else if (c === NEW_LINE && input.peek(1) === EOF) {
+      log('== ACCEPT last Section before EOF with a trailing newline')
+      input.acceptToken(Section, 1)
+      return
     }
     log(`next start ${String.fromCharCode(input.peek(1))}`)
     if (input.peek(1) === STAR) {
