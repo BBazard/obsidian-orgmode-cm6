@@ -10,9 +10,11 @@ import { vim, Vim } from "@replit/codemirror-vim"
 
 import { Orgmode } from './codemirror-lang-orgmode/dist';
 
-import { App, PluginSettingTab, Plugin, WorkspaceLeaf, TextFileView, Setting } from "obsidian";
+import { App, PluginSettingTab, Plugin, WorkspaceLeaf, TextFileView, Setting, parseYaml, MarkdownRenderChild } from "obsidian";
 
 import { DEFAULT_SETTINGS, OrgmodePluginSettings } from 'settings';
+import { OrgmodeTask, StatusType } from 'org-tasks';
+import { OrgTasksSync } from 'org-tasks-file-sync';
 
 const myHighlightStyle = HighlightStyle.define([
   // Block
@@ -101,6 +103,63 @@ export default class OrgmodePlugin extends Plugin {
 
     this.registerView("orgmode", this.orgViewCreator);
     this.registerExtensions(["org"], "orgmode");
+
+    this.registerMarkdownCodeBlockProcessor("orgmode-tasks", async (src, el, ctx) => {
+      try {
+        let parameters = null;
+        parameters = parseYaml(src)
+        if (typeof parameters.filepath === 'undefined') {
+          throw Error("Missing parameters filepath")
+        }
+        const tfile = this.app.vault.getFileByPath(parameters.filepath)
+        if (!tfile) {
+          throw Error(`file not found: ${parameters.filepath}`)
+        }
+        const orgTasksSync = new OrgTasksSync(this.settings, this.app.vault)
+        const rootEl = el.createEl("div");
+        const renderChild = new MarkdownRenderChild(el)
+        ctx.addChild(renderChild);
+        renderChild.unload = () => {
+          orgTasksSync.onunload()
+        }
+        const onStatusChange = async (orgmode_task: OrgmodeTask) => {
+          await orgTasksSync.updateTaskStatus(tfile, orgmode_task)
+        }
+        let orgmode_tasks: Array<OrgmodeTask> = await orgTasksSync.getTasks(tfile)
+        this.render(orgmode_tasks, rootEl, onStatusChange)
+        orgTasksSync.onmodified(tfile, (refreshed_tasks: OrgmodeTask[]) => {
+          this.render(refreshed_tasks, rootEl, onStatusChange)
+        })
+      } catch (e) {
+          el.createEl("h3", {text: "Error: " + e.message});
+        return;
+      }
+    });
+  }
+
+  private render(orgmode_tasks: Array<OrgmodeTask>, rootEl: HTMLElement, onStatusChange: (orgmode_task: OrgmodeTask) => void) {
+    rootEl.innerHTML = ""
+    var list = rootEl.createEl("ul", { cls: "contains-task-list plugin-tasks-query-result tasks-layout-hide-urgency tasks-layout-hide-edit-button" });
+    orgmode_tasks.forEach((orgmode_task, i) => {
+      const li = list.createEl("li", { cls: "task-list-item plugin-tasks-list-item" })
+      li.setAttribute("data-line", i.toString())
+      li.setAttribute("data-task-priority", "normal")  // orgmode_task.priority
+      li.setAttribute("data-task-status-type", orgmode_task.statusType)
+      if (orgmode_task.statusType === StatusType.DONE) {
+        li.setAttribute("data-task", "x")
+        li.setAttribute("data-task-status-name", "Done")
+      } else {
+        li.setAttribute("data-task", "")
+        li.setAttribute("data-task-status-name", "Todo")
+      }
+      const input = li.createEl("input", { cls: "task-list-item-checkbox", type: "checkbox" })
+      input.setAttribute("data-line", i.toString())
+      input.checked = orgmode_task.statusType === StatusType.DONE
+      input.addEventListener('click', e => {
+        onStatusChange(orgmode_task)
+      })
+      li.createSpan({ cls: "tasks-list-text" }).createSpan({ cls: "task-description" }).createSpan({ text: orgmode_task.description })
+    })
   }
 }
 
