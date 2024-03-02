@@ -78,3 +78,33 @@
 .theme-light .org-tags {
   color: #1d9077;
 }
+
+
+
+.theme-dark .orgmode-view .cm-fat-cursor {
+  background-color: var(--text-accent) !important;
+}
+.theme-dark .orgmode-view:not(.cm-focused) .cm-fat-cursor {
+  background-color: unset !important;
+  outline-color: var(--text-accent) !important;
+}
+.theme-dark .orgmode-view .cm-selectionBackground {
+  background-color: var(--text-selection) !important;
+}
+.theme-dark .cm-editor .cm-cursor {
+  border-left-color: white; /* caret-color */
+}
+
+.theme-light .orgmode-view .cm-fat-cursor {
+  background-color: var(--text-accent) !important;
+}
+.theme-light .orgmode-view:not(.cm-focused) .cm-fat-cursor {
+  background-color: unset !important;
+  outline-color: var(--text-accent) !important;
+}
+.theme-light .orgmode-view .cm-selectionBackground {
+  background-color: var(--text-selection) !important;
+}
+.theme-light .cm-editor .cm-cursor {
+  border-left-color: black; /* caret-color */
+}
