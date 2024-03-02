@@ -108,3 +108,7 @@
 .theme-light .cm-editor .cm-cursor {
   border-left-color: black; /* caret-color */
 }
+
+.orgmode-view.cm-focused {
+  outline: unset;
+}
