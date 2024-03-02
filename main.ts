@@ -106,18 +106,33 @@ export default class OrgmodePlugin extends Plugin {
 export const makeHeadingsFoldable = foldService.of((state: EditorState, from, to) => {
   let is_heading = false
   let block_to = null
+  let heading_level = null
   for (let node: SyntaxNode | null = syntaxTree(state).resolveInner(to, -1); node; node = node.parent) {
     if (node.type.name == "Heading") {
+      heading_level = state.doc.sliceString(node.from, node.to).match(/^\*+/g)[0].length
       is_heading = true
     }
     if (node.type.name == "Block") {
       block_to = node.to
+      let current_node = node.nextSibling
+      while (current_node) {
+        const stars_match = state.doc.sliceString(current_node.from, current_node.to).match(/^\*+/g)
+        if (!stars_match) {
+          break
+        }
+        const current_heading_level = stars_match[0].length
+        if (current_heading_level <= heading_level) {
+          break
+        }
+        block_to = current_node.to
+        current_node = current_node.nextSibling
+      }
     }
   }
-  if (is_heading && block_to && from != to) {
-    if (state.doc.sliceString(block_to-1, block_to) === '\n') {
-      block_to = block_to - 1
-    }
+  if (state.doc.sliceString(block_to-1, block_to) === '\n') {
+    block_to = block_to - 1
+  }
+  if (is_heading && block_to && block_to > to) {
     return { from: to, to: block_to };
   }
   return null
