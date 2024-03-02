@@ -115,7 +115,10 @@ export const makeHeadingsFoldable = foldService.of((state: EditorState, from, to
     }
   }
   if (is_heading && block_to && from != to) {
-    return { from: to, to: block_to - 1 };
+    if (state.doc.sliceString(block_to-1, block_to) === '\n') {
+      block_to = block_to - 1
+    }
+    return { from: to, to: block_to };
   }
   return null
 });
