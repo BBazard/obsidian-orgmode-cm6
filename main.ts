@@ -1,7 +1,7 @@
 import { EditorView, keymap, drawSelection } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands"
 import { syntaxHighlighting, HighlightStyle, foldGutter, foldService, syntaxTree } from "@codemirror/language"
-import { EditorState } from "@codemirror/state";
+import { EditorState, Extension } from "@codemirror/state";
 
 import { SyntaxNode } from "@lezer/common";
 import { tags } from "@lezer/highlight"
@@ -141,17 +141,14 @@ export const makeHeadingsFoldable = foldService.of((state: EditorState, from, to
 class OrgView extends TextFileView {
   // Internal code mirror instance:
   codeMirror: EditorView;
-
-  public get extContentEl(): HTMLElement {
-    return this.contentEl;
-  }
+  extensions: Extension;
 
   constructor(leaf: WorkspaceLeaf) {
     super(leaf);
-
     this.codeMirror = new EditorView({
-      doc: "",
-      extensions: [
+      parent: this.contentEl
+    })
+    this.extensions = [
         // @ts-expect-error, not typed
         vim(this.app?.vault?.config?.vimMode),
         history(),
@@ -205,9 +202,7 @@ class OrgView extends TextFileView {
             backgroundColor: "#2e2e2e",
           },
         })
-      ],
-      parent: this.contentEl
-    })
+      ]
     // see https://github.com/replit/codemirror-vim/blob/ab5a5a42171573604e8ae74b8a720aecd53d9eb1/src/vim.js#L266
     Vim.defineEx('write', 'w', () => {
       // @ts-expect-error, not typed
@@ -220,21 +215,13 @@ class OrgView extends TextFileView {
   };
 
   setViewData = (data: string, clear: boolean) => {
-    if (clear) {
-      this.codeMirror.dispatch({
-        changes: { from: 0, to: 0, insert: data }
-      })
-    } else {
-      this.codeMirror.dispatch({
-        changes: { from: 0, to: this.codeMirror.state.doc.length, insert: data }
-      })
-    }
-  };
+    this.codeMirror.setState(EditorState.create({
+      doc: data,
+      extensions: this.extensions,
+    }))
+  }
 
   clear = () => {
-    this.codeMirror.dispatch({
-      changes: { from: 0, to: this.codeMirror.state.doc.length, insert: "" }
-    })
   };
 
   getDisplayText() {
