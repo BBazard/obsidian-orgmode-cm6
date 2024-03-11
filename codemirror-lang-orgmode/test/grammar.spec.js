@@ -1,5 +1,6 @@
 import {OrgmodeLanguage} from "../dist/index.js"
 import {fileTests} from "@lezer/generator/dist/test"
+import { test } from 'vitest'
 
 import * as fs from "fs"
 import * as path from "path"
@@ -12,12 +13,9 @@ for (let fileName of fs.readdirSync(caseDir)) {
   if (!/\.txt$/.test(fileName)) continue
 
   let name = /^[^\.]*/.exec(fileName)[0]
-  describe(name, () => {
-    const file = fs.readFileSync(path.join(caseDir, fileName), "utf8")
-    for (let {name, run} of fileTests(file, fileName))
-      it(name, () => {
-        return run(OrgmodeLanguage.parser)
-      }
-    )
-  })
+  const file = fs.readFileSync(path.join(caseDir, fileName), "utf8")
+  for (let { name, run } of fileTests(file, fileName))
+    test(name, () => {
+      return run(OrgmodeLanguage.parser)
+    })
 }
