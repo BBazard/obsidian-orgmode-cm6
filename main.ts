@@ -142,6 +142,7 @@ class OrgView extends TextFileView {
   // Internal code mirror instance:
   codeMirror: EditorView;
   extensions: Extension;
+  autosaveInterval: NodeJS.Timeout = null;
 
   constructor(leaf: WorkspaceLeaf) {
     super(leaf);
@@ -215,6 +216,10 @@ class OrgView extends TextFileView {
   };
 
   setViewData = (data: string, clear: boolean) => {
+    this.autosaveInterval = setInterval(() => {
+      // @ts-expect-error, not typed
+      this.app?.commands.executeCommandById('editor:save-file');
+    }, 3000);
     this.codeMirror.setState(EditorState.create({
       doc: data,
       extensions: this.extensions,
@@ -222,6 +227,7 @@ class OrgView extends TextFileView {
   }
 
   clear = () => {
+    clearInterval(this.autosaveInterval);
   };
 
   getDisplayText() {
