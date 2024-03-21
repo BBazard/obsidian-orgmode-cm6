@@ -4,6 +4,7 @@ import { OrgmodePluginSettings } from 'settings';
 
 export class OrgTasksSync {
   private onModifiedRef: EventRef | null
+  private unloaded: boolean
 
   constructor(
     private settings: OrgmodePluginSettings,
@@ -12,15 +13,22 @@ export class OrgTasksSync {
     this.vault = vault
     this.settings = settings
     this.onModifiedRef = null
+    this.unloaded = false
   }
 
   public onunload() {
-    if (this.onModifiedRef !== null) {
-      this.vault.offref(this.onModifiedRef)
+    if (!this.unloaded) {
+      if (this.onModifiedRef !== null) {
+        this.vault.offref(this.onModifiedRef)
+      }
+      this.unloaded = true
     }
   }
 
   public onmodified(tfile: TFile, callback: (tasks: OrgmodeTask[]) => any) {
+    if (this.unloaded) {
+      return
+    }
     if (this.onModifiedRef !== null) {
       this.vault.offref(this.onModifiedRef)
     }
@@ -35,6 +43,9 @@ export class OrgTasksSync {
   }
 
   public async updateTaskStatus(tfile: TFile, orgmode_task: OrgmodeTask): Promise<void> {
+    if (this.unloaded) {
+      return
+    }
     await this.vault.process(tfile, (newest_orgmode_content: string) => {
       const replaced_content = cycleOrgmodeTaskStatusContent(orgmode_task, newest_orgmode_content)
       return replaced_content
@@ -42,6 +53,9 @@ export class OrgTasksSync {
   }
 
   public async getTasks(tfile: TFile): Promise<OrgmodeTask[]> {
+    if (this.unloaded) {
+      return
+    }
     const orgmode_tasks: Array<OrgmodeTask> = parseOrgmodeContent(await this.vault.read(tfile), this.settings)
     return orgmode_tasks
   }
