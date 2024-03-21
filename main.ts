@@ -2,6 +2,7 @@ import { EditorView, keymap, drawSelection } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands"
 import { syntaxHighlighting, HighlightStyle, foldGutter, foldService, syntaxTree } from "@codemirror/language"
 import { EditorState, Extension } from "@codemirror/state";
+import { Heading, Block } from './codemirror-lang-orgmode/src/parser.terms';
 
 import { SyntaxNode } from "@lezer/common";
 import { tags } from "@lezer/highlight"
@@ -108,11 +109,11 @@ export const makeHeadingsFoldable = foldService.of((state: EditorState, from, to
   let block_to = null
   let heading_level = null
   for (let node: SyntaxNode | null = syntaxTree(state).resolveInner(to, -1); node; node = node.parent) {
-    if (node.type.name == "Heading") {
+    if (node.type.id == Heading) {
       heading_level = state.doc.sliceString(node.from, node.to).match(/^\*+/g)[0].length
       is_heading = true
     }
-    if (node.type.name == "Block") {
+    if (node.type.id == Block) {
       block_to = node.to
       let current_node = node.nextSibling
       while (current_node) {
@@ -142,7 +143,6 @@ class OrgView extends TextFileView {
   // Internal code mirror instance:
   codeMirror: EditorView;
   extensions: Extension;
-  autosaveInterval: NodeJS.Timeout = null;
 
   constructor(leaf: WorkspaceLeaf) {
     super(leaf);
@@ -202,12 +202,16 @@ class OrgView extends TextFileView {
           ".cm-panels": {
             backgroundColor: "#2e2e2e",
           },
-        })
+        }),
+        EditorView.updateListener.of((v) => {
+          if (v.docChanged) {
+            this.requestSave()
+          }
+        }),
       ]
     // see https://github.com/replit/codemirror-vim/blob/ab5a5a42171573604e8ae74b8a720aecd53d9eb1/src/vim.js#L266
     Vim.defineEx('write', 'w', () => {
-      // @ts-expect-error, not typed
-      this.app?.commands.executeCommandById('editor:save-file');
+      this.save()
     });
   }
 
@@ -216,10 +220,6 @@ class OrgView extends TextFileView {
   };
 
   setViewData = (data: string, clear: boolean) => {
-    this.autosaveInterval = setInterval(() => {
-      // @ts-expect-error, not typed
-      this.app?.commands.executeCommandById('editor:save-file');
-    }, 3000);
     this.codeMirror.setState(EditorState.create({
       doc: data,
       extensions: this.extensions,
@@ -227,7 +227,6 @@ class OrgView extends TextFileView {
   }
 
   clear = () => {
-    clearInterval(this.autosaveInterval);
   };
 
   getDisplayText() {
