@@ -1,12 +1,18 @@
-import { OrgmodeLanguage } from "../dist/index.js"
+import { LRParser } from '@lezer/lr';
 import { testTree } from "@lezer/generator/dist/test"
 import { test } from 'vitest'
+import { OrgmodeParser } from 'codemirror-lang-orgmode'
+import { OrgmodePluginSettings } from 'settings';
 
-global.todoKeywords = ["TODO", "LATER", "WAITING", "DEFERRED", "SOMEDAY", "PROJECT"]
-global.doneKeywords = ["DONE", "CANCELLED"]
+const settings: OrgmodePluginSettings = {
+  todoKeywords: ["TODO"],
+  doneKeywords: ["DONE"],
+};
+const words = [...settings.todoKeywords, ...settings.doneKeywords]
+const parser: LRParser = OrgmodeParser(words)
 
 test("simple case", () => {
-  const tree = OrgmodeLanguage.parser.parse([
+  const tree = parser.parse([
     "* TODO item 1",
     "content",
     "* TODO item 2",
@@ -26,7 +32,7 @@ test("simple case", () => {
 })
 
 test("zeroth section not in a block", () => {
-  const tree = OrgmodeLanguage.parser.parse([
+  const tree = parser.parse([
     "some text",
     "* TODO item 1",
     "content",
@@ -41,7 +47,7 @@ test("zeroth section not in a block", () => {
 })
 
 test("zeroth PropertyDrawer possible", () => {
-  const tree = OrgmodeLanguage.parser.parse([
+  const tree = parser.parse([
     ":PROPERTIES:",
     ":CREATED:  [2020-10-06 Tue 18:12]",
     ":END:",
@@ -54,7 +60,7 @@ test("zeroth PropertyDrawer possible", () => {
 })
 
 test("deadline and scheduled", () => {
-  const tree = OrgmodeLanguage.parser.parse([
+  const tree = parser.parse([
     "* TODO heading1",
     "DEADLINE: deadline",
     "SCHEDULED: scheduled",
@@ -75,7 +81,7 @@ test("deadline and scheduled", () => {
 })
 
 test("PropertyDrawer trailing characters", () => {
-  const tree = OrgmodeLanguage.parser.parse([
+  const tree = parser.parse([
     "* TODO title",
     ":PROPERTIES: ignored",
     ":CREATED:  [2020-10-06 Tue 18:12]",
@@ -92,7 +98,7 @@ test("PropertyDrawer trailing characters", () => {
 })
 
 test("Heading", () => {
-  const tree = OrgmodeLanguage.parser.parse([
+  const tree = parser.parse([
     "* TODO item1",
     "# comment",
     "** TODO subitem :tag1:",
@@ -109,7 +115,7 @@ test("Heading", () => {
 })
 
 test("Heading edge cases", () => {
-  const tree = OrgmodeLanguage.parser.parse([
+  const tree = parser.parse([
     "** [#a] [#a] subitem",
     "** TODO TODO subitem",
   ].join("\n"))
@@ -123,7 +129,7 @@ test("Heading edge cases", () => {
 })
 
 test("another edge cases", () => {
-  const tree = OrgmodeLanguage.parser.parse([
+  const tree = parser.parse([
     "* TODO stuff [#a] stuff :tag:",
     "* [#a] stuff TODO stuff :tag:",
   ].join("\n"))

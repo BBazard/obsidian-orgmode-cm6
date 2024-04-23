@@ -1,13 +1,21 @@
 import { expect, test } from 'vitest'
+import { LRParser } from '@lezer/lr'
+
+import { OrgmodeParser } from 'codemirror-lang-orgmode'
+
 import { cycleOrgmodeTaskStatusContent, parseOrgmodeContent } from 'org-tasks'
-import { DEFAULT_SETTINGS } from 'settings'
+import { OrgmodePluginSettings } from 'settings'
 
-global.todoKeywords = DEFAULT_SETTINGS.todoKeywords
-global.doneKeywords = DEFAULT_SETTINGS.doneKeywords
+const settings: OrgmodePluginSettings = {
+  todoKeywords: ["TODO"],
+  doneKeywords: ["DONE"],
+};
+const words = [...settings.todoKeywords, ...settings.doneKeywords]
+const orgmodeParser: LRParser = OrgmodeParser(words)
 
-test('stuff', async () => {
+test('Parsing orgmode tasks', async () => {
   const content = "* TODO task description\n"
-  const tasks = parseOrgmodeContent(content, DEFAULT_SETTINGS)
+  const tasks = parseOrgmodeContent(content, settings, orgmodeParser)
   expect(tasks[0]).toStrictEqual({
     status: 'TODO',
     statusType: 'TODO',
@@ -20,7 +28,7 @@ test('stuff', async () => {
   })
   const new_content = cycleOrgmodeTaskStatusContent(tasks[0], content)
   expect(new_content).toBe("* DONE task description\n")
-  const new_tasks = parseOrgmodeContent(new_content, DEFAULT_SETTINGS)
+  const new_tasks = parseOrgmodeContent(new_content, settings, orgmodeParser)
   expect(new_tasks[0]).toStrictEqual({
     status: 'DONE',
     statusType: 'DONE',

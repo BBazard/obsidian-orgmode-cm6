@@ -33,8 +33,7 @@ function checkPriority(s: string) {
   return matched
 }
 
-function checkTodoKeyword(s: string, input: InputStream) {
-  const words = [...global.todoKeywords, ...global.doneKeywords]
+function checkTodoKeyword(s: string, input: InputStream, words: string[]) {
   let matched = false
   words.forEach(word => {
     if (s === word) {
@@ -44,7 +43,7 @@ function checkTodoKeyword(s: string, input: InputStream) {
   return matched
 }
 
-function checkPreviousWord(input: InputStream, anti_peek_distance = -1) {
+function checkPreviousWord(input: InputStream, words: string[], anti_peek_distance = -1) {
   let previous = input.peek(anti_peek_distance)
   let matched = null
   if (!isEndOfLine(previous)) {
@@ -60,7 +59,7 @@ function checkPreviousWord(input: InputStream, anti_peek_distance = -1) {
         log(`previous word matched priority`)
         matched = Priority
       }
-      if (checkTodoKeyword(p_s, input)) {
+      if (checkTodoKeyword(p_s, input, words)) {
         log(`previous word matched todokeyword`)
         matched = TodoKeyword
       }
@@ -72,16 +71,16 @@ function checkPreviousWord(input: InputStream, anti_peek_distance = -1) {
 }
 
 
-export const title_tokenizer = new ExternalTokenizer((input: InputStream, stack: Stack) => {
+export const title_tokenizer = (words: string[]) => { return new ExternalTokenizer((input: InputStream, stack: Stack) => {
   // match everything until tags or NEWLINE or EOF
   log(`start title_tokenizer ${input.pos}`)
   // TRYING to previous match priority or todokeyword
   let priority_already_matched = false
   let todo_keyword_already_matched = false
-  const previous_checker = checkPreviousWord(input)
+  const previous_checker = checkPreviousWord(input, words)
   if (previous_checker['matched'] == Priority) {
     priority_already_matched = true
-    const previous_checker2 = checkPreviousWord(input, previous_checker["anti_peek_distance"])
+    const previous_checker2 = checkPreviousWord(input, words, previous_checker["anti_peek_distance"])
     if (previous_checker2['matched'] == TodoKeyword) {
       todo_keyword_already_matched = true
     }
@@ -105,7 +104,7 @@ export const title_tokenizer = new ExternalTokenizer((input: InputStream, stack:
         log('== REFUSE is priority, not title')
         return
       }
-      if (!todo_keyword_already_matched && checkTodoKeyword(s, input)) {
+      if (!todo_keyword_already_matched && checkTodoKeyword(s, input, words)) {
         log('== REFUSE is TodoKeyword, not tile')
         return
       }
@@ -181,7 +180,7 @@ export const title_tokenizer = new ExternalTokenizer((input: InputStream, stack:
         log('== REFUSE is priority, not title')
         return
       }
-      if (!todo_keyword_already_matched && checkTodoKeyword(s, input)) {
+      if (!todo_keyword_already_matched && checkTodoKeyword(s, input, words)) {
         log('== REFUSE is TodoKeyword, not title')
         return
       }
@@ -191,9 +190,9 @@ export const title_tokenizer = new ExternalTokenizer((input: InputStream, stack:
   log('== ACCEPT title 4')
   return
 })
+}
 
-export const todokeyword_tokenizer = new ExternalTokenizer((input, stack) => {
-  const words = [...global.todoKeywords, ...global.doneKeywords]
+export const todokeyword_tokenizer = (words: string[]) => { return new ExternalTokenizer((input, stack) => {
   log(`start todokeyword_tokenizer ${input.pos}`)
   const max_length = Math.max(...(words.map(el => el.length)));
   let c = input.peek(0)
@@ -201,7 +200,7 @@ export const todokeyword_tokenizer = new ExternalTokenizer((input, stack) => {
   let s = String.fromCharCode(c)
   log(`first ${String.fromCharCode(c)}`)
   while (i < max_length && c != EOF) {
-    if (checkTodoKeyword(s, input)) {
+    if (checkTodoKeyword(s, input, words)) {
       const next = input.peek(1)
       if (isEndOfLine(next) || isWhiteSpace(next)) {
         log('== ACCEPT todokeyword')
@@ -217,6 +216,7 @@ export const todokeyword_tokenizer = new ExternalTokenizer((input, stack) => {
   log('== REFUSE todokeyword')
   return
 })
+}
 
 export const endofline_tokenizer = new ExternalTokenizer((input, stack) => {
   log(`start endofline_tokenizer ${input.pos}`)

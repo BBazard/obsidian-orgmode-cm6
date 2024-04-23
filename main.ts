@@ -1,20 +1,21 @@
 import { EditorView, keymap, drawSelection } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands"
-import { syntaxHighlighting, HighlightStyle, foldGutter, foldService, syntaxTree } from "@codemirror/language"
-import { EditorState, Extension } from "@codemirror/state";
-import { Heading, Block } from './codemirror-lang-orgmode/src/parser.terms';
-
+import { syntaxHighlighting, HighlightStyle, foldGutter, foldService, syntaxTree, LanguageSupport } from "@codemirror/language"
+import { EditorState, Extension, Compartment } from "@codemirror/state";
 import { SyntaxNode } from "@lezer/common";
+import { LRParser } from "@lezer/lr";
 import { tags } from "@lezer/highlight"
 import { vim, Vim } from "@replit/codemirror-vim"
 
-import { Orgmode } from './codemirror-lang-orgmode/dist';
-
 import { App, PluginSettingTab, Plugin, WorkspaceLeaf, TextFileView, Setting, parseYaml, MarkdownRenderChild } from "obsidian";
+
+import { TOKEN, OrgmodeLanguage, OrgmodeParser } from 'codemirror-lang-orgmode';
 
 import { DEFAULT_SETTINGS, OrgmodePluginSettings } from 'settings';
 import { OrgmodeTask, StatusType } from 'org-tasks';
 import { OrgTasksSync } from 'org-tasks-file-sync';
+
+let todoKeywordsReloader = new Compartment
 
 const myHighlightStyle = HighlightStyle.define([
   // Block
@@ -78,22 +79,27 @@ export class OrgmodeSettingTab extends PluginSettingTab {
 export default class OrgmodePlugin extends Plugin {
 
   settings: OrgmodePluginSettings;
+  orgmodeParser: LRParser
   settingTab: OrgmodeSettingTab = null;
 
   async loadSettings() {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-    global.todoKeywords = this.settings.todoKeywords
-    global.doneKeywords = this.settings.doneKeywords
+    const words = [...this.settings.todoKeywords, ...this.settings.doneKeywords]
+    this.orgmodeParser = OrgmodeParser(words)
   }
 
   async saveSettings() {
     await this.saveData(this.settings);
-    global.todoKeywords = this.settings.todoKeywords
-    global.doneKeywords = this.settings.doneKeywords
+    const view = this.app.workspace.getActiveViewOfType(OrgView)
+    const words = [...this.settings.todoKeywords, ...this.settings.doneKeywords]
+    this.orgmodeParser = OrgmodeParser(words)
+    view.codeMirror.dispatch({
+      effects: todoKeywordsReloader.reconfigure(new LanguageSupport(OrgmodeLanguage(this.orgmodeParser)))
+    })
   }
 
   orgViewCreator = (leaf: WorkspaceLeaf) => {
-    return new OrgView(leaf);
+    return new OrgView(leaf, this.orgmodeParser);
   };
 
   async onload() {
@@ -115,7 +121,7 @@ export default class OrgmodePlugin extends Plugin {
         if (!tfile) {
           throw Error(`file not found: ${parameters.filepath}`)
         }
-        const orgTasksSync = new OrgTasksSync(this.settings, this.app.vault)
+        const orgTasksSync = new OrgTasksSync(this.settings, this.orgmodeParser, this.app.vault)
         const rootEl = el.createEl("div");
         const renderChild = new MarkdownRenderChild(el)
         ctx.addChild(renderChild);
@@ -168,11 +174,11 @@ export const makeHeadingsFoldable = foldService.of((state: EditorState, from, to
   let block_to = null
   let heading_level = null
   for (let node: SyntaxNode | null = syntaxTree(state).resolveInner(to, -1); node; node = node.parent) {
-    if (node.type.id == Heading) {
+    if (node.type.id == TOKEN.Heading) {
       heading_level = state.doc.sliceString(node.from, node.to).match(/^\*+/g)[0].length
       is_heading = true
     }
-    if (node.type.id == Block) {
+    if (node.type.id == TOKEN.Block) {
       block_to = node.to
       let current_node = node.nextSibling
       while (current_node) {
@@ -203,7 +209,7 @@ class OrgView extends TextFileView {
   codeMirror: EditorView;
   extensions: Extension;
 
-  constructor(leaf: WorkspaceLeaf) {
+  constructor(leaf: WorkspaceLeaf, orgmodeParser: LRParser) {
     super(leaf);
     this.codeMirror = new EditorView({
       parent: this.contentEl
@@ -214,7 +220,7 @@ class OrgView extends TextFileView {
         history(),
         keymap.of([...defaultKeymap, ...historyKeymap]),
         drawSelection(),
-        Orgmode(),
+        todoKeywordsReloader.of(new LanguageSupport(OrgmodeLanguage(orgmodeParser))),
         syntaxHighlighting(myHighlightStyle),
         EditorView.lineWrapping,
         makeHeadingsFoldable,

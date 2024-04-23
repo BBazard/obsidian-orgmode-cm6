@@ -1,6 +1,6 @@
 import { TreeCursor } from "@lezer/common";
-import { OrgmodeLanguage } from './codemirror-lang-orgmode/dist';
-import { Heading, TodoKeyword, Title, Priority } from './codemirror-lang-orgmode/src/parser.terms';
+import { TOKEN } from 'codemirror-lang-orgmode';
+import { LRParser } from "@lezer/lr";
 import { OrgmodePluginSettings } from "settings";
 
 export enum StatusType {
@@ -28,12 +28,12 @@ export function cycleOrgmodeTaskStatusContent(orgmode_task: OrgmodeTask, orgmode
     return replaced_content
 }
 
-export function parseOrgmodeContent(orgmode_content: string, settings: OrgmodePluginSettings): OrgmodeTask[] {
-  const parsed = OrgmodeLanguage.parser.parse(orgmode_content)
+export function parseOrgmodeContent(orgmode_content: string, settings: OrgmodePluginSettings, orgmodeParser: LRParser): OrgmodeTask[] {
+  const parsed = orgmodeParser.parse(orgmode_content)
   const cursor = parsed.cursor()
   const orgmode_tasks: Array<OrgmodeTask> = new Array()
   while (cursor.next()) {
-    if (cursor.node.type.id === Heading) {
+    if (cursor.node.type.id === TOKEN.Heading) {
       const task = extractTaskFromHeadingNode(cursor, orgmode_content, settings)
       if (task) {
         orgmode_tasks.push(task)
@@ -43,18 +43,18 @@ export function parseOrgmodeContent(orgmode_content: string, settings: OrgmodePl
   return orgmode_tasks
 }
 
-function extractTaskFromHeadingNode(cursor: TreeCursor, orgmode_content: string, settings: OrgmodePluginSettings): OrgmodeTask | null {
+export function extractTaskFromHeadingNode(cursor: TreeCursor, orgmode_content: string, settings: OrgmodePluginSettings): OrgmodeTask | null {
   let item: Map<string, any> = new Map()
   item.set('taskLocation', new Map())
   cursor.iterate((node) => {
-    if (node.type.id === TodoKeyword) {
+    if (node.type.id === TOKEN.TodoKeyword) {
       item.set('status', orgmode_content.slice(node.from, node.to))
       item.get('taskLocation').set('status', [node.from, node.to])
     }
-    if (node.type.id === Title) {
+    if (node.type.id === TOKEN.Title) {
       item.set('description', orgmode_content.slice(node.from, node.to).trim())
     }
-    if (node.type.id === Priority) {
+    if (node.type.id === TOKEN.Priority) {
       const priority_match = orgmode_content.slice(node.from, node.to).match(new RegExp("\\[#(.)\\]"))
       item.set('priority', priority_match[1])
       item.get('taskLocation').set('priority', [node.from + priority_match.index + 2, node.from + priority_match.index + 3])
