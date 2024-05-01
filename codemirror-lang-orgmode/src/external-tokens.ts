@@ -17,6 +17,22 @@ function log(msg: string) {
   }
 }
 
+function stringifyCodeLogString(charCode: number) {
+  let char = String.fromCharCode(charCode)
+  if (charCode == NEW_LINE) {
+    char = String.raw`\n`
+  } else if (charCode == TAB) {
+    char = String.raw`\t`
+  } else if (charCode == EOF || charCode == SOF) {
+    char = '<EOF/SOF>'
+  }
+  return char
+}
+
+function inputStreamLogString(input: InputStream): string {
+  return `at ${input.pos}:"${stringifyCodeLogString(input.peek(0))}"`
+}
+
 function isWhiteSpace(charCode: number) {
   return charCode === SPACE || charCode === TAB
 }
@@ -73,7 +89,7 @@ function checkPreviousWord(input: InputStream, words: string[], anti_peek_distan
 
 export const title_tokenizer = (words: string[]) => { return new ExternalTokenizer((input: InputStream, stack: Stack) => {
   // match everything until tags or NEWLINE or EOF
-  log(`start title_tokenizer ${input.pos}`)
+  log(`-- START title_tokenizer ${inputStreamLogString(input)}`)
   // TRYING to previous match priority or todokeyword
   let priority_already_matched = false
   let todo_keyword_already_matched = false
@@ -89,7 +105,7 @@ export const title_tokenizer = (words: string[]) => { return new ExternalTokeniz
   }
   let c = input.peek(0)
   let s = String.fromCharCode(c)
-  log(`first ${String.fromCharCode(c)}`)
+  log(`first ${stringifyCodeLogString(c)}`)
   let is_matching_tags = false
   if (isEndOfLine(c)) {
     log('== REFUSE title empty')
@@ -99,19 +115,19 @@ export const title_tokenizer = (words: string[]) => { return new ExternalTokeniz
     while (c != COLON && !isEndOfLine(c)) {
       c = input.advance()
       s += String.fromCharCode(c)
-      log(`${String.fromCharCode(c)}`)
+      log(`${stringifyCodeLogString(c)}`)
       if (!priority_already_matched && checkPriority(s)) {
         log('== REFUSE is priority, not title')
         return
       }
       if (!todo_keyword_already_matched && checkTodoKeyword(s, input, words)) {
-        log('== REFUSE is TodoKeyword, not tile')
+        log('== REFUSE is TodoKeyword, not title')
         return
       }
     }
     if (isEndOfLine(c)) {
       input.acceptToken(Title)
-      log('== ACCEPT title 1')
+      log(`== ACCEPT title 1 ${inputStreamLogString(input)}`)
       return
     }
     if (c == COLON) {
@@ -119,11 +135,11 @@ export const title_tokenizer = (words: string[]) => { return new ExternalTokeniz
       is_matching_tags = true
       let peek_distance = 1
       c = input.peek(peek_distance)
-      log(`peeking a: ${String.fromCharCode(c)}`)
+      log(`peeking a: ${stringifyCodeLogString(c)}`)
       while (is_matching_tags) {
         peek_distance += 1
         c = input.peek(peek_distance)
-        log(`peeking b: ${String.fromCharCode(c)}`)
+        log(`peeking b: ${stringifyCodeLogString(c)}`)
         if (isEndOfLine(c)) {
           log(`case 1`)
           // example ":eiofje\n" unfinished tag
@@ -141,7 +157,7 @@ export const title_tokenizer = (words: string[]) => { return new ExternalTokeniz
           log(`title_tokenizer ${input.pos}: second colon`)
           let extra_peek_distance = 1
           c = input.peek(peek_distance + extra_peek_distance)
-          log(`peeking c: ${String.fromCharCode(c)}`)
+          log(`peeking c: ${stringifyCodeLogString(c)}`)
           if (isEndOfLine(c)) {
             // example ":tag1:\n"
             input.acceptToken(Title)  // accept token before the tags
@@ -151,7 +167,7 @@ export const title_tokenizer = (words: string[]) => { return new ExternalTokeniz
             while (isWhiteSpace(c)) {
               extra_peek_distance += 1
               c = input.peek(peek_distance + extra_peek_distance)
-              log(`peeking d: ${String.fromCharCode(c)}`)
+              log(`peeking d: ${stringifyCodeLogString(c)}`)
             }
             if (isEndOfLine(c)) {
               // example ":tag1: \n"
@@ -175,7 +191,7 @@ export const title_tokenizer = (words: string[]) => { return new ExternalTokeniz
       }  // end is_matching_tags
       c = input.advance()
       s += String.fromCharCode(c)
-      log(`${String.fromCharCode(c)}`)
+      log(`${stringifyCodeLogString(c)}`)
       if (!priority_already_matched && checkPriority(s)) {
         log('== REFUSE is priority, not title')
         return
@@ -193,12 +209,12 @@ export const title_tokenizer = (words: string[]) => { return new ExternalTokeniz
 }
 
 export const todokeyword_tokenizer = (words: string[]) => { return new ExternalTokenizer((input, stack) => {
-  log(`start todokeyword_tokenizer ${input.pos}`)
+  log(`-- START todokeyword_tokenizer ${inputStreamLogString(input)}`)
   const max_length = Math.max(...(words.map(el => el.length)));
   let c = input.peek(0)
   let i = 0
   let s = String.fromCharCode(c)
-  log(`first ${String.fromCharCode(c)}`)
+  log(`first ${stringifyCodeLogString(c)}`)
   while (i < max_length && c != EOF) {
     if (checkTodoKeyword(s, input, words)) {
       const next = input.peek(1)
@@ -210,7 +226,7 @@ export const todokeyword_tokenizer = (words: string[]) => { return new ExternalT
     }
     i += 1
     c = input.advance()
-    log(`${String.fromCharCode(c)}`)
+    log(`${stringifyCodeLogString(c)}`)
     s += String.fromCharCode(c)
   }
   log('== REFUSE todokeyword')
@@ -219,27 +235,28 @@ export const todokeyword_tokenizer = (words: string[]) => { return new ExternalT
 }
 
 export const endofline_tokenizer = new ExternalTokenizer((input, stack) => {
-  log(`start endofline_tokenizer ${input.pos}`)
+  log(`-- START endofline_tokenizer ${inputStreamLogString(input)}`)
   let c = input.peek(0)
-  log(String.fromCharCode(c))
+  log(stringifyCodeLogString(c))
   while (!isEndOfLine(c)) {
     c = input.advance()
-    log(String.fromCharCode(c))
+    log(stringifyCodeLogString(c))
   }
   if (c === EOF) {
-    log('== ACCEPT endofline EOF')
+    log(`== ACCEPT endofline EOF ${inputStreamLogString(input)}`)
     input.acceptToken(endofline)
   } else if (c === NEW_LINE) {
-    log(`== ACCEPT endofline NEWLINE ${input.pos + 1}`)
-    input.acceptToken(endofline, 1)
+    input.advance()
+    log(`== ACCEPT endofline NEWLINE ${inputStreamLogString(input)}`)
+    input.acceptToken(endofline)
   }
   return
 });
 
 export const section_tokenizer = new ExternalTokenizer((input, stack) => {
-  log(`start section_tokenizer ${input.pos}`)
+  log(`-- START section_tokenizer ${inputStreamLogString(input)}`)
   const previous = input.peek(-1)
-  log(`previous ${String.fromCharCode(previous)}`)
+  log(`previous ${stringifyCodeLogString(previous)}`)
   if (!isEndOfLine(previous)) {
     log('== REFUSE Section, previous not endofline')
     return
@@ -248,7 +265,7 @@ export const section_tokenizer = new ExternalTokenizer((input, stack) => {
   let planning_word = String.fromCharCode(c)
   let first_line = true
   let could_be_property_drawer = false
-  log(String.fromCharCode(c))
+  log(stringifyCodeLogString(c))
   if (c === STAR) {
     // only start of heading if it matches the stars token { "*"+ $[ \t]+ }
     let peek_distance = 1
@@ -273,7 +290,7 @@ export const section_tokenizer = new ExternalTokenizer((input, stack) => {
   while (c !== EOF) {
     while (!isEndOfLine(c)) {
       c = input.advance()
-      log(String.fromCharCode(c))
+      log(stringifyCodeLogString(c))
       if (first_line) {
         log('first_line')
         if (c === COLON) {
@@ -303,7 +320,7 @@ export const section_tokenizer = new ExternalTokenizer((input, stack) => {
       input.acceptToken(Section, 1)
       return
     }
-    log(`next start ${String.fromCharCode(input.peek(1))}`)
+    log(`next start ${stringifyCodeLogString(input.peek(1))}`)
     if (input.peek(1) === STAR) {
       // only end of section if start of heading matches the stars token { "*"+ $[ \t]+ }
       let peek_distance = 2
@@ -331,15 +348,15 @@ export const section_tokenizer = new ExternalTokenizer((input, stack) => {
 
 export const propertydrawer_tokenizer = new ExternalTokenizer((input, stack) => {
   // PropertyDrawer { ":PROPERTIES:" ![:]+ ":END:" } // with newline before and after
-  log(`start propertydrawer_tokenizer ${input.pos}`)
+  log(`-- START propertydrawer_tokenizer ${inputStreamLogString(input)}`)
   const previous = input.peek(-1)
-  log(`previous ${String.fromCharCode(previous)}`)
+  log(`previous ${stringifyCodeLogString(previous)}`)
   if (!isEndOfLine(previous)) {
     log('== REFUSE PropertyDrawer, previous not endofline')
     return
   }
   let c = input.peek(0)
-  log(String.fromCharCode(c))
+  log(stringifyCodeLogString(c))
   if (c !== COLON) {
     log('== REFUSE PropertyDrawer, first not colon')
     return
@@ -353,7 +370,7 @@ export const propertydrawer_tokenizer = new ExternalTokenizer((input, stack) => 
   while (c !== EOF) {
     while (!isEndOfLine(c)) {
       c = input.advance()
-      log(String.fromCharCode(c))
+      log(stringifyCodeLogString(c))
       if (first_line) {
         log('first_line')
         if (c === COLON) {
@@ -374,10 +391,10 @@ export const propertydrawer_tokenizer = new ExternalTokenizer((input, stack) => 
           if (end_word.toUpperCase() === 'END') {
             log(':END: found')
             c = input.advance()
-            log(String.fromCharCode(c))
+            log(stringifyCodeLogString(c))
             while (!isEndOfLine(c)) {
               c = input.advance()
-              log(String.fromCharCode(c))
+              log(stringifyCodeLogString(c))
             }
             log("== ACCEPT PropertyDrawer")
             input.acceptToken(PropertyDrawer, 1)
@@ -396,7 +413,7 @@ export const propertydrawer_tokenizer = new ExternalTokenizer((input, stack) => 
       log('== REFUSE PropertyDrawer, no :PROPERTIES: on first line')
       return
     }
-    log(`next start? ${String.fromCharCode(input.peek(1))}`)
+    log(`next start? ${stringifyCodeLogString(input.peek(1))}`)
     if (input.peek(1) === COLON) {
       try_matching_end = true
       end_word = ''
