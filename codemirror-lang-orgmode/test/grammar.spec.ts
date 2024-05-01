@@ -1,6 +1,8 @@
 import { LRParser } from '@lezer/lr';
 import { testTree } from "@lezer/generator/dist/test"
 import { test } from 'vitest'
+import { printTree } from './print-lezer-tree';
+
 import { OrgmodeParser } from 'codemirror-lang-orgmode'
 import { OrgmodePluginSettings } from 'settings';
 
@@ -12,7 +14,7 @@ const words = [...settings.todoKeywords, ...settings.doneKeywords]
 const parser: LRParser = OrgmodeParser(words)
 
 test("simple case", () => {
-  const tree = parser.parse([
+  const content = [
     "* TODO item 1",
     "content",
     "* TODO item 2",
@@ -20,7 +22,8 @@ test("simple case", () => {
     "content",
     "",
     "* TODO item 3",
-  ].join("\n"))
+  ].join("\n")
+  const tree = parser.parse(content)
   const spec = [
     "Program(",
     "    Block(Heading(TodoKeyword, Title), Section),",
@@ -28,39 +31,44 @@ test("simple case", () => {
     "    Block(Heading(TodoKeyword, Title)),",
     ")",
   ].join("\n")
+  console.log(printTree(tree, content))
   testTree(tree, spec)
 })
 
 test("zeroth section not in a block", () => {
-  const tree = parser.parse([
+  const content = [
     "some text",
     "* TODO item 1",
     "content",
-  ].join("\n"))
+  ].join("\n")
+  const tree = parser.parse(content)
   const spec = [
     "Program(",
     "    Section,",
     "    Block(Heading(TodoKeyword, Title),Section)",
     ")",
   ].join("\n")
+  console.log(printTree(tree, content))
   testTree(tree, spec)
 })
 
 test("zeroth PropertyDrawer possible", () => {
-  const tree = parser.parse([
+  const content = [
     ":PROPERTIES:",
     ":CREATED:  [2020-10-06 Tue 18:12]",
     ":END:",
     "weofij",
-  ].join("\n"))
+  ].join("\n")
+  const tree = parser.parse(content)
   const spec = [
     "Program(PropertyDrawer, Section)",
   ].join("\n")
+  console.log(printTree(tree, content))
   testTree(tree, spec)
 })
 
 test("deadline and scheduled", () => {
-  const tree = parser.parse([
+  const content = [
     "* TODO heading1",
     "DEADLINE: deadline",
     "SCHEDULED: scheduled",
@@ -70,40 +78,45 @@ test("deadline and scheduled", () => {
     "some content",
     "DEADLINE: part of content",
     "* TODO heading2",
-  ].join("\n"))
+  ].join("\n")
+  const tree = parser.parse(content)
   const spec = [
     "Program(",
     "    Block(Heading(TodoKeyword, Title), Planning, Planning, PropertyDrawer, Section),",
     "    Block(Heading(TodoKeyword, Title)),",
     ")",
   ].join("\n")
+  console.log(printTree(tree, content))
   testTree(tree, spec)
 })
 
 test("PropertyDrawer trailing characters", () => {
-  const tree = parser.parse([
+  const content = [
     "* TODO title",
     ":PROPERTIES: ignored",
     ":CREATED:  [2020-10-06 Tue 18:12]",
     ":END: ignored",
     "",
     "modele 2018921",
-  ].join("\n"))
+  ].join("\n")
+  const tree = parser.parse(content)
   const spec = [
     "Program(",
     "    Block(Heading(TodoKeyword, Title), PropertyDrawer, Section),",
     ")",
   ].join("\n")
+  console.log(printTree(tree, content))
   testTree(tree, spec)
 })
 
 test("Heading", () => {
-  const tree = parser.parse([
+  const content = [
     "* TODO item1",
     "# comment",
     "** TODO subitem :tag1:",
     "** subitem",
-  ].join("\n"))
+  ].join("\n")
+  const tree = parser.parse(content)
   const spec = [
     "Program(",
     "    Block(Heading(TodoKeyword, Title), Comment),",
@@ -111,33 +124,38 @@ test("Heading", () => {
     "    Block(Heading(Title)),",
     ")",
   ].join("\n")
+  console.log(printTree(tree, content))
   testTree(tree, spec)
 })
 
 test("Heading edge cases", () => {
-  const tree = parser.parse([
+  const content = [
     "** [#a] [#a] subitem",
     "** TODO TODO subitem",
-  ].join("\n"))
+  ].join("\n")
+  const tree = parser.parse(content)
   const spec = [
     "Program(",
     "    Block(Heading(Priority, Title)),",
     "    Block(Heading(TodoKeyword, Title)),",
     ")",
   ].join("\n")
+  console.log(printTree(tree, content))
   testTree(tree, spec)
 })
 
 test("another edge cases", () => {
-  const tree = parser.parse([
+  const content = [
     "* TODO stuff [#a] stuff :tag:",
     "* [#a] stuff TODO stuff :tag:",
-  ].join("\n"))
+  ].join("\n")
+  const tree = parser.parse(content)
   const spec = [
     "Program(",
     "    Block(Heading(TodoKeyword, Title, Tags)),",
     "    Block(Heading(Priority, Title, Tags)),",
     ")",
   ].join("\n")
+  console.log(printTree(tree, content))
   testTree(tree, spec)
 })
