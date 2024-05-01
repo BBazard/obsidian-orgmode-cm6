@@ -159,3 +159,36 @@ test("another edge cases", () => {
   console.log(printTree(tree, content))
   testTree(tree, spec)
 })
+
+test("leading star in first line of section", () => {
+  const content = [
+    "* heading",
+    "*not a heading",
+    "end of section",
+  ].join("\n")
+  const tree = parser.parse(content)
+  const spec = [
+    "Program(",
+    "    Block(Heading(Title), Section),",
+    ")",
+  ].join("\n")
+  console.log(printTree(tree, content))
+  testTree(tree, spec)
+})
+
+test("leading star in zeroth section", () => {
+  const content = [
+    "abc",
+    "*not a heading",
+    "* heading",
+  ].join("\n")
+  const tree = parser.parse(content)
+  const spec = [
+    "Program(",
+    "    Section",
+    "    Block(Heading(Title)),",
+    ")",
+  ].join("\n")
+  console.log(printTree(tree, content))
+  testTree(tree, spec)
+})

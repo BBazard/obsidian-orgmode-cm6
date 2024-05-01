@@ -250,8 +250,17 @@ export const section_tokenizer = new ExternalTokenizer((input, stack) => {
   let could_be_property_drawer = false
   log(String.fromCharCode(c))
   if (c === STAR) {
-    log('== REFUSE Section, start of heading')
-    return // start of HEADING
+    // only start of heading if it matches the stars token { "*"+ $[ \t]+ }
+    let peek_distance = 1
+    c = input.peek(peek_distance)
+    while (c == STAR) {
+      peek_distance += 1
+      c = input.peek(peek_distance)
+    }
+    if (c == SPACE || c == TAB) {
+      log('== REFUSE Section, start of heading')
+      return // start of HEADING
+    }
   }
   if (c === COLON) {
     could_be_property_drawer = true
@@ -296,9 +305,18 @@ export const section_tokenizer = new ExternalTokenizer((input, stack) => {
     }
     log(`next start ${String.fromCharCode(input.peek(1))}`)
     if (input.peek(1) === STAR) {
-      log('== ACCEPT Section before heading')
-      input.acceptToken(Section, 1)
-      return
+      // only end of section if start of heading matches the stars token { "*"+ $[ \t]+ }
+      let peek_distance = 2
+      c = input.peek(peek_distance)
+      while (c == STAR) {
+        peek_distance += 1
+        c = input.peek(peek_distance)
+      }
+      if (c == SPACE || c == TAB) {
+        log('== ACCEPT Section before heading')
+        input.acceptToken(Section, 1)
+        return
+      }
     } else if (input.peek(1) === HASH) {
       log('== ACCEPT Section before comment')
       input.acceptToken(Section, 1)
