@@ -167,6 +167,7 @@ enum Color {
   Red = 31,
   Green = 32,
   Yellow = 33,
+  Blue = 34,
 }
 
 function colorize(value: any, color: number): string {
@@ -217,8 +218,13 @@ export function printTree(
           ? "[" +
             colorize(locAt(text, start + node.from), Color.Yellow) +
             ".." +
-            colorize(locAt(text, start + node.to), Color.Yellow) +
-            "]"
+            colorize(locAt(text, start + node.to-1), Color.Yellow) +
+            "]" +
+            "(" +
+            colorize(start + node.from, Color.Blue) +
+            "-" +
+            colorize(start + node.to-1, Color.Blue) +
+            ")"
           : colorize(locAt(text, start + node.from), Color.Yellow))
       if (hasRange && node.isLeaf) {
         state.output += ": " + colorize(JSON.stringify(inp.read(node.from, node.to)), Color.Green)
@@ -234,7 +240,7 @@ export function printTree(
 
 function locAt(text: Text, pos: number): string {
   const line = text.lineAt(pos)
-  return line.number + ":" + (pos - line.from)
+  return line.number - 1 + ":" + (pos - line.from)
 }
 
 export function logTree(
