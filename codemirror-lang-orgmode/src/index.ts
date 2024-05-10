@@ -6,8 +6,11 @@ import {
   propertydrawer_tokenizer,
   title_tokenizer,
   todokeyword_tokenizer,
-  section_tokenizer,
+  sectionline_tokenizer,
   endofline_tokenizer,
+  sectionlineexcludingpropertydrawer_tokenizer,
+  sectionlineexcludingpropertydrawerandplanning_tokenizer,
+  planning_line_tokenizer,
 } from "./external-tokens"
 import { grammarFile } from "./generated_grammar";
 
@@ -22,11 +25,20 @@ const configurableExternalTokenizer = (words: string[]) => {
     if (name == 'todokeyword_tokenizer') {
       return todokeyword_tokenizer(words)
     }
-    if (name == 'section_tokenizer') {
-      return section_tokenizer
+    if (name == 'sectionline_tokenizer') {
+      return sectionline_tokenizer
     }
     if (name == 'endofline_tokenizer') {
       return endofline_tokenizer
+    }
+    if (name == 'sectionlineexcludingpropertydrawerandplanning_tokenizer') {
+      return sectionlineexcludingpropertydrawerandplanning_tokenizer
+    }
+    if (name == 'sectionlineexcludingpropertydrawer_tokenizer') {
+      return sectionlineexcludingpropertydrawer_tokenizer
+    }
+    if (name == 'planning_line_tokenizer') {
+      return planning_line_tokenizer
     }
     throw new Error("Undefined external tokenizer " + name)
   }

@@ -44,7 +44,7 @@ test("zeroth section not in a block", () => {
   const tree = parser.parse(content)
   const spec = [
     "Program(",
-    "    Section,",
+    "    ZerothSection,",
     "    Block(Heading(TodoKeyword, Title),Section)",
     ")",
   ].join("\n")
@@ -61,7 +61,7 @@ test("zeroth PropertyDrawer possible", () => {
   ].join("\n")
   const tree = parser.parse(content)
   const spec = [
-    "Program(PropertyDrawer, Section)",
+    "Program(ZerothSection(PropertyDrawer))",
   ].join("\n")
   console.log(printTree(tree, content))
   testTree(tree, spec)
@@ -82,7 +82,7 @@ test("deadline and scheduled", () => {
   const tree = parser.parse(content)
   const spec = [
     "Program(",
-    "    Block(Heading(TodoKeyword, Title), Planning, Planning, PropertyDrawer, Section),",
+    "    Block(Heading(TodoKeyword, Title), Section(Planning, Planning, PropertyDrawer)),",
     "    Block(Heading(TodoKeyword, Title)),",
     ")",
   ].join("\n")
@@ -102,7 +102,7 @@ test("PropertyDrawer trailing characters", () => {
   const tree = parser.parse(content)
   const spec = [
     "Program(",
-    "    Block(Heading(TodoKeyword, Title), PropertyDrawer, Section),",
+    "    Block(Heading(TodoKeyword, Title), Section(PropertyDrawer)),",
     ")",
   ].join("\n")
   console.log(printTree(tree, content))
@@ -119,7 +119,7 @@ test("Heading", () => {
   const tree = parser.parse(content)
   const spec = [
     "Program(",
-    "    Block(Heading(TodoKeyword, Title), Comment),",
+    "    Block(Heading(TodoKeyword, Title), Section(CommentLine)),",
     "    Block(Heading(TodoKeyword, Title, Tags)),",
     "    Block(Heading(Title)),",
     ")",
@@ -185,8 +185,25 @@ test("leading star in zeroth section", () => {
   const tree = parser.parse(content)
   const spec = [
     "Program(",
-    "    Section",
+    "    ZerothSection",
     "    Block(Heading(Title)),",
+    ")",
+  ].join("\n")
+  console.log(printTree(tree, content))
+  testTree(tree, spec)
+})
+
+test("no heading in a comment", () => {
+  const content = [
+    "* heading",
+    "start of section",
+    "# not a heading",
+    "end of section",
+  ].join("\n")
+  const tree = parser.parse(content)
+  const spec = [
+    "Program(",
+    "    Block(Heading(Title), Section(CommentLine)),",
     ")",
   ].join("\n")
   console.log(printTree(tree, content))

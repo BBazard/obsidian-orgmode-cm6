@@ -1,23 +1,42 @@
+@precedence {
+  tryHeading @left,
+  tryZerothSection @left
+}
+
 @top Program {
-  Comment*
-  PropertyDrawer?
-  Section?
+  ZerothSection?
   Block*
+}
+
+ZerothSection {
+  !tryZerothSection
+  CommentLine*
+  PropertyDrawer?
+  (sectionLineExcludingPropertyDrawer (sectionLine | CommentLine)*)?
+}
+
+Block {
+  Heading Section?
 }
 
 // https://orgmode.org/worg/org-syntax.html#Headings
 Heading {
-  stars TodoKeyword? Priority? Title Tags? endofline
+  !tryHeading stars TodoKeyword? Priority? Title Tags? endofline
 }
 
-// https://orgmode.org/worg/org-syntax.html#Planning
-Planning { planningStart endofline }
-
-// https://orgmode.org/worg/org-syntax.html#Comments
-Comment { commentStart endofline }
-
-Block {
-  Heading (Comment|Planning)* PropertyDrawer? Section*
+Section {
+  (
+    // at least a CommentLine or Planning
+    (CommentLine | Planning)+ PropertyDrawer?
+    (sectionLineExcludingPropertyDrawerAndPlanning (sectionLine | CommentLine)*)?
+  ) | (
+    // OR at least a PropertyDrawer
+    PropertyDrawer
+    (sectionLineExcludingPropertyDrawerAndPlanning (sectionLine | CommentLine)*)?
+  ) | (
+    // OR at least a sectionLineExcludingPropertyDrawerAndPlanning
+    sectionLineExcludingPropertyDrawerAndPlanning (sectionLine | CommentLine)*
+  )
 }
 
 // https://orgmode.org/worg/org-syntax.html#Property_Drawers
@@ -27,16 +46,20 @@ Block {
   Priority { $[ \t]* "[" "#" $[a-zA-Z0-9] "]" $[ \t]* }
   Tags { ":" ($[a-zA-Z0-9_@#%]+ ":")+ }
   stars { "*"+ $[ \t]+ }
-  planningStart { ("DEADLINE:"|"SCHEDULED:"|"CLOSED:") }
-  commentStart { "#" }
+  CommentLine { "#" ![\n]* ("\n" | @eof) }
 }
 
 @external tokens title_tokenizer from "./external-tokens" { Title }
 
 @external tokens todokeyword_tokenizer from "./external-tokens" { TodoKeyword }
 
+// https://orgmode.org/worg/org-syntax.html#Planning
+@external tokens planning_line_tokenizer from "./external-tokens" { Planning }
+
 // https://orgmode.org/worg/org-syntax.html#Sections
-@external tokens section_tokenizer from "./external-tokens" { Section }
+@external tokens sectionlineexcludingpropertydrawerandplanning_tokenizer from "./external-tokens" { sectionLineExcludingPropertyDrawerAndPlanning }
+@external tokens sectionlineexcludingpropertydrawer_tokenizer from "./external-tokens" { sectionLineExcludingPropertyDrawer }
+@external tokens sectionline_tokenizer from "./external-tokens" { sectionLine }
 
 // need to be last to not override something else
 @external tokens endofline_tokenizer from "./external-tokens" { endofline }

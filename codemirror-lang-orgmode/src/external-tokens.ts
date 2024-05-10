@@ -1,5 +1,9 @@
 import { ExternalTokenizer, InputStream, Stack } from '@lezer/lr';
-import { endofline, Section, PropertyDrawer, TodoKeyword, Title, Priority } from './parser.terms';
+import {
+  TodoKeyword, Priority, Title, endofline,
+  PropertyDrawer, Planning,
+  sectionLine, sectionLineExcludingPropertyDrawerAndPlanning, sectionLineExcludingPropertyDrawer,
+} from './parser.terms';
 
 const NEW_LINE = '\n'.charCodeAt(0);
 const STAR = '*'.charCodeAt(0);
@@ -23,14 +27,20 @@ function stringifyCodeLogString(charCode: number) {
     char = String.raw`\n`
   } else if (charCode == TAB) {
     char = String.raw`\t`
+  } else if (charCode == SPACE) {
+    char = '<SPACE>'
   } else if (charCode == EOF || charCode == SOF) {
     char = '<EOF/SOF>'
   }
   return char
 }
 
-function inputStreamLogString(input: InputStream): string {
+function inputStreamBeginString(input: InputStream): string {
   return `at ${input.pos}:"${stringifyCodeLogString(input.peek(0))}"`
+}
+
+function inputStreamEndString(input: InputStream): string {
+  return `at ${input.pos-1}:"${stringifyCodeLogString(input.peek(-1))}"`
 }
 
 function isWhiteSpace(charCode: number) {
@@ -89,7 +99,7 @@ function checkPreviousWord(input: InputStream, words: string[], anti_peek_distan
 
 export const title_tokenizer = (words: string[]) => { return new ExternalTokenizer((input: InputStream, stack: Stack) => {
   // match everything until tags or NEWLINE or EOF
-  log(`-- START title_tokenizer ${inputStreamLogString(input)}`)
+  log(`-- START Title ${inputStreamBeginString(input)}`)
   // TRYING to previous match priority or todokeyword
   let priority_already_matched = false
   let todo_keyword_already_matched = false
@@ -108,7 +118,7 @@ export const title_tokenizer = (words: string[]) => { return new ExternalTokeniz
   log(`first ${stringifyCodeLogString(c)}`)
   let is_matching_tags = false
   if (isEndOfLine(c)) {
-    log('== REFUSE title empty')
+    log(`XX REFUSE Title empty ${inputStreamEndString(input)}`)
     return
   }
   while (!isEndOfLine(c)) {
@@ -117,17 +127,17 @@ export const title_tokenizer = (words: string[]) => { return new ExternalTokeniz
       s += String.fromCharCode(c)
       log(`${stringifyCodeLogString(c)}`)
       if (!priority_already_matched && checkPriority(s)) {
-        log('== REFUSE is priority, not title')
+        log(`XX REFUSE Title, is priority ${inputStreamEndString(input)}`)
         return
       }
       if (!todo_keyword_already_matched && checkTodoKeyword(s, input, words)) {
-        log('== REFUSE is TodoKeyword, not title')
+        log(`XX REFUSE Title, is TodoKeyword ${inputStreamEndString(input)}`)
         return
       }
     }
     if (isEndOfLine(c)) {
       input.acceptToken(Title)
-      log(`== ACCEPT title 1 ${inputStreamLogString(input)}`)
+      log(`== ACCEPT Title 1 ${inputStreamEndString(input)}`)
       return
     }
     if (c == COLON) {
@@ -161,7 +171,7 @@ export const title_tokenizer = (words: string[]) => { return new ExternalTokeniz
           if (isEndOfLine(c)) {
             // example ":tag1:\n"
             input.acceptToken(Title)  // accept token before the tags
-            log('== ACCEPT title 2')
+            log(`== ACCEPT title 2 ${inputStreamEndString(input)}`)
             return
           } else if (isWhiteSpace(c)) {
             while (isWhiteSpace(c)) {
@@ -172,7 +182,7 @@ export const title_tokenizer = (words: string[]) => { return new ExternalTokeniz
             if (isEndOfLine(c)) {
               // example ":tag1: \n"
               input.acceptToken(Title)  // accept token before the tags
-              log('== ACCEPT title 3')
+              log(`== ACCEPT Title 3 ${inputStreamEndString(input)}`)
               return
             } else {
               // example ":tag1:a\n" extra chars after tags
@@ -193,23 +203,23 @@ export const title_tokenizer = (words: string[]) => { return new ExternalTokeniz
       s += String.fromCharCode(c)
       log(`${stringifyCodeLogString(c)}`)
       if (!priority_already_matched && checkPriority(s)) {
-        log('== REFUSE is priority, not title')
+        log(`XX REFUSE Title, is Priority ${inputStreamEndString(input)}`)
         return
       }
       if (!todo_keyword_already_matched && checkTodoKeyword(s, input, words)) {
-        log('== REFUSE is TodoKeyword, not title')
+        log(`XX REFUSE Title, is TodoKeyword ${inputStreamEndString(input)}`)
         return
       }
     }
   }
   input.acceptToken(Title)
-  log('== ACCEPT title 4')
+  log(`== ACCEPT Title 4 ${inputStreamEndString(input)}`)
   return
 })
 }
 
 export const todokeyword_tokenizer = (words: string[]) => { return new ExternalTokenizer((input, stack) => {
-  log(`-- START todokeyword_tokenizer ${inputStreamLogString(input)}`)
+  log(`-- START TodoKeyword ${inputStreamBeginString(input)}`)
   const max_length = Math.max(...(words.map(el => el.length)));
   let c = input.peek(0)
   let i = 0
@@ -219,8 +229,9 @@ export const todokeyword_tokenizer = (words: string[]) => { return new ExternalT
     if (checkTodoKeyword(s, input, words)) {
       const next = input.peek(1)
       if (isEndOfLine(next) || isWhiteSpace(next)) {
-        log('== ACCEPT todokeyword')
-        input.acceptToken(TodoKeyword, 1)
+        input.advance()
+        log(`== ACCEPT TodoKeyword ${inputStreamEndString(input)}`)
+        input.acceptToken(TodoKeyword)
         return
       }
     }
@@ -229,13 +240,18 @@ export const todokeyword_tokenizer = (words: string[]) => { return new ExternalT
     log(`${stringifyCodeLogString(c)}`)
     s += String.fromCharCode(c)
   }
-  log('== REFUSE todokeyword')
+  log(`XX REFUSE TodoKeyword ${inputStreamEndString(input)}`)
   return
 })
 }
 
 export const endofline_tokenizer = new ExternalTokenizer((input, stack) => {
-  log(`-- START endofline_tokenizer ${inputStreamLogString(input)}`)
+  log(`-- START endofline ${inputStreamBeginString(input)}`)
+  let previous = input.peek(-1)
+  if (isEndOfLine(previous)) {
+    log(`XX REFUSE endofline, previous not endofline ${inputStreamEndString(input)}`)
+    return
+  }
   let c = input.peek(0)
   log(stringifyCodeLogString(c))
   while (!isEndOfLine(c)) {
@@ -243,122 +259,155 @@ export const endofline_tokenizer = new ExternalTokenizer((input, stack) => {
     log(stringifyCodeLogString(c))
   }
   if (c === EOF) {
-    log(`== ACCEPT endofline EOF ${inputStreamLogString(input)}`)
+    log(`== ACCEPT endofline EOF ${inputStreamEndString(input)}`)
     input.acceptToken(endofline)
-  } else if (c === NEW_LINE) {
+  } else { // NEW_LINE
     input.advance()
-    log(`== ACCEPT endofline NEWLINE ${inputStreamLogString(input)}`)
+    log(`== ACCEPT endofline NEWLINE ${inputStreamEndString(input)}`)
     input.acceptToken(endofline)
   }
-  return
 });
 
-export const section_tokenizer = new ExternalTokenizer((input, stack) => {
-  log(`-- START section_tokenizer ${inputStreamLogString(input)}`)
+function checkSectionLine(excludePropertyDrawer: boolean, excludePlanning: boolean, input: InputStream, stack: Stack, term: number) {
+  // sectionLineStart { ( ("*"+ ![ \t*]) | ![#*] ) }
+  let termString = "unknown"
+  if (term == sectionLineExcludingPropertyDrawerAndPlanning) {
+    termString = "sectionLineExcludingPropertyDrawerAndPlanning"
+  } else if (term == sectionLineExcludingPropertyDrawer) {
+    termString = "sectionLineExcludingPropertyDrawer"
+  } else if (term == sectionLine) {
+    termString = "sectionLine"
+  }
   const previous = input.peek(-1)
   log(`previous ${stringifyCodeLogString(previous)}`)
   if (!isEndOfLine(previous)) {
-    log('== REFUSE Section, previous not endofline')
+    log(`XX REFUSE Section Line (${termString}), previous not endofline ${inputStreamEndString(input)}`)
     return
   }
   let c = input.peek(0)
   let planning_word = String.fromCharCode(c)
-  let first_line = true
   let could_be_property_drawer = false
   log(stringifyCodeLogString(c))
-  if (c === STAR) {
+  if (c === EOF) {
+      log(`XX REFUSE Section Line (${termString}), only EOF left ${inputStreamEndString(input)}`)
+      return
+  } else if (c === COLON && excludePropertyDrawer) {
+    could_be_property_drawer = true
+    planning_word = ''
+  } else if (c === HASH) {
+    log(`XX REFUSE Section Line (${termString}), start of comment ${inputStreamEndString(input)}`)
+    return
+  } else if (c === STAR) {
     // only start of heading if it matches the stars token { "*"+ $[ \t]+ }
     let peek_distance = 1
-    c = input.peek(peek_distance)
-    while (c == STAR) {
+    let peek_c = input.peek(peek_distance)
+    while (peek_c == STAR) {
       peek_distance += 1
-      c = input.peek(peek_distance)
+      peek_c = input.peek(peek_distance)
     }
-    if (c == SPACE || c == TAB) {
-      log('== REFUSE Section, start of heading')
+    if (peek_c == SPACE || peek_c == TAB) {
+      log(`XX REFUSE Section Line (${termString}), start of heading ${inputStreamEndString(input)}`)
       return // start of HEADING
     }
   }
-  if (c === COLON) {
+  if (c === COLON && excludePropertyDrawer) {
     could_be_property_drawer = true
     planning_word = ''
   }
   if (c === HASH) {
-    log('== REFUSE Section, start of comment')
+    log(`XX REFUSE Section Line (${termString}), start of comment ${inputStreamEndString(input)}`)
     return
   }
-  while (c !== EOF) {
-    while (!isEndOfLine(c)) {
-      c = input.advance()
-      log(stringifyCodeLogString(c))
-      if (first_line) {
-        log('first_line')
-        if (c === COLON) {
-          if (could_be_property_drawer && planning_word.toUpperCase() === 'PROPERTIES') {
-            log('== REFUSE Section, start of PropertyDrawer')
-            return
-          }
-          if (!could_be_property_drawer && (
-            planning_word.toUpperCase() === 'DEADLINE' ||
-            planning_word.toUpperCase() === 'SCHEDULED' ||
-            planning_word.toUpperCase() === 'CLOSED')) {
-            log('== REFUSE Section, start of Planning')
-            return
-          }
-        }
-        planning_word += String.fromCharCode(c)
-        log(`word ${planning_word}`)
-      }
-    }
-    first_line = false
-    if (c === EOF) {
-      log('== ACCEPT Section before newline')
-      input.acceptToken(Section)
-      return
-    } else if (c === NEW_LINE && input.peek(1) === EOF) {
-      log('== ACCEPT last Section before EOF with a trailing newline')
-      input.acceptToken(Section, 1)
-      return
-    }
-    log(`next start ${stringifyCodeLogString(input.peek(1))}`)
-    if (input.peek(1) === STAR) {
-      // only end of section if start of heading matches the stars token { "*"+ $[ \t]+ }
-      let peek_distance = 2
-      c = input.peek(peek_distance)
-      while (c == STAR) {
-        peek_distance += 1
-        c = input.peek(peek_distance)
-      }
-      if (c == SPACE || c == TAB) {
-        log('== ACCEPT Section before heading')
-        input.acceptToken(Section, 1)
+  while (!isEndOfLine(c)) {
+    c = input.advance()
+    log(stringifyCodeLogString(c))
+    if (c === COLON) {
+      if (could_be_property_drawer && planning_word.toUpperCase() === 'PROPERTIES') {
+        log(`XX REFUSE Section Line (${termString}), start of PropertyDrawer ${inputStreamEndString(input)}`)
         return
       }
-    } else if (input.peek(1) === HASH) {
-      log('== ACCEPT Section before comment')
-      input.acceptToken(Section, 1)
-      return
-    } else {
-      c = input.advance()
+      if (!could_be_property_drawer && excludePlanning && (
+        planning_word.toUpperCase() === 'DEADLINE' ||
+        planning_word.toUpperCase() === 'SCHEDULED' ||
+        planning_word.toUpperCase() === 'CLOSED')) {
+        log(`XX REFUSE Section Line (${termString}), start of Planning ${inputStreamEndString(input)}`)
+        return
+      }
     }
+    planning_word += String.fromCharCode(c)
+    log(`word [${planning_word}]`)
   }
-  log('== REFUSE Section')
+  if (c === EOF) {
+    log(`== ACCEPT Section Line (${termString}) before eof ${inputStreamEndString(input)}`)
+    input.acceptToken(term)
+    return
+  } else if (c === NEW_LINE && input.peek(1) === EOF) {
+    input.advance()
+    input.acceptToken(term)
+    log(`== ACCEPT last Section Line (${termString}) before EOF with a trailing newline ${inputStreamEndString(input)}`)
+    return
+  } else if (c === NEW_LINE) {
+    input.advance()
+    log(`== ACCEPT Section Line (${termString}) before newline ${inputStreamEndString(input)}`)
+    input.acceptToken(term)
+    return
+  }
+  log(`next start ${stringifyCodeLogString(input.peek(1))}`)
+  if (input.peek(1) === STAR) {
+    // only end of section if start of heading matches the stars token { "*"+ $[ \t]+ }
+    let peek_distance = 2
+    let peek_c = input.peek(peek_distance)
+    while (peek_c == STAR) {
+      peek_distance += 1
+      peek_c = input.peek(peek_distance)
+    }
+    if (peek_c == SPACE || peek_c == TAB) {
+      input.advance(peek_distance)
+      log(`== ACCEPT Section Line (${termString}) before heading ${inputStreamEndString(input)}`)
+      input.acceptToken(term)
+      return
+    }
+  } else if (input.peek(1) === HASH) {
+    input.advance()
+    log(`== ACCEPT Section Line (${termString}) before comment ${inputStreamEndString(input)}`)
+    input.acceptToken(term)
+    return
+  } else {
+    c = input.advance()
+  }
+  log(`== ACCEPT Section Line (${termString}) by default ${inputStreamEndString(input)}`)
+  input.acceptToken(term)
   return
-});
+}
+
+export const sectionlineexcludingpropertydrawerandplanning_tokenizer = new ExternalTokenizer((input, stack) => {
+  log(`-- START sectionLineExcludingPropertyDrawerAndPlanning ${inputStreamBeginString(input)}`)
+  checkSectionLine(true, true, input, stack, sectionLineExcludingPropertyDrawerAndPlanning)
+})
+
+export const sectionlineexcludingpropertydrawer_tokenizer = new ExternalTokenizer((input, stack) => {
+  log(`-- START sectionLineExcludingPropertyDrawer ${inputStreamBeginString(input)}`)
+  checkSectionLine(true, false, input, stack, sectionLineExcludingPropertyDrawer)
+})
+
+export const sectionline_tokenizer = new ExternalTokenizer((input, stack) => {
+  log(`-- START sectionLine ${inputStreamBeginString(input)}`)
+  checkSectionLine(false, false, input, stack, sectionLine)
+})
 
 export const propertydrawer_tokenizer = new ExternalTokenizer((input, stack) => {
   // PropertyDrawer { ":PROPERTIES:" ![:]+ ":END:" } // with newline before and after
-  log(`-- START propertydrawer_tokenizer ${inputStreamLogString(input)}`)
+  log(`-- START PropertyDrawer ${inputStreamBeginString(input)}`)
   const previous = input.peek(-1)
   log(`previous ${stringifyCodeLogString(previous)}`)
   if (!isEndOfLine(previous)) {
-    log('== REFUSE PropertyDrawer, previous not endofline')
+    log(`XX REFUSE PropertyDrawer, previous not endofline ${inputStreamEndString(input)}`)
     return
   }
   let c = input.peek(0)
   log(stringifyCodeLogString(c))
   if (c !== COLON) {
-    log('== REFUSE PropertyDrawer, first not colon')
+    log(`XX REFUSE PropertyDrawer, first not colon ${inputStreamEndString(input)}`)
     return
   }
   c = input.advance()
@@ -396,8 +445,9 @@ export const propertydrawer_tokenizer = new ExternalTokenizer((input, stack) => 
               c = input.advance()
               log(stringifyCodeLogString(c))
             }
-            log("== ACCEPT PropertyDrawer")
-            input.acceptToken(PropertyDrawer, 1)
+            input.advance()
+            log(`== ACCEPT PropertyDrawer ${inputStreamEndString(input)}`)
+            input.acceptToken(PropertyDrawer)
             return
           } else {
             log(`false positive end word: ${end_word}`)
@@ -410,7 +460,7 @@ export const propertydrawer_tokenizer = new ExternalTokenizer((input, stack) => 
     }
     first_line = false
     if (!properties_found_on_first_line) {
-      log('== REFUSE PropertyDrawer, no :PROPERTIES: on first line')
+      log(`XX REFUSE PropertyDrawer, no :PROPERTIES: on first line ${inputStreamEndString(input)}`)
       return
     }
     log(`next start? ${stringifyCodeLogString(input.peek(1))}`)
@@ -421,6 +471,43 @@ export const propertydrawer_tokenizer = new ExternalTokenizer((input, stack) => 
     }
     c = input.advance()
   }
-  log('== ACCEPT PropertyDrawer EOF reached without :END:')
+  log(`== ACCEPT PropertyDrawer EOF reached without :END: ${inputStreamEndString(input)}`)
   return
 });
+
+export const planning_line_tokenizer = new ExternalTokenizer((input, stack: Stack) => {
+  const planning_prefixes = ["DEADLINE:", "SCHEDULED:", "CLOSED:"]
+  log(`-- START Planning ${inputStreamBeginString(input)}`)
+  let previous = input.peek(-1)
+  if (!isEndOfLine(previous)) {
+    log(`XX REFUSE Planning, previous not endofline ${inputStreamEndString(input)}`)
+    return
+  }
+  let c = input.peek(0)
+  log(`${stringifyCodeLogString(c)}`)
+  let s = String.fromCharCode(c)
+  let prefix_matched = false
+  while (!isEndOfLine(c)) {
+      c = input.advance()
+      log(`${stringifyCodeLogString(c)}`)
+      s += String.fromCharCode(c)
+      if (planning_prefixes.includes(s)) {
+        log(`matched one planning prefix`)
+        prefix_matched = true
+      }
+  }
+  if (!prefix_matched) {
+    log(`XX REFUSE Planning, no prefix found ${inputStreamEndString(input)}`)
+    return
+  }
+  if (c == NEW_LINE) {
+    c = input.advance()
+    input.acceptToken(Planning)
+    log(`== ACCEPT Planning ${inputStreamEndString(input)}`)
+  } else if (c == EOF) {
+    input.acceptToken(Planning)
+    log(`== ACCEPT Planning ${inputStreamEndString(input)}`)
+  }
+  log(`XX REFUSE Planning, impossible case ${inputStreamEndString(input)}`)
+  return
+})
