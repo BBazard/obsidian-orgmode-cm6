@@ -131,8 +131,10 @@ export const title_tokenizer = (words: string[]) => { return new ExternalTokeniz
         return
       }
       if (!todo_keyword_already_matched && checkTodoKeyword(s, input, words)) {
-        log(`XX REFUSE Title, is TodoKeyword ${inputStreamEndString(input)}`)
-        return
+        if (isWhiteSpace(input.peek(1))) {
+          log(`XX REFUSE Title, is TodoKeyword ${inputStreamEndString(input)}`)
+          return
+        }
       }
     }
     if (isEndOfLine(c)) {
@@ -207,8 +209,10 @@ export const title_tokenizer = (words: string[]) => { return new ExternalTokeniz
         return
       }
       if (!todo_keyword_already_matched && checkTodoKeyword(s, input, words)) {
-        log(`XX REFUSE Title, is TodoKeyword ${inputStreamEndString(input)}`)
-        return
+        if (isWhiteSpace(input.peek(1))) {
+          log(`XX REFUSE Title, is TodoKeyword ${inputStreamEndString(input)}`)
+          return
+        }
       }
     }
   }
@@ -305,7 +309,7 @@ function checkSectionLine(excludePropertyDrawer: boolean, excludePlanning: boole
       peek_distance += 1
       peek_c = input.peek(peek_distance)
     }
-    if (peek_c == SPACE || peek_c == TAB) {
+    if (isWhiteSpace(peek_c)) {
       log(`XX REFUSE Section Line (${termString}), start of heading ${inputStreamEndString(input)}`)
       return // start of HEADING
     }
@@ -361,7 +365,7 @@ function checkSectionLine(excludePropertyDrawer: boolean, excludePlanning: boole
       peek_distance += 1
       peek_c = input.peek(peek_distance)
     }
-    if (peek_c == SPACE || peek_c == TAB) {
+    if (isWhiteSpace(SPACE)) {
       input.advance(peek_distance)
       log(`== ACCEPT Section Line (${termString}) before heading ${inputStreamEndString(input)}`)
       input.acceptToken(term)
