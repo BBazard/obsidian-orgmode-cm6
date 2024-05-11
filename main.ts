@@ -28,9 +28,9 @@ const myHighlightStyle = HighlightStyle.define([
   { tag: tags.annotation, class: "org-planning" },
   // PropertyDrawer
   { tag: tags.meta, class: "org-propertydrawer" },
-  // Section
+  // Section/ZerothSection
   { tag: tags.content, class: "org-section" },
-  // Comment
+  // CommentLine
   { tag: tags.lineComment, class: "org-comment" },
   // TodoKeyword
   { tag: tags.keyword, class: "org-keyword" },
