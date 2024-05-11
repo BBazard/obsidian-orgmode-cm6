@@ -42,13 +42,6 @@ Section {
 // https://orgmode.org/worg/org-syntax.html#Property_Drawers
 @external tokens propertydrawer_tokenizer from "./external-tokens" { PropertyDrawer }
 
-@tokens {
-  Priority { $[ \t]* "[" "#" $[a-zA-Z0-9] "]" $[ \t]* }
-  Tags { ":" ($[a-zA-Z0-9_@#%]+ ":")+ }
-  stars { "*"+ $[ \t]+ }
-  CommentLine { "#" ![\n]* ("\n" | @eof) }
-}
-
 @external tokens title_tokenizer from "./external-tokens" { Title }
 
 @external tokens todokeyword_tokenizer from "./external-tokens" { TodoKeyword }
@@ -60,6 +53,14 @@ Section {
 @external tokens sectionlineexcludingpropertydrawerandplanning_tokenizer from "./external-tokens" { sectionLineExcludingPropertyDrawerAndPlanning }
 @external tokens sectionlineexcludingpropertydrawer_tokenizer from "./external-tokens" { sectionLineExcludingPropertyDrawer }
 @external tokens sectionline_tokenizer from "./external-tokens" { sectionLine }
+
+// need to be between after Section and before endofline
+@tokens {
+  Priority { $[ \t]* "[" "#" $[a-zA-Z0-9] "]" $[ \t]* }
+  Tags { ":" ($[a-zA-Z0-9_@#%]+ ":")+ }
+  stars { "*"+ $[ \t]+ }
+  CommentLine { "#" ![\n]* ("\n" | @eof) }
+}
 
 // need to be last to not override something else
 @external tokens endofline_tokenizer from "./external-tokens" { endofline }

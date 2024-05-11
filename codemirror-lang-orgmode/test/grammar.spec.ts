@@ -220,3 +220,41 @@ test("no heading in a comment", () => {
   parser.configure({strict: true}).parse(content)
   testTree(tree, spec)
 })
+
+test("no tags outside headings", () => {
+  const content = [
+    "* heading :tag:eowifj:owijef@:",
+    "start of section :notag:",
+    ":notag:",
+    "end of section",
+  ].join("\n")
+  const tree = parser.parse(content)
+  const spec = [
+    "Program(",
+    "    Block(Heading(Title, Tags), Section),",
+    ")",
+  ].join("\n")
+  console.log(printTree(tree, content))
+  parser.configure({strict: true}).parse(content)
+  testTree(tree, spec)
+})
+
+test("no priority outside headings", () => {
+  const content = [
+    "* [#A] heading",
+    "start of section",
+    "[#A]",
+    " [#A]",
+    "*[#A]",
+    "end of section",
+  ].join("\n")
+  const tree = parser.parse(content)
+  const spec = [
+    "Program(",
+    "    Block(Heading(Priority, Title), Section),",
+    ")",
+  ].join("\n")
+  console.log(printTree(tree, content))
+  parser.configure({strict: true}).parse(content)
+  testTree(tree, spec)
+})
