@@ -32,6 +32,7 @@ test("simple case", () => {
     ")",
   ].join("\n")
   console.log(printTree(tree, content))
+  parser.configure({strict: true}).parse(content)
   testTree(tree, spec)
 })
 
@@ -49,6 +50,7 @@ test("zeroth section not in a block", () => {
     ")",
   ].join("\n")
   console.log(printTree(tree, content))
+  parser.configure({strict: true}).parse(content)
   testTree(tree, spec)
 })
 
@@ -64,6 +66,7 @@ test("zeroth PropertyDrawer possible", () => {
     "Program(ZerothSection(PropertyDrawer))",
   ].join("\n")
   console.log(printTree(tree, content))
+  parser.configure({strict: true}).parse(content)
   testTree(tree, spec)
 })
 
@@ -87,6 +90,7 @@ test("deadline and scheduled", () => {
     ")",
   ].join("\n")
   console.log(printTree(tree, content))
+  parser.configure({strict: true}).parse(content)
   testTree(tree, spec)
 })
 
@@ -106,6 +110,7 @@ test("PropertyDrawer trailing characters", () => {
     ")",
   ].join("\n")
   console.log(printTree(tree, content))
+  parser.configure({strict: true}).parse(content)
   testTree(tree, spec)
 })
 
@@ -125,6 +130,7 @@ test("Heading", () => {
     ")",
   ].join("\n")
   console.log(printTree(tree, content))
+  parser.configure({strict: true}).parse(content)
   testTree(tree, spec)
 })
 
@@ -141,6 +147,7 @@ test("Heading edge cases", () => {
     ")",
   ].join("\n")
   console.log(printTree(tree, content))
+  parser.configure({strict: true}).parse(content)
   testTree(tree, spec)
 })
 
@@ -157,6 +164,7 @@ test("another edge cases", () => {
     ")",
   ].join("\n")
   console.log(printTree(tree, content))
+  parser.configure({strict: true}).parse(content)
   testTree(tree, spec)
 })
 
@@ -173,6 +181,7 @@ test("leading star in first line of section", () => {
     ")",
   ].join("\n")
   console.log(printTree(tree, content))
+  parser.configure({strict: true}).parse(content)
   testTree(tree, spec)
 })
 
@@ -190,6 +199,7 @@ test("leading star in zeroth section", () => {
     ")",
   ].join("\n")
   console.log(printTree(tree, content))
+  parser.configure({strict: true}).parse(content)
   testTree(tree, spec)
 })
 
@@ -207,5 +217,6 @@ test("no heading in a comment", () => {
     ")",
   ].join("\n")
   console.log(printTree(tree, content))
+  parser.configure({strict: true}).parse(content)
   testTree(tree, spec)
 })
