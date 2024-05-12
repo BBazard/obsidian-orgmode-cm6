@@ -39,6 +39,9 @@ Section {
   )
 }
 
+// https://orgmode.org/worg/org-syntax.html#Planning
+Planning { planningStart endofline }
+
 // https://orgmode.org/worg/org-syntax.html#Property_Drawers
 @external tokens propertydrawer_tokenizer from "./external-tokens" { PropertyDrawer }
 
@@ -46,8 +49,6 @@ Section {
 
 @external tokens todokeyword_tokenizer from "./external-tokens" { TodoKeyword }
 
-// https://orgmode.org/worg/org-syntax.html#Planning
-@external tokens planning_line_tokenizer from "./external-tokens" { Planning }
 
 // https://orgmode.org/worg/org-syntax.html#Sections
 @external tokens sectionlineexcludingpropertydrawerandplanning_tokenizer from "./external-tokens" { sectionLineExcludingPropertyDrawerAndPlanning }
@@ -60,6 +61,7 @@ Section {
   Tags { ":" ($[a-zA-Z0-9_@#%]+ ":")+ }
   stars { "*"+ $[ \t]+ }
   CommentLine { "#" ![\n]* ("\n" | @eof) }
+  planningStart { ("DEADLINE:"|"SCHEDULED:"|"CLOSED:") }
 }
 
 // need to be last to not override something else

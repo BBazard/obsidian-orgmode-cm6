@@ -1,7 +1,7 @@
 import { ExternalTokenizer, InputStream, Stack } from '@lezer/lr';
 import {
   TodoKeyword, Priority, Title, endofline,
-  PropertyDrawer, Planning,
+  PropertyDrawer,
   sectionLine, sectionLineExcludingPropertyDrawerAndPlanning, sectionLineExcludingPropertyDrawer,
 } from './parser.terms';
 
@@ -478,40 +478,3 @@ export const propertydrawer_tokenizer = new ExternalTokenizer((input, stack) => 
   log(`== ACCEPT PropertyDrawer EOF reached without :END: ${inputStreamEndString(input)}`)
   return
 });
-
-export const planning_line_tokenizer = new ExternalTokenizer((input, stack: Stack) => {
-  const planning_prefixes = ["DEADLINE:", "SCHEDULED:", "CLOSED:"]
-  log(`-- START Planning ${inputStreamBeginString(input)}`)
-  let previous = input.peek(-1)
-  if (!isEndOfLine(previous)) {
-    log(`XX REFUSE Planning, previous not endofline ${inputStreamEndString(input)}`)
-    return
-  }
-  let c = input.peek(0)
-  log(`${stringifyCodeLogString(c)}`)
-  let s = String.fromCharCode(c)
-  let prefix_matched = false
-  while (!isEndOfLine(c)) {
-      c = input.advance()
-      log(`${stringifyCodeLogString(c)}`)
-      s += String.fromCharCode(c)
-      if (planning_prefixes.includes(s)) {
-        log(`matched one planning prefix`)
-        prefix_matched = true
-      }
-  }
-  if (!prefix_matched) {
-    log(`XX REFUSE Planning, no prefix found ${inputStreamEndString(input)}`)
-    return
-  }
-  if (c == NEW_LINE) {
-    c = input.advance()
-    input.acceptToken(Planning)
-    log(`== ACCEPT Planning ${inputStreamEndString(input)}`)
-  } else if (c == EOF) {
-    input.acceptToken(Planning)
-    log(`== ACCEPT Planning ${inputStreamEndString(input)}`)
-  }
-  log(`XX REFUSE Planning, impossible case ${inputStreamEndString(input)}`)
-  return
-})

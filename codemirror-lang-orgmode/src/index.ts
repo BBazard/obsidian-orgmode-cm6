@@ -10,7 +10,6 @@ import {
   endofline_tokenizer,
   sectionlineexcludingpropertydrawer_tokenizer,
   sectionlineexcludingpropertydrawerandplanning_tokenizer,
-  planning_line_tokenizer,
 } from "./external-tokens"
 import { grammarFile } from "./generated_grammar";
 
@@ -36,9 +35,6 @@ const configurableExternalTokenizer = (words: string[]) => {
     }
     if (name == 'sectionlineexcludingpropertydrawer_tokenizer') {
       return sectionlineexcludingpropertydrawer_tokenizer
-    }
-    if (name == 'planning_line_tokenizer') {
-      return planning_line_tokenizer
     }
     throw new Error("Undefined external tokenizer " + name)
   }
