@@ -8,8 +8,23 @@ import {
   sectionSpace,
   sectionEnd,
   sectionwordBold,
+  sectionwordItalic,
+  sectionwordUnderline,
+  sectionwordVerbatim,
+  sectionwordCode,
+  sectionwordStrikeThrough,
   isStartOfTextBold,
+  isStartOfTextItalic,
+  isStartOfTextUnderline,
+  isStartOfTextVerbatim,
+  isStartOfTextCode,
+  isStartOfTextStrikeThrough,
   isEndOfTextBold,
+  isEndOfTextItalic,
+  isEndOfTextUnderline,
+  isEndOfTextVerbatim,
+  isEndOfTextCode,
+  isEndOfTextStrikeThrough,
 } from './parser.terms';
 
 const NEW_LINE = '\n'.charCodeAt(0);
@@ -641,13 +656,13 @@ export const sectionEnd_tokenizer = new ExternalTokenizer((input, stack) => {
   return
 });
 
-export const sectionWordBold_tokenizer = new ExternalTokenizer((input, stack) => {
-  const MARKER = STAR
-  log(`-- START sectionwordBold ${inputStreamBeginString(input)}`)
+export function sectionWordMarkup(input: InputStream, marker: number, term: number) {
+  const MARKER = marker
+  log(`-- START sectionWordMarkup ${stringifyCodeLogString(marker)} ${inputStreamBeginString(input)}`)
   let c = input.peek(0)
   log(stringifyCodeLogString(c))
   if (isWhiteSpace(c)) {
-    log(`XX REFUSE sectionwordBold, whitespace or endofline ${inputStreamEndString(input)}`)
+    log(`XX REFUSE sectionWordMarkup ${stringifyCodeLogString(marker)}, whitespace or endofline ${inputStreamEndString(input)}`)
     return
   }
   while (true) {
@@ -656,30 +671,54 @@ export const sectionWordBold_tokenizer = new ExternalTokenizer((input, stack) =>
       log(stringifyCodeLogString(c))
     }
     if (c === EOF) {
-      log(`== ACCEPT sectionwordBold before eof ${inputStreamEndString(input)}`)
-      input.acceptToken(sectionwordBold)
+      log(`== ACCEPT sectionWordMarkup ${stringifyCodeLogString(marker)} before eof ${inputStreamEndString(input)}`)
+      input.acceptToken(term)
       return
     } else if (c === NEW_LINE) {
       c = input.advance()
       log(stringifyCodeLogString(c))
     } else if (isWhiteSpace(c)) {
-      log(`== ACCEPT sectionwordBold before whitespace ${inputStreamEndString(input)}`)
-      input.acceptToken(sectionwordBold)
+      log(`== ACCEPT sectionWordMarkup ${stringifyCodeLogString(marker)} before whitespace ${inputStreamEndString(input)}`)
+      input.acceptToken(term)
       return
     } else if (c === MARKER) {
       if (checkEndOfTextMarkup(input, MARKER)) {
-        log(`== ACCEPT sectionwordBold at stuff ${inputStreamEndString(input)}`)
-        input.acceptToken(sectionwordBold)
+        log(`== ACCEPT sectionWordMarkup ${stringifyCodeLogString(marker)} at stuff ${inputStreamEndString(input)}`)
+        input.acceptToken(term)
         return
       }
       c = input.advance()
       log(stringifyCodeLogString(c))
     } else {
-      log(`XX REFUSE sectionwordBold, unreachable code path ${inputStreamEndString(input)}`)
+      log(`XX REFUSE sectionWordMarkup ${stringifyCodeLogString(marker)}, unreachable code path ${inputStreamEndString(input)}`)
       return
     }
   }
-});
+}
+
+export const sectionWordBold_tokenizer = new ExternalTokenizer((input, stack) => {
+  sectionWordMarkup(input, STAR, sectionwordBold)
+})
+
+export const sectionWordItalic_tokenizer = new ExternalTokenizer((input, stack) => {
+  sectionWordMarkup(input, '/'.charCodeAt(0), sectionwordItalic)
+})
+
+export const sectionWordUnderline_tokenizer = new ExternalTokenizer((input, stack) => {
+  sectionWordMarkup(input, '_'.charCodeAt(0), sectionwordUnderline)
+})
+
+export const sectionWordVerbatim_tokenizer = new ExternalTokenizer((input, stack) => {
+  sectionWordMarkup(input, '='.charCodeAt(0), sectionwordVerbatim)
+})
+
+export const sectionWordCode_tokenizer = new ExternalTokenizer((input, stack) => {
+  sectionWordMarkup(input, '~'.charCodeAt(0), sectionwordCode)
+})
+
+export const sectionWordStrikeThrough_tokenizer = new ExternalTokenizer((input, stack) => {
+  sectionWordMarkup(input, '+'.charCodeAt(0), sectionwordStrikeThrough)
+})
 
 export function checkEndOfTextMarkup(input: InputStream, marker: number) {
   const MARKER = marker
@@ -703,34 +742,81 @@ export function checkEndOfTextMarkup(input: InputStream, marker: number) {
   return true
 }
 
-export const isEndOfTextBold_lookaround = new ExternalTokenizer((input, stack) => {
-  const MARKER = STAR
-  log(`-- START isEndOfTextBold ${inputStreamBeginString(input)}`)
+function isEndOfTextMarkup(input: InputStream, marker: number, term: number) {
+  const MARKER = marker
+  log(`-- START isEndOfTextMarkup ${stringifyCodeLogString(marker)} ${inputStreamBeginString(input)}`)
   if (checkEndOfTextMarkup(input, MARKER)) {
-    input.acceptToken(isEndOfTextBold)
+    input.acceptToken(term)
   } else {
-    log(`XX REFUSE isEndOfTextBold ${inputStreamEndString(input)}`)
+    log(`XX REFUSE isEndOfTextMarkup ${stringifyCodeLogString(marker)} ${inputStreamEndString(input)}`)
   }
+}
+
+export const isEndOfTextBold_lookaround = new ExternalTokenizer((input, stack) => {
+  isEndOfTextMarkup(input, STAR, isEndOfTextBold)
 })
+
+export const isEndOfTextItalic_lookaround = new ExternalTokenizer((input, stack) => {
+  isEndOfTextMarkup(input, '/'.charCodeAt(0), isEndOfTextItalic)
+})
+
+export const isEndOfTextUnderline_lookaround = new ExternalTokenizer((input, stack) => {
+  isEndOfTextMarkup(input, '_'.charCodeAt(0), isEndOfTextUnderline)
+})
+
+export const isEndOfTextVerbatim_lookaround = new ExternalTokenizer((input, stack) => {
+  isEndOfTextMarkup(input, '='.charCodeAt(0), isEndOfTextVerbatim)
+})
+
+export const isEndOfTextCode_lookaround = new ExternalTokenizer((input, stack) => {
+  isEndOfTextMarkup(input, '~'.charCodeAt(0), isEndOfTextCode)
+})
+
+export const isEndOfTextStrikeThrough_lookaround = new ExternalTokenizer((input, stack) => {
+  isEndOfTextMarkup(input, '+'.charCodeAt(0), isEndOfTextStrikeThrough)
+})
+
+
 
 export const isStartOfTextBold_lookaround = new ExternalTokenizer((input, stack) => {
-  textMarkup(input, STAR, isStartOfTextBold, true)
+  isStartOfTextMarkup(input, STAR, isStartOfTextBold)
 })
 
-function textMarkup(input: InputStream, marker: number, term: number, lookaround: boolean) {
+export const isStartOfTextItalic_lookaround = new ExternalTokenizer((input, stack) => {
+  isStartOfTextMarkup(input, '/'.charCodeAt(0), isStartOfTextItalic)
+})
+
+export const isStartOfTextUnderline_lookaround = new ExternalTokenizer((input, stack) => {
+  isStartOfTextMarkup(input, '_'.charCodeAt(0), isStartOfTextUnderline)
+})
+
+export const isStartOfTextVerbatim_lookaround = new ExternalTokenizer((input, stack) => {
+  isStartOfTextMarkup(input, '='.charCodeAt(0), isStartOfTextVerbatim)
+})
+
+export const isStartOfTextCode_lookaround = new ExternalTokenizer((input, stack) => {
+  isStartOfTextMarkup(input, '~'.charCodeAt(0), isStartOfTextCode)
+})
+
+export const isStartOfTextStrikeThrough_lookaround = new ExternalTokenizer((input, stack) => {
+  isStartOfTextMarkup(input, '+'.charCodeAt(0), isStartOfTextStrikeThrough)
+})
+
+
+function isStartOfTextMarkup(input: InputStream, marker: number, term: number) {
   const MARKER = marker
   const initialPos = input.pos
-  log(`-- START textBold ${stringifyCodeLogString(marker)} lookaround=${lookaround} ${inputStreamBeginString(input)}`)
+  log(`-- START isStartOfTextMarkup ${stringifyCodeLogString(marker)} ${inputStreamBeginString(input)}`)
   const previous = input.peek(-1)
   log(`previous ${stringifyCodeLogString(previous)}`)
   if (!checkMarkupPRE(previous)) {
-    log(`XX REFUSE textBold, not preceded by PRE ${inputStreamEndString(input)}`)
+    log(`XX REFUSE isStartOfTextMarkup, not preceded by PRE ${inputStreamEndString(input)}`)
     return
   }
   let c = input.peek(0)
   log(stringifyCodeLogString(c))
   if (c !== MARKER) {
-    log(`XX REFUSE textBold, not starting with ${stringifyCodeLogString(MARKER)} ${inputStreamEndString(input)}`)
+    log(`XX REFUSE isStartOfTextMarkup, not starting with ${stringifyCodeLogString(MARKER)} ${inputStreamEndString(input)}`)
     return
   }
   if (isEndOfLine(previous) && c === STAR) {
@@ -741,18 +827,18 @@ function textMarkup(input: InputStream, marker: number, term: number, lookaround
       c = input.peek(peek_distance)
     }
     if (isWhiteSpace(c)) {
-      log(`XX REFUSE textBold, start of heading ${inputStreamEndString(input)}`)
+      log(`XX REFUSE isStartOfTextMarkup, start of heading ${inputStreamEndString(input)}`)
       return
     }
   }
   c = input.advance()
   log(stringifyCodeLogString(c))
   if (isWhiteSpace(input.peek(1))) {
-    log(`XX REFUSE textBold, ${stringifyCodeLogString(MARKER)} followed by whitespace ${inputStreamEndString(input)}`)
+    log(`XX REFUSE isStartOfTextMarkup, ${stringifyCodeLogString(MARKER)} followed by whitespace ${inputStreamEndString(input)}`)
     return
   }
   if (c === MARKER && (isWhiteSpace(input.peek(1)) || isEndOfLine(input.peek(1)))) {
-    log(`XX REFUSE textBold, double ${stringifyCodeLogString(MARKER)} followed by whitespace ${inputStreamEndString(input)}`)
+    log(`XX REFUSE isStartOfTextMarkup, double ${stringifyCodeLogString(MARKER)} followed by whitespace ${inputStreamEndString(input)}`)
     return
   }
   while (true) {
@@ -761,7 +847,7 @@ function textMarkup(input: InputStream, marker: number, term: number, lookaround
       log(stringifyCodeLogString(c))
     }
     if (c === EOF) {
-      log(`== REFUSE textBold unfinished EOF ${inputStreamEndString(input)}`)
+      log(`== REFUSE isStartOfTextMarkup unfinished EOF ${inputStreamEndString(input)}`)
       return
     } else if (c === MARKER) {
       while (input.peek(1) === MARKER) {
@@ -770,12 +856,8 @@ function textMarkup(input: InputStream, marker: number, term: number, lookaround
       }
       if (checkEndOfTextMarkup(input, MARKER)) {
         input.advance()
-        log(`== ACCEPT textBold ${inputStreamEndString(input)}`)
-        if (lookaround) {
-          input.acceptToken(term, -(input.pos-initialPos))
-        } else {
-          input.acceptToken(term)
-        }
+        log(`== ACCEPT isStartOfTextMarkup ${inputStreamEndString(input)}`)
+        input.acceptToken(term, -(input.pos-initialPos))
         return
       }
       c = input.advance()
@@ -787,7 +869,7 @@ function textMarkup(input: InputStream, marker: number, term: number, lookaround
           peek_distance += 1
         }
         if (isEndOfLine(input.peek(peek_distance))) {
-          log(`XX REFUSE textBold unfinished blank line ${inputStreamEndString(input)}`)
+          log(`XX REFUSE isStartOfTextMarkup unfinished blank line ${inputStreamEndString(input)}`)
           return
         }
         c = input.advance()
@@ -800,13 +882,13 @@ function textMarkup(input: InputStream, marker: number, term: number, lookaround
           c = input.peek(peek_distance)
         }
         if (isWhiteSpace(c)) {
-          log(`XX REFUSE textBold, start of heading ${inputStreamEndString(input)}`)
+          log(`XX REFUSE isStartOfTextMarkup, start of heading ${inputStreamEndString(input)}`)
           return
         }
         c = input.advance()
         log(stringifyCodeLogString(c))
       } else if (input.peek(1) == HASH) {
-          log(`XX REFUSE textBold, start of comment ${inputStreamEndString(input)}`)
+          log(`XX REFUSE isStartOfTextMarkup, start of comment ${inputStreamEndString(input)}`)
           return
       } else {  // regular newline
         c = input.advance()

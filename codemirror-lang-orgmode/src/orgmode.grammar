@@ -51,7 +51,7 @@ object {
 }
 
 textMarkup {
-  TextBold
+  TextBold | TextItalic | TextUnderline | TextVerbatim | TextCode | TextStrikeThrough
 }
 
 TextBold {
@@ -62,10 +62,60 @@ TextBold {
   isEndOfTextBold "*"
 }
 
+TextItalic {
+  isStartOfTextItalic "/"
+  (
+    sectionwordItalic (sectionSpace sectionwordItalic)*
+  )
+  isEndOfTextItalic "/"
+}
+
+TextUnderline {
+  isStartOfTextUnderline "_"
+  (
+    sectionwordUnderline (sectionSpace sectionwordUnderline)*
+  )
+  isEndOfTextUnderline "_"
+}
+
+TextVerbatim {
+  isStartOfTextVerbatim "="
+  (
+    sectionwordVerbatim (sectionSpace sectionwordVerbatim)*
+  )
+  isEndOfTextVerbatim "="
+}
+
+TextCode {
+  isStartOfTextCode "~"
+  (
+    sectionwordCode (sectionSpace sectionwordCode)*
+  )
+  isEndOfTextCode "~"
+}
+
+TextStrikeThrough {
+  isStartOfTextStrikeThrough "+"
+  (
+    sectionwordStrikeThrough (sectionSpace sectionwordStrikeThrough)*
+  )
+  isEndOfTextStrikeThrough "+"
+}
 
 
 @external tokens isStartOfTextBold_lookaround from "./external-tokens" { isStartOfTextBold }
+@external tokens isStartOfTextItalic_lookaround from "./external-tokens" { isStartOfTextItalic }
+@external tokens isStartOfTextUnderline_lookaround from "./external-tokens" { isStartOfTextUnderline }
+@external tokens isStartOfTextVerbatim_lookaround from "./external-tokens" { isStartOfTextVerbatim }
+@external tokens isStartOfTextCode_lookaround from "./external-tokens" { isStartOfTextCode }
+@external tokens isStartOfTextStrikeThrough_lookaround from "./external-tokens" { isStartOfTextStrikeThrough }
+
 @external tokens isEndOfTextBold_lookaround from "./external-tokens" { isEndOfTextBold }
+@external tokens isEndOfTextItalic_lookaround from "./external-tokens" { isEndOfTextItalic }
+@external tokens isEndOfTextUnderline_lookaround from "./external-tokens" { isEndOfTextUnderline }
+@external tokens isEndOfTextVerbatim_lookaround from "./external-tokens" { isEndOfTextVerbatim }
+@external tokens isEndOfTextCode_lookaround from "./external-tokens" { isEndOfTextCode }
+@external tokens isEndOfTextStrikeThrough_lookaround from "./external-tokens" { isEndOfTextStrikeThrough }
 
 // https://orgmode.org/worg/org-syntax.html#Planning
 Planning { planningStart endofline }
@@ -98,6 +148,13 @@ Planning { planningStart endofline }
 
 // https://orgmode.org/worg/org-syntax.html#Sections
 @external tokens sectionWord_tokenizer from "./external-tokens" { sectionword }
+
 @external tokens sectionWordBold_tokenizer from "./external-tokens" { sectionwordBold }
+@external tokens sectionWordItalic_tokenizer from "./external-tokens" { sectionwordItalic }
+@external tokens sectionWordUnderline_tokenizer from "./external-tokens" { sectionwordUnderline }
+@external tokens sectionWordVerbatim_tokenizer from "./external-tokens" { sectionwordVerbatim }
+@external tokens sectionWordCode_tokenizer from "./external-tokens" { sectionwordCode }
+@external tokens sectionWordStrikeThrough_tokenizer from "./external-tokens" { sectionwordStrikeThrough }
+
 @external tokens sectionSpace_tokenizer from "./external-tokens" { sectionSpace }
 @external tokens sectionEnd_tokenizer from "./external-tokens" { sectionEnd }
