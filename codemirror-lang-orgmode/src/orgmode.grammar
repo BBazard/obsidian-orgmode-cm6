@@ -26,16 +26,27 @@ Section {
   (notStartOfPlanning notStartOfPropertyDrawer sectionLine+)?
 }
 
-sectionLine {
+sectionLine { // sectionLine == otherElements
   notStartOfHeading
-  (
-    CommentLine
-    |
-    notStartOfComment (
-      sectionSpace? (sectionword sectionSpace?)* sectionEnd
-    )
+  (paragraph) // or GreaterBlock, etc...
+}
+paragraph {
+  CommentLine
+  |
+  notStartOfComment (
+    sectionSpace? (object sectionSpace?)* sectionEnd
   )
 }
+
+object {
+  textMarkup | sectionword
+}
+
+textMarkup {
+  TextBold
+}
+
+@external tokens textBold_tokenizer from "./external-tokens" { TextBold }
 
 // https://orgmode.org/worg/org-syntax.html#Planning
 Planning { planningStart endofline }

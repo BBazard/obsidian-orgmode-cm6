@@ -14,6 +14,7 @@ import {
   sectionWord_tokenizer,
   sectionSpace_tokenizer,
   sectionEnd_tokenizer,
+  textBold_tokenizer,
 } from "./external-tokens"
 import { grammarFile } from "./generated_grammar";
 
@@ -51,6 +52,9 @@ const configurableExternalTokenizer = (words: string[]) => {
     }
     if (name == 'sectionEnd_tokenizer') {
       return sectionEnd_tokenizer
+    }
+    if (name == 'textBold_tokenizer') {
+      return textBold_tokenizer
     }
     throw new Error("Undefined external tokenizer " + name)
   }

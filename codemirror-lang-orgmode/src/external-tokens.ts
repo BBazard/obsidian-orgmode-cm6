@@ -7,6 +7,7 @@ import {
   sectionword,
   sectionSpace,
   sectionEnd,
+  TextBold,
 } from './parser.terms';
 
 const NEW_LINE = '\n'.charCodeAt(0);
@@ -609,3 +610,115 @@ export const sectionEnd_tokenizer = new ExternalTokenizer((input, stack) => {
   log(`XX REFUSE sectionSpace, ${inputStreamEndString(input)}`)
   return
 });
+
+export const textBold_tokenizer = new ExternalTokenizer((input, stack) => {
+  textMarkup(input, STAR, TextBold)
+})
+
+function textMarkup(input: InputStream, marker: number, term: number) {
+  const MARKER = marker
+  log(`-- START textBold ${inputStreamBeginString(input)}`)
+  const previous = input.peek(-1)
+  log(`previous ${stringifyCodeLogString(previous)}`)
+  if (!isEndOfLine(previous) && !isWhiteSpace(previous) &&
+      String.fromCharCode(previous) !== '-' &&
+      String.fromCharCode(previous) !== '(' &&
+      String.fromCharCode(previous) !== '{' &&
+      String.fromCharCode(previous) !== "'" &&
+      String.fromCharCode(previous) !== '"'
+    ) {
+    log(`XX REFUSE textBold, not preceded by PRE ${inputStreamEndString(input)}`)
+    return
+  }
+  let start_of_heading_possible = false
+  if (!isEndOfLine(previous) && MARKER == STAR) {
+    start_of_heading_possible = true
+  }
+  let c = input.peek(0)
+  log(stringifyCodeLogString(c))
+  if (c !== MARKER) {
+    log(`XX REFUSE textBold, not starting with ${stringifyCodeLogString(MARKER)} ${inputStreamEndString(input)}`)
+    return
+  }
+  while (input.peek(1) === MARKER) {
+    c = input.advance()
+    log(stringifyCodeLogString(c))
+  }
+  if (isWhiteSpace(input.peek(1))) {
+    log(`XX REFUSE textBold, ${stringifyCodeLogString(MARKER)} followed by whitespace ${inputStreamEndString(input)}`)
+    return
+  }
+  if (start_of_heading_possible) {
+    let peek_distance = 1
+    c = input.peek(peek_distance)
+    while (c === STAR) {
+      peek_distance += 1
+      c = input.peek(peek_distance)
+    }
+    if (isWhiteSpace(c)) {
+      log(`XX REFUSE textBold, start of heading ${inputStreamEndString(input)}`)
+      return
+    }
+    start_of_heading_possible = false
+  }
+  c = input.advance()
+  log(stringifyCodeLogString(c))
+  while (true) {
+    while (c !== MARKER && !isEndOfLine(c)) {
+      c = input.advance()
+      log(stringifyCodeLogString(c))
+    }
+    if (c == NEW_LINE && input.peek(1) == NEW_LINE) {
+      log(`XX REFUSE textBold unfinished ${inputStreamEndString(input)}`)
+      return
+    } else if (c == NEW_LINE && input.peek(1) == MARKER && MARKER == STAR) {
+      let peek_distance = 1
+      c = input.peek(peek_distance)
+      while (c === STAR) {
+        peek_distance += 1
+        c = input.peek(peek_distance)
+      }
+      if (isWhiteSpace(c)) {
+        log(`XX REFUSE textBold, start of heading ${inputStreamEndString(input)}`)
+        return
+      }
+    } else if (c === MARKER) {
+      while (input.peek(1) === MARKER) {
+        c = input.advance()
+        log(stringifyCodeLogString(c))
+      }
+      if (isWhiteSpace(input.peek(-1))) {
+        log(`end of content preceded by whitespace so no match possible here, continuing`)
+        c = input.advance()
+        log(stringifyCodeLogString(c))
+        continue
+      }
+      const next = input.peek(1)
+      if (isEndOfLine(next) || isWhiteSpace(next) ||
+        String.fromCharCode(next) === '-' ||
+        String.fromCharCode(next) === '.' ||
+        String.fromCharCode(next) === ',' ||
+        String.fromCharCode(next) === ';' ||
+        String.fromCharCode(next) === ':' ||
+        String.fromCharCode(next) === '!' ||
+        String.fromCharCode(next) === '?' ||
+        String.fromCharCode(next) === ')' ||
+        String.fromCharCode(next) === '}' ||
+        String.fromCharCode(next) === '[' ||
+        String.fromCharCode(next) === '"' ||
+        String.fromCharCode(next) === "'" ||
+        String.fromCharCode(next) === '\\'
+      ) {
+        input.advance()
+        log(`== ACCEPT textBold ${inputStreamEndString(input)}`)
+        input.acceptToken(term)
+        return
+      }
+    } else if (c === EOF) {
+      log(`== REFUSE textBold unfinished EOF ${inputStreamEndString(input)}`)
+      return
+    }
+    c = input.advance()
+    log(stringifyCodeLogString(c))
+  }
+}
