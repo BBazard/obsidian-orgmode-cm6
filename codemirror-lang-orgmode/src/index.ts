@@ -152,6 +152,12 @@ export const OrgmodeLanguage = (parser: LRParser) => {
           "Title": tags.contentSeparator,
           "Priority": tags.unit,
           "Tags": tags.tagName,
+          "TextBold": tags.strong,
+          "TextItalic": tags.emphasis,
+          "TextUnderline": tags.modifier,
+          "TextVerbatim": tags.literal,
+          "TextCode": tags.monospace,
+          "TextStrikeThrough": tags.strikethrough,
         })
       ]
     }),

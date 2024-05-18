@@ -38,6 +38,18 @@ const myHighlightStyle = HighlightStyle.define([
   { tag: tags.unit, class: "org-priority" },
   // Tags
   { tag: tags.tagName, class: "org-tags" },
+  // TextBold
+  { tag: tags.strong, class: "org-text-bold" },
+  // TextItalic
+  { tag: tags.emphasis, class: "org-text-italic" },
+  // TextUnderline
+  { tag: tags.modifier, class: "org-text-underline" },
+  // TextVerbatim
+  { tag: tags.literal, class: "org-text-verbatim" },
+  // TextCode
+  { tag: tags.monospace, class: "org-text-code" },
+  // TextStrikeThrough
+  { tag: tags.strikethrough, class: "org-text-strikethrough" },
 ]);
 
 

@@ -20,6 +20,12 @@
   color: #aa944f;
 }
 
+.theme-dark .org-text-bold,
+.theme-dark .org-text-italic,
+.theme-dark .org-text-underline,
+.theme-dark .org-text-verbatim,
+.theme-dark .org-text-code,
+.theme-dark .org-text-strikethrough,
 .theme-dark .org-section {
   color: #b9cddb;
 }
@@ -40,6 +46,24 @@
   color: #02ffc7;
 }
 
+.theme-dark .org-text-bold {
+  font-weight: 600;
+}
+.theme-dark .org-text-italic {
+  font-style: italic;
+}
+.theme-dark .org-text-underline {
+  text-decoration: underline;
+}
+.theme-dark .org-text-verbatim {
+  background-color: black;
+}
+.theme-dark .org-text-code {
+  background-color: black;
+}
+.theme-dark .org-text-strikethrough {
+  text-decoration: line-through;
+}
 
 
 
@@ -59,6 +83,12 @@
   color: #705f2c;
 }
 
+.theme-light .org-text-bold,
+.theme-light .org-text-italic,
+.theme-light .org-text-underline,
+.theme-light .org-text-verbatim,
+.theme-light .org-text-code,
+.theme-light .org-text-strikethrough,
 .theme-light .org-section {
   color: rgb(58, 69, 74);
 }
@@ -77,6 +107,25 @@
 
 .theme-light .org-tags {
   color: #1d9077;
+}
+
+.theme-light .org-text-bold {
+  font-weight: 600;
+}
+.theme-light .org-text-italic {
+  font-style: italic;
+}
+.theme-light .org-text-underline {
+  text-decoration: underline;
+}
+.theme-light .org-text-verbatim {
+  background-color: white;
+}
+.theme-light .org-text-code {
+  background-color: white;
+}
+.theme-light .org-text-strikethrough {
+  text-decoration: line-through;
 }
 
 
