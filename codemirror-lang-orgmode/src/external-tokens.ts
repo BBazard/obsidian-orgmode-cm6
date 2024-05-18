@@ -19,12 +19,6 @@ import {
   isStartOfTextVerbatim,
   isStartOfTextCode,
   isStartOfTextStrikeThrough,
-  isEndOfTextBold,
-  isEndOfTextItalic,
-  isEndOfTextUnderline,
-  isEndOfTextVerbatim,
-  isEndOfTextCode,
-  isEndOfTextStrikeThrough,
 } from './parser.terms';
 
 const NEW_LINE = '\n'.charCodeAt(0);
@@ -741,42 +735,6 @@ export function checkEndOfTextMarkup(input: InputStream, marker: number) {
   }
   return true
 }
-
-function isEndOfTextMarkup(input: InputStream, marker: number, term: number) {
-  const MARKER = marker
-  log(`-- START isEndOfTextMarkup ${stringifyCodeLogString(marker)} ${inputStreamBeginString(input)}`)
-  if (checkEndOfTextMarkup(input, MARKER)) {
-    input.acceptToken(term)
-  } else {
-    log(`XX REFUSE isEndOfTextMarkup ${stringifyCodeLogString(marker)} ${inputStreamEndString(input)}`)
-  }
-}
-
-export const isEndOfTextBold_lookaround = new ExternalTokenizer((input, stack) => {
-  isEndOfTextMarkup(input, STAR, isEndOfTextBold)
-})
-
-export const isEndOfTextItalic_lookaround = new ExternalTokenizer((input, stack) => {
-  isEndOfTextMarkup(input, '/'.charCodeAt(0), isEndOfTextItalic)
-})
-
-export const isEndOfTextUnderline_lookaround = new ExternalTokenizer((input, stack) => {
-  isEndOfTextMarkup(input, '_'.charCodeAt(0), isEndOfTextUnderline)
-})
-
-export const isEndOfTextVerbatim_lookaround = new ExternalTokenizer((input, stack) => {
-  isEndOfTextMarkup(input, '='.charCodeAt(0), isEndOfTextVerbatim)
-})
-
-export const isEndOfTextCode_lookaround = new ExternalTokenizer((input, stack) => {
-  isEndOfTextMarkup(input, '~'.charCodeAt(0), isEndOfTextCode)
-})
-
-export const isEndOfTextStrikeThrough_lookaround = new ExternalTokenizer((input, stack) => {
-  isEndOfTextMarkup(input, '+'.charCodeAt(0), isEndOfTextStrikeThrough)
-})
-
-
 
 export const isStartOfTextBold_lookaround = new ExternalTokenizer((input, stack) => {
   isStartOfTextMarkup(input, STAR, isStartOfTextBold)

@@ -26,12 +26,6 @@ import {
   isStartOfTextVerbatim_lookaround,
   isStartOfTextCode_lookaround,
   isStartOfTextStrikeThrough_lookaround,
-  isEndOfTextBold_lookaround,
-  isEndOfTextItalic_lookaround,
-  isEndOfTextUnderline_lookaround,
-  isEndOfTextVerbatim_lookaround,
-  isEndOfTextCode_lookaround,
-  isEndOfTextStrikeThrough_lookaround,
 } from "./external-tokens"
 import { grammarFile } from "./generated_grammar";
 
@@ -105,24 +99,6 @@ const configurableExternalTokenizer = (words: string[]) => {
     }
     if (name == 'isStartOfTextStrikeThrough_lookaround') {
       return isStartOfTextStrikeThrough_lookaround
-    }
-    if (name == 'isEndOfTextBold_lookaround') {
-      return isEndOfTextBold_lookaround
-    }
-    if (name == 'isEndOfTextItalic_lookaround') {
-      return isEndOfTextItalic_lookaround
-    }
-    if (name == 'isEndOfTextUnderline_lookaround') {
-      return isEndOfTextUnderline_lookaround
-    }
-    if (name == 'isEndOfTextVerbatim_lookaround') {
-      return isEndOfTextVerbatim_lookaround
-    }
-    if (name == 'isEndOfTextCode_lookaround') {
-      return isEndOfTextCode_lookaround
-    }
-    if (name == 'isEndOfTextStrikeThrough_lookaround') {
-      return isEndOfTextStrikeThrough_lookaround
     }
 
     throw new Error("Undefined external tokenizer " + name)

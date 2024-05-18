@@ -55,51 +55,45 @@ textMarkup {
 }
 
 TextBold {
-  isStartOfTextBold "*"
-  (
-    sectionwordBold (sectionSpace sectionwordBold)*
-  )
-  isEndOfTextBold "*"
+  isStartOfTextBold
+  "*"
+  sectionwordBold (sectionSpace sectionwordBold)*
+  "*"
 }
 
 TextItalic {
-  isStartOfTextItalic "/"
-  (
-    sectionwordItalic (sectionSpace sectionwordItalic)*
-  )
-  isEndOfTextItalic "/"
+  isStartOfTextItalic
+  "/"
+  sectionwordItalic (sectionSpace sectionwordItalic)*
+  "/"
 }
 
 TextUnderline {
-  isStartOfTextUnderline "_"
-  (
-    sectionwordUnderline (sectionSpace sectionwordUnderline)*
-  )
-  isEndOfTextUnderline "_"
+  isStartOfTextUnderline
+  "_"
+  sectionwordUnderline (sectionSpace sectionwordUnderline)*
+  "_"
 }
 
 TextVerbatim {
-  isStartOfTextVerbatim "="
-  (
-    sectionwordVerbatim (sectionSpace sectionwordVerbatim)*
-  )
-  isEndOfTextVerbatim "="
+  isStartOfTextVerbatim
+  "="
+  sectionwordVerbatim (sectionSpace sectionwordVerbatim)*
+  "="
 }
 
 TextCode {
-  isStartOfTextCode "~"
-  (
-    sectionwordCode (sectionSpace sectionwordCode)*
-  )
-  isEndOfTextCode "~"
+  isStartOfTextCode
+  "~"
+  sectionwordCode (sectionSpace sectionwordCode)*
+  "~"
 }
 
 TextStrikeThrough {
-  isStartOfTextStrikeThrough "+"
-  (
-    sectionwordStrikeThrough (sectionSpace sectionwordStrikeThrough)*
-  )
-  isEndOfTextStrikeThrough "+"
+  isStartOfTextStrikeThrough
+  "+"
+  sectionwordStrikeThrough (sectionSpace sectionwordStrikeThrough)*
+  "+"
 }
 
 
@@ -109,13 +103,6 @@ TextStrikeThrough {
 @external tokens isStartOfTextVerbatim_lookaround from "./external-tokens" { isStartOfTextVerbatim }
 @external tokens isStartOfTextCode_lookaround from "./external-tokens" { isStartOfTextCode }
 @external tokens isStartOfTextStrikeThrough_lookaround from "./external-tokens" { isStartOfTextStrikeThrough }
-
-@external tokens isEndOfTextBold_lookaround from "./external-tokens" { isEndOfTextBold }
-@external tokens isEndOfTextItalic_lookaround from "./external-tokens" { isEndOfTextItalic }
-@external tokens isEndOfTextUnderline_lookaround from "./external-tokens" { isEndOfTextUnderline }
-@external tokens isEndOfTextVerbatim_lookaround from "./external-tokens" { isEndOfTextVerbatim }
-@external tokens isEndOfTextCode_lookaround from "./external-tokens" { isEndOfTextCode }
-@external tokens isEndOfTextStrikeThrough_lookaround from "./external-tokens" { isEndOfTextStrikeThrough }
 
 // https://orgmode.org/worg/org-syntax.html#Planning
 Planning { planningStart endofline }
