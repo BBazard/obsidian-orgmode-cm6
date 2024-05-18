@@ -6,10 +6,14 @@ import {
   propertydrawer_tokenizer,
   title_tokenizer,
   todokeyword_tokenizer,
-  sectionline_tokenizer,
   endofline_tokenizer,
-  sectionlineexcludingpropertydrawer_tokenizer,
-  sectionlineexcludingpropertydrawerandplanning_tokenizer,
+  notStartOfPropertyDrawer_lookaround,
+  notStartOfPlanning_lookaround,
+  notStartOfHeading_lookaround,
+  notStartOfComment_lookaround,
+  sectionWord_tokenizer,
+  sectionSpace_tokenizer,
+  sectionEnd_tokenizer,
 } from "./external-tokens"
 import { grammarFile } from "./generated_grammar";
 
@@ -24,17 +28,29 @@ const configurableExternalTokenizer = (words: string[]) => {
     if (name == 'todokeyword_tokenizer') {
       return todokeyword_tokenizer(words)
     }
-    if (name == 'sectionline_tokenizer') {
-      return sectionline_tokenizer
-    }
     if (name == 'endofline_tokenizer') {
       return endofline_tokenizer
     }
-    if (name == 'sectionlineexcludingpropertydrawerandplanning_tokenizer') {
-      return sectionlineexcludingpropertydrawerandplanning_tokenizer
+    if (name == 'notStartOfPlanning_lookaround') {
+      return notStartOfPlanning_lookaround
     }
-    if (name == 'sectionlineexcludingpropertydrawer_tokenizer') {
-      return sectionlineexcludingpropertydrawer_tokenizer
+    if (name == 'notStartOfPropertyDrawer_lookaround') {
+      return notStartOfPropertyDrawer_lookaround
+    }
+    if (name == 'notStartOfHeading_lookaround') {
+      return notStartOfHeading_lookaround
+    }
+    if (name == 'notStartOfComment_lookaround') {
+      return notStartOfComment_lookaround
+    }
+    if (name == 'sectionWord_tokenizer') {
+      return sectionWord_tokenizer
+    }
+    if (name == 'sectionSpace_tokenizer') {
+      return sectionSpace_tokenizer
+    }
+    if (name == 'sectionEnd_tokenizer') {
+      return sectionEnd_tokenizer
     }
     throw new Error("Undefined external tokenizer " + name)
   }

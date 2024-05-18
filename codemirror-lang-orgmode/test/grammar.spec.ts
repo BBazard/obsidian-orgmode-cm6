@@ -139,6 +139,8 @@ test("Heading edge cases", () => {
     "** [#a] [#a] subitem",
     "** TODO TODO subitem",
     "** TODOC",
+    "* ",
+    "not a heading",
   ].join("\n")
   const tree = parser.parse(content)
   const spec = [
@@ -146,6 +148,7 @@ test("Heading edge cases", () => {
     "    Block(Heading(Priority, Title)),",
     "    Block(Heading(TodoKeyword, Title)),",
     "    Block(Heading(Title)),",
+    "    Block(Heading(Title), Section),",
     ")",
   ].join("\n")
   console.log(printTree(tree, content))

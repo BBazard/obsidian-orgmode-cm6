@@ -1,18 +1,13 @@
-@precedence {
-  tryHeading @left,
-  tryZerothSection @left
-}
-
 @top Program {
   ZerothSection?
   Block*
 }
 
 ZerothSection {
-  !tryZerothSection
+  notStartOfHeading
   CommentLine*
   PropertyDrawer?
-  (sectionLineExcludingPropertyDrawer (sectionLine | CommentLine)*)?
+  (notStartOfPropertyDrawer sectionLine+)?
 }
 
 Block {
@@ -21,21 +16,24 @@ Block {
 
 // https://orgmode.org/worg/org-syntax.html#Headings
 Heading {
-  !tryHeading stars TodoKeyword? Priority? Title Tags? endofline
+  stars TodoKeyword? Priority? Title Tags? endofline
 }
 
 Section {
+  notStartOfHeading
+  (CommentLine | Planning)*
+  PropertyDrawer?
+  (notStartOfPlanning notStartOfPropertyDrawer sectionLine+)?
+}
+
+sectionLine {
+  notStartOfHeading
   (
-    // at least a CommentLine or Planning
-    (CommentLine | Planning)+ PropertyDrawer?
-    (sectionLineExcludingPropertyDrawerAndPlanning (sectionLine | CommentLine)*)?
-  ) | (
-    // OR at least a PropertyDrawer
-    PropertyDrawer
-    (sectionLineExcludingPropertyDrawerAndPlanning (sectionLine | CommentLine)*)?
-  ) | (
-    // OR at least a sectionLineExcludingPropertyDrawerAndPlanning
-    sectionLineExcludingPropertyDrawerAndPlanning (sectionLine | CommentLine)*
+    CommentLine
+    |
+    notStartOfComment (
+      sectionSpace? (sectionword sectionSpace?)* sectionEnd
+    )
   )
 }
 
@@ -50,10 +48,11 @@ Planning { planningStart endofline }
 @external tokens todokeyword_tokenizer from "./external-tokens" { TodoKeyword }
 
 
-// https://orgmode.org/worg/org-syntax.html#Sections
-@external tokens sectionlineexcludingpropertydrawerandplanning_tokenizer from "./external-tokens" { sectionLineExcludingPropertyDrawerAndPlanning }
-@external tokens sectionlineexcludingpropertydrawer_tokenizer from "./external-tokens" { sectionLineExcludingPropertyDrawer }
-@external tokens sectionline_tokenizer from "./external-tokens" { sectionLine }
+@external tokens notStartOfPlanning_lookaround from "./external-tokens" { notStartOfPlanning }
+@external tokens notStartOfPropertyDrawer_lookaround from "./external-tokens" { notStartOfPropertyDrawer }
+
+@external tokens notStartOfHeading_lookaround from "./external-tokens" { notStartOfHeading }
+@external tokens notStartOfComment_lookaround from "./external-tokens" { notStartOfComment }
 
 // need to be between after Section and before endofline
 @tokens {
@@ -66,3 +65,8 @@ Planning { planningStart endofline }
 
 // need to be last to not override something else
 @external tokens endofline_tokenizer from "./external-tokens" { endofline }
+
+// https://orgmode.org/worg/org-syntax.html#Sections
+@external tokens sectionWord_tokenizer from "./external-tokens" { sectionword }
+@external tokens sectionSpace_tokenizer from "./external-tokens" { sectionSpace }
+@external tokens sectionEnd_tokenizer from "./external-tokens" { sectionEnd }

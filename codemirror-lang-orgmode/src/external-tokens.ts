@@ -2,7 +2,11 @@ import { ExternalTokenizer, InputStream, Stack } from '@lezer/lr';
 import {
   TodoKeyword, Priority, Title, endofline,
   PropertyDrawer,
-  sectionLine, sectionLineExcludingPropertyDrawerAndPlanning, sectionLineExcludingPropertyDrawer,
+  notStartOfPlanning, notStartOfPropertyDrawer,
+  notStartOfHeading, notStartOfComment,
+  sectionword,
+  sectionSpace,
+  sectionEnd,
 } from './parser.terms';
 
 const NEW_LINE = '\n'.charCodeAt(0);
@@ -118,7 +122,8 @@ export const title_tokenizer = (words: string[]) => { return new ExternalTokeniz
   log(`first ${stringifyCodeLogString(c)}`)
   let is_matching_tags = false
   if (isEndOfLine(c)) {
-    log(`XX REFUSE Title empty ${inputStreamEndString(input)}`)
+    log(`== ACCEPT Title empty ${inputStreamEndString(input)}`)
+    input.acceptToken(Title)
     return
   }
   while (!isEndOfLine(c)) {
@@ -272,34 +277,25 @@ export const endofline_tokenizer = new ExternalTokenizer((input, stack) => {
   }
 });
 
-function checkSectionLine(excludePropertyDrawer: boolean, excludePlanning: boolean, input: InputStream, stack: Stack, term: number) {
+export const notStartOfPlanning_lookaround = new ExternalTokenizer((input, stack) => {
+  log(`-- START notStartOfPlanning ${inputStreamBeginString(input)}`)
   // sectionLineStart { ( ("*"+ ![ \t*]) | ![#*] ) }
-  let termString = "unknown"
-  if (term == sectionLineExcludingPropertyDrawerAndPlanning) {
-    termString = "sectionLineExcludingPropertyDrawerAndPlanning"
-  } else if (term == sectionLineExcludingPropertyDrawer) {
-    termString = "sectionLineExcludingPropertyDrawer"
-  } else if (term == sectionLine) {
-    termString = "sectionLine"
-  }
   const previous = input.peek(-1)
   log(`previous ${stringifyCodeLogString(previous)}`)
   if (!isEndOfLine(previous)) {
-    log(`XX REFUSE Section Line (${termString}), previous not endofline ${inputStreamEndString(input)}`)
+    log(`XX REFUSE notStartOfPlanning, previous not endofline ${inputStreamEndString(input)}`)
     return
   }
   let c = input.peek(0)
   let planning_word = String.fromCharCode(c)
-  let could_be_property_drawer = false
   log(stringifyCodeLogString(c))
   if (c === EOF) {
-      log(`XX REFUSE Section Line (${termString}), only EOF left ${inputStreamEndString(input)}`)
+      log(`XX REFUSE notStartOfPlanning, only EOF left ${inputStreamEndString(input)}`)
       return
-  } else if (c === COLON && excludePropertyDrawer) {
-    could_be_property_drawer = true
+  } else if (c === COLON) {
     planning_word = ''
   } else if (c === HASH) {
-    log(`XX REFUSE Section Line (${termString}), start of comment ${inputStreamEndString(input)}`)
+    log(`XX REFUSE notStartOfPlanning, start of comment ${inputStreamEndString(input)}`)
     return
   } else if (c === STAR) {
     // only start of heading if it matches the stars token { "*"+ $[ \t]+ }
@@ -310,31 +306,25 @@ function checkSectionLine(excludePropertyDrawer: boolean, excludePlanning: boole
       peek_c = input.peek(peek_distance)
     }
     if (isWhiteSpace(peek_c)) {
-      log(`XX REFUSE Section Line (${termString}), start of heading ${inputStreamEndString(input)}`)
+      log(`XX REFUSE notStartOfPlanning, start of heading ${inputStreamEndString(input)}`)
       return // start of HEADING
     }
   }
-  if (c === COLON && excludePropertyDrawer) {
-    could_be_property_drawer = true
-    planning_word = ''
-  }
   if (c === HASH) {
-    log(`XX REFUSE Section Line (${termString}), start of comment ${inputStreamEndString(input)}`)
+    log(`XX REFUSE notStartOfPlanning, start of comment ${inputStreamEndString(input)}`)
     return
   }
+  let primary_peek_distance = 0
   while (!isEndOfLine(c)) {
-    c = input.advance()
+    primary_peek_distance += 1
+    c = input.peek(primary_peek_distance)
     log(stringifyCodeLogString(c))
     if (c === COLON) {
-      if (could_be_property_drawer && planning_word.toUpperCase() === 'PROPERTIES') {
-        log(`XX REFUSE Section Line (${termString}), start of PropertyDrawer ${inputStreamEndString(input)}`)
-        return
-      }
-      if (!could_be_property_drawer && excludePlanning && (
+      if (
         planning_word.toUpperCase() === 'DEADLINE' ||
         planning_word.toUpperCase() === 'SCHEDULED' ||
-        planning_word.toUpperCase() === 'CLOSED')) {
-        log(`XX REFUSE Section Line (${termString}), start of Planning ${inputStreamEndString(input)}`)
+        planning_word.toUpperCase() === 'CLOSED') {
+        log(`XX REFUSE notStartOfPlanning, start of Planning ${inputStreamEndString(input)}`)
         return
       }
     }
@@ -342,61 +332,96 @@ function checkSectionLine(excludePropertyDrawer: boolean, excludePlanning: boole
     log(`word [${planning_word}]`)
   }
   if (c === EOF) {
-    log(`== ACCEPT Section Line (${termString}) before eof ${inputStreamEndString(input)}`)
-    input.acceptToken(term)
+    log(`== ACCEPT notStartOfPlanning before eof ${inputStreamEndString(input)}`)
+    input.acceptToken(notStartOfPlanning)
     return
-  } else if (c === NEW_LINE && input.peek(1) === EOF) {
-    input.advance()
-    input.acceptToken(term)
-    log(`== ACCEPT last Section Line (${termString}) before EOF with a trailing newline ${inputStreamEndString(input)}`)
+  } else if (c === NEW_LINE && input.peek(primary_peek_distance + 1) === EOF) {
+    primary_peek_distance += 1
+    input.acceptToken(notStartOfPlanning)
+    log(`== ACCEPT last notStartOfPlanning before EOF with a trailing newline ${inputStreamEndString(input)}`)
     return
   } else if (c === NEW_LINE) {
-    input.advance()
-    log(`== ACCEPT Section Line (${termString}) before newline ${inputStreamEndString(input)}`)
-    input.acceptToken(term)
+    primary_peek_distance += 1
+    log(`== ACCEPT notStartOfPlanning before newline ${inputStreamEndString(input)}`)
+    input.acceptToken(notStartOfPlanning)
     return
   }
-  log(`next start ${stringifyCodeLogString(input.peek(1))}`)
-  if (input.peek(1) === STAR) {
-    // only end of section if start of heading matches the stars token { "*"+ $[ \t]+ }
-    let peek_distance = 2
+  log(`== ACCEPT notStartOfPlanning by default ${inputStreamEndString(input)}`)
+  input.acceptToken(notStartOfPlanning)
+  return
+})
+
+export const notStartOfPropertyDrawer_lookaround = new ExternalTokenizer((input, stack) => {
+  log(`-- START notStartOfPropertyDrawer ${inputStreamBeginString(input)}`)
+  // sectionLineStart { ( ("*"+ ![ \t*]) | ![#*] ) }
+  const previous = input.peek(-1)
+  log(`previous ${stringifyCodeLogString(previous)}`)
+  if (!isEndOfLine(previous)) {
+    log(`XX REFUSE notStartOfPropertyDrawer, previous not endofline ${inputStreamEndString(input)}`)
+    return
+  }
+  let c = input.peek(0)
+  let planning_word = String.fromCharCode(c)
+  let could_be_property_drawer = false
+  log(stringifyCodeLogString(c))
+  if (c === EOF) {
+      log(`XX REFUSE notStartOfPropertyDrawer, only EOF left ${inputStreamEndString(input)}`)
+      return
+  } else if (c === COLON) {
+    could_be_property_drawer = true
+    planning_word = ''
+  } else if (c === HASH) {
+    log(`XX REFUSE notStartOfPropertyDrawer, start of comment ${inputStreamEndString(input)}`)
+    return
+  } else if (c === STAR) {
+    // only start of heading if it matches the stars token { "*"+ $[ \t]+ }
+    let peek_distance = 1
     let peek_c = input.peek(peek_distance)
     while (peek_c == STAR) {
       peek_distance += 1
       peek_c = input.peek(peek_distance)
     }
-    if (isWhiteSpace(SPACE)) {
-      input.advance(peek_distance)
-      log(`== ACCEPT Section Line (${termString}) before heading ${inputStreamEndString(input)}`)
-      input.acceptToken(term)
-      return
+    if (isWhiteSpace(peek_c)) {
+      log(`XX REFUSE notStartOfPropertyDrawer, start of heading ${inputStreamEndString(input)}`)
+      return // start of HEADING
     }
-  } else if (input.peek(1) === HASH) {
-    input.advance()
-    log(`== ACCEPT Section Line (${termString}) before comment ${inputStreamEndString(input)}`)
-    input.acceptToken(term)
-    return
-  } else {
-    c = input.advance()
   }
-  log(`== ACCEPT Section Line (${termString}) by default ${inputStreamEndString(input)}`)
-  input.acceptToken(term)
+  if (c === HASH) {
+    log(`XX REFUSE notStartOfPropertyDrawer, start of comment ${inputStreamEndString(input)}`)
+    return
+  }
+  let primary_peek_distance = 0
+  while (!isEndOfLine(c)) {
+    primary_peek_distance += 1
+    c = input.peek(primary_peek_distance)
+    log(stringifyCodeLogString(c))
+    if (c === COLON) {
+      if (could_be_property_drawer && planning_word.toUpperCase() === 'PROPERTIES') {
+        log(`XX REFUSE notStartOfPropertyDrawer, start of PropertyDrawer ${inputStreamEndString(input)}`)
+        return
+      }
+    }
+    planning_word += String.fromCharCode(c)
+    log(`word [${planning_word}]`)
+  }
+  if (c === EOF) {
+    log(`== ACCEPT notStartOfPropertyDrawer before eof ${inputStreamEndString(input)}`)
+    input.acceptToken(notStartOfPropertyDrawer)
+    return
+  } else if (c === NEW_LINE && input.peek(primary_peek_distance + 1) === EOF) {
+    primary_peek_distance += 1
+    input.acceptToken(notStartOfPropertyDrawer)
+    log(`== ACCEPT last notStartOfPropertyDrawer before EOF with a trailing newline ${inputStreamEndString(input)}`)
+    return
+  } else if (c === NEW_LINE) {
+    primary_peek_distance += 1
+    log(`== ACCEPT notStartOfPropertyDrawer before newline ${inputStreamEndString(input)}`)
+    input.acceptToken(notStartOfPropertyDrawer)
+    return
+  }
+  log(`== ACCEPT notStartOfPropertyDrawer by default ${inputStreamEndString(input)}`)
+  input.acceptToken(notStartOfPropertyDrawer)
   return
-}
-
-export const sectionlineexcludingpropertydrawerandplanning_tokenizer = new ExternalTokenizer((input, stack) => {
-  log(`-- START sectionLineExcludingPropertyDrawerAndPlanning ${inputStreamBeginString(input)}`)
-  checkSectionLine(true, true, input, stack, sectionLineExcludingPropertyDrawerAndPlanning)
-})
-
-export const sectionlineexcludingpropertydrawer_tokenizer = new ExternalTokenizer((input, stack) => {
-  log(`-- START sectionLineExcludingPropertyDrawer ${inputStreamBeginString(input)}`)
-  checkSectionLine(true, false, input, stack, sectionLineExcludingPropertyDrawer)
-})
-
-export const sectionline_tokenizer = new ExternalTokenizer((input, stack) => {
-  log(`-- START sectionLine ${inputStreamBeginString(input)}`)
-  checkSectionLine(false, false, input, stack, sectionLine)
 })
 
 export const propertydrawer_tokenizer = new ExternalTokenizer((input, stack) => {
@@ -476,5 +501,111 @@ export const propertydrawer_tokenizer = new ExternalTokenizer((input, stack) => 
     c = input.advance()
   }
   log(`== ACCEPT PropertyDrawer EOF reached without :END: ${inputStreamEndString(input)}`)
+  return
+});
+
+
+export const notStartOfHeading_lookaround = new ExternalTokenizer((input, stack) => {
+  log(`-- START notStartOfHeading_lookaround ${inputStreamBeginString(input)}`)
+  const previous = input.peek(-1)
+  log(`previous ${stringifyCodeLogString(previous)}`)
+  if (!isEndOfLine(previous)) {
+    log(`XX REFUSE notStartOfHeading_lookaround, previous not endofline ${inputStreamEndString(input)}`)
+    return
+  }
+  let c = input.peek(0)
+  log(stringifyCodeLogString(c))
+  if (c === STAR) {
+    // only start of heading if it matches the stars token { "*"+ $[ \t]+ }
+    let peek_distance = 1
+    let peek_c = input.peek(peek_distance)
+    while (peek_c == STAR) {
+      peek_distance += 1
+      peek_c = input.peek(peek_distance)
+    }
+    if (isWhiteSpace(peek_c)) {
+      log(`XX REFUSE notStartOfHeading_lookaround, start of heading ${inputStreamEndString(input)}`)
+      return // start of HEADING
+    }
+  } else if (c === EOF) {
+    log(`XX REFUSE notStartOfHeading_lookaround, EOF ${inputStreamEndString(input)}`)
+    return // start of HEADING
+  }
+  log(`== ACCEPT notStartOfHeading_lookaround ${inputStreamEndString(input)}`)
+  input.acceptToken(notStartOfHeading)
+  return
+});
+
+export const notStartOfComment_lookaround = new ExternalTokenizer((input, stack) => {
+  log(`-- START notStartOfComment_lookaround ${inputStreamBeginString(input)}`)
+  const previous = input.peek(-1)
+  log(`previous ${stringifyCodeLogString(previous)}`)
+  if (!isEndOfLine(previous)) {
+    log(`XX REFUSE notStartOfComment_lookaround, previous not endofline ${inputStreamEndString(input)}`)
+    return
+  }
+  let c = input.peek(0)
+  log(stringifyCodeLogString(c))
+  if (c === HASH) {
+    log(`XX REFUSE notStartOfComment_lookaround, start of comment ${inputStreamEndString(input)}`)
+    return
+  }
+  log(`== ACCEPT notStartOfComment_lookaround ${inputStreamEndString(input)}`)
+  input.acceptToken(notStartOfComment)
+  return
+});
+
+export const sectionWord_tokenizer = new ExternalTokenizer((input, stack) => {
+  log(`-- START sectionWord ${inputStreamBeginString(input)}`)
+  let c = input.peek(0)
+  if (c === EOF) {
+    log(`XX REFUSE sectionWord, only EOF left ${inputStreamEndString(input)}`)
+    return
+  }
+  log(stringifyCodeLogString(c))
+  if (isWhiteSpace(c) || isEndOfLine(c)) {
+    log(`XX REFUSE sectionWord, whitespace ${inputStreamEndString(input)}`)
+    return
+  }
+  while (!isWhiteSpace(c) && !isEndOfLine(c)) {
+    c = input.advance()
+    log(stringifyCodeLogString(c))
+  }
+  log(`== ACCEPT sectionWord ${inputStreamEndString(input)}`)
+  input.acceptToken(sectionword)
+  return
+});
+
+export const sectionSpace_tokenizer = new ExternalTokenizer((input, stack) => {
+  log(`-- START sectionSpace ${inputStreamBeginString(input)}`)
+  let c = input.peek(0)
+  if (c === EOF) {
+    log(`XX REFUSE sectionSpace, only EOF left ${inputStreamEndString(input)}`)
+    return
+  }
+  if (!isWhiteSpace(c)) {
+    log(`XX REFUSE sectionSpace, not whitespace ${inputStreamEndString(input)}`)
+    return
+  }
+  log(stringifyCodeLogString(c))
+  while (isWhiteSpace(c)) {
+    c = input.advance()
+    log(stringifyCodeLogString(c))
+  }
+  log(`== ACCEPT sectionSpace ${inputStreamEndString(input)}`)
+  input.acceptToken(sectionSpace)
+  return
+});
+
+export const sectionEnd_tokenizer = new ExternalTokenizer((input, stack) => {
+  log(`-- START sectionEnd ${inputStreamBeginString(input)}`)
+  let c = input.peek(0)
+  if (isEndOfLine(c)) {
+    input.advance()
+    log(`== ACCEPT sectionEnd ${inputStreamEndString(input)}`)
+    input.acceptToken(sectionEnd)
+    return
+  }
+  log(`XX REFUSE sectionSpace, ${inputStreamEndString(input)}`)
   return
 });
