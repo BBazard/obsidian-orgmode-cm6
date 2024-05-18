@@ -140,6 +140,59 @@ function checkMarkupPOST(codeUnit: number) {
   )
 }
 
+function checkTags(input: InputStream) {
+  log(`start checkTags ${inputStreamBeginString(input)}`)
+  let c = input.peek(0)
+  if (c !== COLON) {
+    return false
+  }
+  let peek_distance = 1
+  c = input.peek(peek_distance)
+  log(`peeking a: ${stringifyCodeLogString(c)}`)
+  while (true) {
+    peek_distance += 1
+    c = input.peek(peek_distance)
+    log(`peeking b: ${stringifyCodeLogString(c)}`)
+    if (isEndOfLine(c)) {
+      log(`case 1`)
+      // example ":eiofje\n" unfinished tag
+      return false
+    }
+    if (!String.fromCharCode(c).match(/[a-zA-Z0-9_@#%:]/)) {
+      log(`case 2`)
+      // example ":tag1 " tags cannot contain space
+      return false
+    }
+    if (c == COLON) {
+      log(`case 3`)
+      let extra_peek_distance = 1
+      c = input.peek(peek_distance + extra_peek_distance)
+      log(`peeking c: ${stringifyCodeLogString(c)}`)
+      if (isEndOfLine(c)) {
+        // example ":tag1:\n"
+        return true
+      } else if (isWhiteSpace(c)) {
+        while (isWhiteSpace(c)) {
+          extra_peek_distance += 1
+          c = input.peek(peek_distance + extra_peek_distance)
+          log(`peeking d: ${stringifyCodeLogString(c)}`)
+        }
+        if (isEndOfLine(c)) {
+          // example ":tag1: \n"
+          return true
+        } else {
+          // example ":tag1:a\n" extra chars after tags
+          return false
+        }
+      } else if (String.fromCharCode(c).match(/[a-zA-Z0-9_@#%:]/)) {
+        // do nothing just wait for another loop
+      } else {
+        // example: ":tag1:中" char not part of tags
+        return false
+      }
+    }
+  }
+}
 
 export const title_tokenizer = (words: string[]) => { return new ExternalTokenizer((input: InputStream, stack: Stack) => {
   // match everything until tags or NEWLINE or EOF
@@ -160,7 +213,6 @@ export const title_tokenizer = (words: string[]) => { return new ExternalTokeniz
   let c = input.peek(0)
   let s = String.fromCharCode(c)
   log(`first ${stringifyCodeLogString(c)}`)
-  let is_matching_tags = false
   if (isEndOfLine(c)) {
     log(`== ACCEPT Title empty ${inputStreamEndString(input)}`)
     input.acceptToken(Title)
@@ -188,77 +240,14 @@ export const title_tokenizer = (words: string[]) => { return new ExternalTokeniz
       return
     }
     if (c == COLON) {
-      log(`title_tokenizer ${input.pos}: first colon`)
-      is_matching_tags = true
-      let peek_distance = 1
-      c = input.peek(peek_distance)
-      log(`peeking a: ${stringifyCodeLogString(c)}`)
-      while (is_matching_tags) {
-        peek_distance += 1
-        c = input.peek(peek_distance)
-        log(`peeking b: ${stringifyCodeLogString(c)}`)
-        if (isEndOfLine(c)) {
-          log(`case 1`)
-          // example ":eiofje\n" unfinished tag
-          is_matching_tags = false
-          break;
-        }
-        if (!String.fromCharCode(c).match(/[a-zA-Z0-9_@#%:]/)) {
-          log(`case 2`)
-          // example ":tag1 " tags cannot contain space
-          is_matching_tags = false
-          break
-        }
-        if (c == COLON) {
-          log(`case 3`)
-          log(`title_tokenizer ${input.pos}: second colon`)
-          let extra_peek_distance = 1
-          c = input.peek(peek_distance + extra_peek_distance)
-          log(`peeking c: ${stringifyCodeLogString(c)}`)
-          if (isEndOfLine(c)) {
-            // example ":tag1:\n"
-            input.acceptToken(Title)  // accept token before the tags
-            log(`== ACCEPT title 2 ${inputStreamEndString(input)}`)
-            return
-          } else if (isWhiteSpace(c)) {
-            while (isWhiteSpace(c)) {
-              extra_peek_distance += 1
-              c = input.peek(peek_distance + extra_peek_distance)
-              log(`peeking d: ${stringifyCodeLogString(c)}`)
-            }
-            if (isEndOfLine(c)) {
-              // example ":tag1: \n"
-              input.acceptToken(Title)  // accept token before the tags
-              log(`== ACCEPT Title 3 ${inputStreamEndString(input)}`)
-              return
-            } else {
-              // example ":tag1:a\n" extra chars after tags
-              is_matching_tags = false
-              break
-            }
-          } else if (String.fromCharCode(c).match(/[a-zA-Z0-9_@#%:]/)) {
-            // do nothing just wait for another loop
-          } else {
-            // example: ":tag1:中" char not part of tags
-            is_matching_tags = false
-            break
-          }
-        }
-        log(`title_tokenizer ${input.pos}: was not a tag`)
-      }  // end is_matching_tags
+      if (checkTags(input)) {
+        input.acceptToken(Title)
+        log(`== ACCEPT Title before Tags ${inputStreamEndString(input)}`)
+        return
+      }
       c = input.advance()
       s += String.fromCharCode(c)
       log(`${stringifyCodeLogString(c)}`)
-      if (!priority_already_matched && checkPriority(s)) {
-        log(`XX REFUSE Title, is Priority ${inputStreamEndString(input)}`)
-        return
-      }
-      if (!todo_keyword_already_matched && checkTodoKeyword(s, input, words)) {
-        if (isWhiteSpace(input.peek(1))) {
-          log(`XX REFUSE Title, is TodoKeyword ${inputStreamEndString(input)}`)
-          return
-        }
-      }
     }
   }
   input.acceptToken(Title)
