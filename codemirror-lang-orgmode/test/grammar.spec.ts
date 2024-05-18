@@ -267,16 +267,24 @@ test("no priority outside headings", () => {
 test("text markup", () => {
   const content = [
     "my *bold* word",
+    "bold ** star ***",
     "some *bold encompassing",
     "two lines* here",
     "*terminating on the next line",
-    "*",
+    "*",  // not a heading
+    "*terminating before header",
+    "* ",  // heading
+    "**",
     "now *unfinished",
-    "",
+    "  ",  // blank line
     "*bold with a * inside*",
     "**bold***",
     "",
     "*star*inside*",
+    "some *interruption",
+    "# by a",
+    "comment*",
+    "",
     "and *unfinished before eof",
   ].join("\n")
   const tree = parser.parse(content)
@@ -284,12 +292,14 @@ test("text markup", () => {
     "Program(",
     "    ZerothSection(",
     "        TextBold,",  // *bold*
-    "        TextBold,",  // *bold encompassing\ntwo lines*
-    "        TextBold,",  // *terminating on the next line\n*
+    "        TextBold,",  // ***
+    "        TextBold),",  // *bold encompassing\ntwo lines*
+    "    Block(Heading(Title), Section(",
     "        TextBold,",  // *bold with a * inside*
-    "        TextBold,",  // *start*inside*
     "        TextBold,",  // **bold***
-    "    ),",
+    "        TextBold,",  // *start*inside*
+    "        CommentLine,",  // # by a\n
+    "    )),",
     ")",
   ].join("\n")
   console.log(printTree(tree, content))

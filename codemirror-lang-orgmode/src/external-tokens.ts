@@ -7,7 +7,9 @@ import {
   sectionword,
   sectionSpace,
   sectionEnd,
-  TextBold,
+  sectionwordBold,
+  isStartOfTextBold,
+  isEndOfTextBold,
 } from './parser.terms';
 
 const NEW_LINE = '\n'.charCodeAt(0);
@@ -99,6 +101,34 @@ function checkPreviousWord(input: InputStream, words: string[], anti_peek_distan
     }
   }
   return { 'matched': matched, 'anti_peek_distance': anti_peek_distance }
+}
+
+function checkMarkupPRE(codeUnit: number) {
+  return (isEndOfLine(codeUnit) || isWhiteSpace(codeUnit) ||
+    String.fromCharCode(codeUnit) === '-' ||
+    String.fromCharCode(codeUnit) === '(' ||
+    String.fromCharCode(codeUnit) === '{' ||
+    String.fromCharCode(codeUnit) === "'" ||
+    String.fromCharCode(codeUnit) === '"'
+  )
+}
+
+function checkMarkupPOST(codeUnit: number) {
+  return (isEndOfLine(codeUnit) || isWhiteSpace(codeUnit) ||
+    String.fromCharCode(codeUnit) === '-' ||
+    String.fromCharCode(codeUnit) === '.' ||
+    String.fromCharCode(codeUnit) === ',' ||
+    String.fromCharCode(codeUnit) === ';' ||
+    String.fromCharCode(codeUnit) === ':' ||
+    String.fromCharCode(codeUnit) === '!' ||
+    String.fromCharCode(codeUnit) === '?' ||
+    String.fromCharCode(codeUnit) === ')' ||
+    String.fromCharCode(codeUnit) === '}' ||
+    String.fromCharCode(codeUnit) === '[' ||
+    String.fromCharCode(codeUnit) === '"' ||
+    String.fromCharCode(codeUnit) === "'" ||
+    String.fromCharCode(codeUnit) === '\\'
+  )
 }
 
 
@@ -611,28 +641,91 @@ export const sectionEnd_tokenizer = new ExternalTokenizer((input, stack) => {
   return
 });
 
-export const textBold_tokenizer = new ExternalTokenizer((input, stack) => {
-  textMarkup(input, STAR, TextBold)
-})
-
-function textMarkup(input: InputStream, marker: number, term: number) {
-  const MARKER = marker
-  log(`-- START textBold ${inputStreamBeginString(input)}`)
-  const previous = input.peek(-1)
-  log(`previous ${stringifyCodeLogString(previous)}`)
-  if (!isEndOfLine(previous) && !isWhiteSpace(previous) &&
-      String.fromCharCode(previous) !== '-' &&
-      String.fromCharCode(previous) !== '(' &&
-      String.fromCharCode(previous) !== '{' &&
-      String.fromCharCode(previous) !== "'" &&
-      String.fromCharCode(previous) !== '"'
-    ) {
-    log(`XX REFUSE textBold, not preceded by PRE ${inputStreamEndString(input)}`)
+export const sectionWordBold_tokenizer = new ExternalTokenizer((input, stack) => {
+  const MARKER = STAR
+  log(`-- START sectionwordBold ${inputStreamBeginString(input)}`)
+  let c = input.peek(0)
+  log(stringifyCodeLogString(c))
+  if (isWhiteSpace(c)) {
+    log(`XX REFUSE sectionwordBold, whitespace or endofline ${inputStreamEndString(input)}`)
     return
   }
-  let start_of_heading_possible = false
-  if (!isEndOfLine(previous) && MARKER == STAR) {
-    start_of_heading_possible = true
+  while (true) {
+    while (!isWhiteSpace(c) && !isEndOfLine(c) && c !== MARKER) {
+      c = input.advance()
+      log(stringifyCodeLogString(c))
+    }
+    if (c === EOF) {
+      log(`== ACCEPT sectionwordBold before eof ${inputStreamEndString(input)}`)
+      input.acceptToken(sectionwordBold)
+      return
+    } else if (c === NEW_LINE) {
+      c = input.advance()
+      log(stringifyCodeLogString(c))
+    } else if (isWhiteSpace(c)) {
+      log(`== ACCEPT sectionwordBold before whitespace ${inputStreamEndString(input)}`)
+      input.acceptToken(sectionwordBold)
+      return
+    } else if (c === MARKER) {
+      if (checkEndOfTextMarkup(input, MARKER)) {
+        log(`== ACCEPT sectionwordBold at stuff ${inputStreamEndString(input)}`)
+        input.acceptToken(sectionwordBold)
+        return
+      }
+      c = input.advance()
+      log(stringifyCodeLogString(c))
+    } else {
+      log(`XX REFUSE sectionwordBold, unreachable code path ${inputStreamEndString(input)}`)
+      return
+    }
+  }
+});
+
+export function checkEndOfTextMarkup(input: InputStream, marker: number) {
+  const MARKER = marker
+  const previous = input.peek(-1)
+  const current = input.peek(0)
+  if (isWhiteSpace(previous) || isEndOfLine(previous)) {
+    log(`previous is whitespace ${stringifyCodeLogString(previous)}`)
+    return false
+  }
+  log(`current ${stringifyCodeLogString(current)}`)
+  if (current !== MARKER) {
+    log(`not MARKER ${inputStreamEndString(input)}`)
+    return false
+  }
+  const next = input.peek(1)
+  log(`next ${stringifyCodeLogString(next)}`)
+  if (!checkMarkupPOST(next)) {
+    log(`no POST ${inputStreamEndString(input)}`)
+    return false
+  }
+  return true
+}
+
+export const isEndOfTextBold_lookaround = new ExternalTokenizer((input, stack) => {
+  const MARKER = STAR
+  log(`-- START isEndOfTextBold ${inputStreamBeginString(input)}`)
+  if (checkEndOfTextMarkup(input, MARKER)) {
+    input.acceptToken(isEndOfTextBold)
+  } else {
+    log(`XX REFUSE isEndOfTextBold ${inputStreamEndString(input)}`)
+  }
+})
+
+export const isStartOfTextBold_lookaround = new ExternalTokenizer((input, stack) => {
+  textMarkup(input, STAR, isStartOfTextBold, true)
+})
+
+function textMarkup(input: InputStream, marker: number, term: number, lookaround: boolean) {
+  const MARKER = marker
+  const initialPos = input.pos
+  log(`-- START textBold ${stringifyCodeLogString(marker)} lookaround=${lookaround} ${inputStreamBeginString(input)}`)
+  const previous = input.peek(-1)
+  log(`previous ${stringifyCodeLogString(previous)}`)
+  if (!checkMarkupPRE(previous)) {
+    log(`XX REFUSE textBold, not preceded by PRE ${inputStreamEndString(input)}`)
+    return
   }
   let c = input.peek(0)
   log(stringifyCodeLogString(c))
@@ -640,15 +733,7 @@ function textMarkup(input: InputStream, marker: number, term: number) {
     log(`XX REFUSE textBold, not starting with ${stringifyCodeLogString(MARKER)} ${inputStreamEndString(input)}`)
     return
   }
-  while (input.peek(1) === MARKER) {
-    c = input.advance()
-    log(stringifyCodeLogString(c))
-  }
-  if (isWhiteSpace(input.peek(1))) {
-    log(`XX REFUSE textBold, ${stringifyCodeLogString(MARKER)} followed by whitespace ${inputStreamEndString(input)}`)
-    return
-  }
-  if (start_of_heading_possible) {
+  if (isEndOfLine(previous) && c === STAR) {
     let peek_distance = 1
     c = input.peek(peek_distance)
     while (c === STAR) {
@@ -659,66 +744,74 @@ function textMarkup(input: InputStream, marker: number, term: number) {
       log(`XX REFUSE textBold, start of heading ${inputStreamEndString(input)}`)
       return
     }
-    start_of_heading_possible = false
   }
   c = input.advance()
   log(stringifyCodeLogString(c))
+  if (isWhiteSpace(input.peek(1))) {
+    log(`XX REFUSE textBold, ${stringifyCodeLogString(MARKER)} followed by whitespace ${inputStreamEndString(input)}`)
+    return
+  }
+  if (c === MARKER && (isWhiteSpace(input.peek(1)) || isEndOfLine(input.peek(1)))) {
+    log(`XX REFUSE textBold, double ${stringifyCodeLogString(MARKER)} followed by whitespace ${inputStreamEndString(input)}`)
+    return
+  }
   while (true) {
     while (c !== MARKER && !isEndOfLine(c)) {
       c = input.advance()
       log(stringifyCodeLogString(c))
     }
-    if (c == NEW_LINE && input.peek(1) == NEW_LINE) {
-      log(`XX REFUSE textBold unfinished ${inputStreamEndString(input)}`)
+    if (c === EOF) {
+      log(`== REFUSE textBold unfinished EOF ${inputStreamEndString(input)}`)
       return
-    } else if (c == NEW_LINE && input.peek(1) == MARKER && MARKER == STAR) {
-      let peek_distance = 1
-      c = input.peek(peek_distance)
-      while (c === STAR) {
-        peek_distance += 1
-        c = input.peek(peek_distance)
-      }
-      if (isWhiteSpace(c)) {
-        log(`XX REFUSE textBold, start of heading ${inputStreamEndString(input)}`)
-        return
-      }
     } else if (c === MARKER) {
       while (input.peek(1) === MARKER) {
         c = input.advance()
         log(stringifyCodeLogString(c))
       }
-      if (isWhiteSpace(input.peek(-1))) {
-        log(`end of content preceded by whitespace so no match possible here, continuing`)
-        c = input.advance()
-        log(stringifyCodeLogString(c))
-        continue
-      }
-      const next = input.peek(1)
-      if (isEndOfLine(next) || isWhiteSpace(next) ||
-        String.fromCharCode(next) === '-' ||
-        String.fromCharCode(next) === '.' ||
-        String.fromCharCode(next) === ',' ||
-        String.fromCharCode(next) === ';' ||
-        String.fromCharCode(next) === ':' ||
-        String.fromCharCode(next) === '!' ||
-        String.fromCharCode(next) === '?' ||
-        String.fromCharCode(next) === ')' ||
-        String.fromCharCode(next) === '}' ||
-        String.fromCharCode(next) === '[' ||
-        String.fromCharCode(next) === '"' ||
-        String.fromCharCode(next) === "'" ||
-        String.fromCharCode(next) === '\\'
-      ) {
+      if (checkEndOfTextMarkup(input, MARKER)) {
         input.advance()
         log(`== ACCEPT textBold ${inputStreamEndString(input)}`)
-        input.acceptToken(term)
+        if (lookaround) {
+          input.acceptToken(term, -(input.pos-initialPos))
+        } else {
+          input.acceptToken(term)
+        }
         return
       }
-    } else if (c === EOF) {
-      log(`== REFUSE textBold unfinished EOF ${inputStreamEndString(input)}`)
-      return
+      c = input.advance()
+      log(stringifyCodeLogString(c))
+    } else {  // NEWLINE
+      if (isWhiteSpace(input.peek(1)) || isEndOfLine(input.peek(1))) {
+        let peek_distance = 1
+        while (isWhiteSpace(input.peek(peek_distance))) {
+          peek_distance += 1
+        }
+        if (isEndOfLine(input.peek(peek_distance))) {
+          log(`XX REFUSE textBold unfinished blank line ${inputStreamEndString(input)}`)
+          return
+        }
+        c = input.advance()
+        log(stringifyCodeLogString(c))
+      } else if (input.peek(1) == STAR) {
+        let peek_distance = 1
+        c = input.peek(peek_distance)
+        while (c === STAR) {
+          peek_distance += 1
+          c = input.peek(peek_distance)
+        }
+        if (isWhiteSpace(c)) {
+          log(`XX REFUSE textBold, start of heading ${inputStreamEndString(input)}`)
+          return
+        }
+        c = input.advance()
+        log(stringifyCodeLogString(c))
+      } else if (input.peek(1) == HASH) {
+          log(`XX REFUSE textBold, start of comment ${inputStreamEndString(input)}`)
+          return
+      } else {  // regular newline
+        c = input.advance()
+        log(stringifyCodeLogString(c))
+      }
     }
-    c = input.advance()
-    log(stringifyCodeLogString(c))
   }
 }

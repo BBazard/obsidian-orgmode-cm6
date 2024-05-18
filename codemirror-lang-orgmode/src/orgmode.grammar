@@ -7,7 +7,13 @@ ZerothSection {
   notStartOfHeading
   CommentLine*
   PropertyDrawer?
-  (notStartOfPropertyDrawer sectionLine+)?
+  (
+    notStartOfPropertyDrawer
+    (
+      notStartOfHeading
+      (paragraph)
+    )+
+  )?
 }
 
 Block {
@@ -23,13 +29,15 @@ Section {
   notStartOfHeading
   (CommentLine | Planning)*
   PropertyDrawer?
-  (notStartOfPlanning notStartOfPropertyDrawer sectionLine+)?
+  (
+    notStartOfPlanning notStartOfPropertyDrawer
+    (
+      notStartOfHeading
+      (paragraph) // or GreaterBlock, etc...
+    )+
+  )?
 }
 
-sectionLine { // sectionLine == otherElements
-  notStartOfHeading
-  (paragraph) // or GreaterBlock, etc...
-}
 paragraph {
   CommentLine
   |
@@ -46,7 +54,18 @@ textMarkup {
   TextBold
 }
 
-@external tokens textBold_tokenizer from "./external-tokens" { TextBold }
+TextBold {
+  isStartOfTextBold "*"
+  (
+    sectionwordBold (sectionSpace sectionwordBold)*
+  )
+  isEndOfTextBold "*"
+}
+
+
+
+@external tokens isStartOfTextBold_lookaround from "./external-tokens" { isStartOfTextBold }
+@external tokens isEndOfTextBold_lookaround from "./external-tokens" { isEndOfTextBold }
 
 // https://orgmode.org/worg/org-syntax.html#Planning
 Planning { planningStart endofline }
@@ -79,5 +98,6 @@ Planning { planningStart endofline }
 
 // https://orgmode.org/worg/org-syntax.html#Sections
 @external tokens sectionWord_tokenizer from "./external-tokens" { sectionword }
+@external tokens sectionWordBold_tokenizer from "./external-tokens" { sectionwordBold }
 @external tokens sectionSpace_tokenizer from "./external-tokens" { sectionSpace }
 @external tokens sectionEnd_tokenizer from "./external-tokens" { sectionEnd }

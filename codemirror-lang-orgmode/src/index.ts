@@ -14,7 +14,9 @@ import {
   sectionWord_tokenizer,
   sectionSpace_tokenizer,
   sectionEnd_tokenizer,
-  textBold_tokenizer,
+  sectionWordBold_tokenizer,
+  isStartOfTextBold_lookaround,
+  isEndOfTextBold_lookaround,
 } from "./external-tokens"
 import { grammarFile } from "./generated_grammar";
 
@@ -53,9 +55,16 @@ const configurableExternalTokenizer = (words: string[]) => {
     if (name == 'sectionEnd_tokenizer') {
       return sectionEnd_tokenizer
     }
-    if (name == 'textBold_tokenizer') {
-      return textBold_tokenizer
+    if (name == 'sectionWordBold_tokenizer') {
+      return sectionWordBold_tokenizer
     }
+    if (name == 'isStartOfTextBold_lookaround') {
+      return isStartOfTextBold_lookaround
+    }
+    if (name == 'isEndOfTextBold_lookaround') {
+      return isEndOfTextBold_lookaround
+    }
+
     throw new Error("Undefined external tokenizer " + name)
   }
 }
