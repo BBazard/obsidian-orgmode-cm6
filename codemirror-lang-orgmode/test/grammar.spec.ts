@@ -285,6 +285,7 @@ test("text markup", () => {
     "# by a",
     "comment*",
     "",
+    "xxx *a b* xxx",
     "and *unfinished before eof",
   ].join("\n")
   const tree = parser.parse(content)
@@ -299,6 +300,7 @@ test("text markup", () => {
     "        TextBold,",  // **bold***
     "        TextBold,",  // *start*inside*
     "        CommentLine,",  // # by a\n
+    "        TextBold,",  // *a b*
     "    )),",
     ")",
   ].join("\n")

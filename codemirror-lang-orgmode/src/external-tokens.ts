@@ -833,13 +833,15 @@ function isStartOfTextMarkup(input: InputStream, marker: number, term: number) {
   }
   c = input.advance()
   log(stringifyCodeLogString(c))
-  if (isWhiteSpace(input.peek(1))) {
+  if (isWhiteSpace(c)) {
     log(`XX REFUSE isStartOfTextMarkup, ${stringifyCodeLogString(MARKER)} followed by whitespace ${inputStreamEndString(input)}`)
     return
-  }
-  if (c === MARKER && (isWhiteSpace(input.peek(1)) || isEndOfLine(input.peek(1)))) {
-    log(`XX REFUSE isStartOfTextMarkup, double ${stringifyCodeLogString(MARKER)} followed by whitespace ${inputStreamEndString(input)}`)
+  } else if (isEndOfLine(c)) {
+    log(`XX REFUSE isStartOfTextMarkup, ${stringifyCodeLogString(MARKER)} followed by endofline ${inputStreamEndString(input)}`)
     return
+  } else if (c === MARKER && checkEndOfTextMarkup(input, MARKER)) {
+      log(`== REFUSE isStartOfTextMarkup double marker ${inputStreamEndString(input)}`)
+      return
   }
   while (true) {
     while (c !== MARKER && !isEndOfLine(c)) {
@@ -860,8 +862,6 @@ function isStartOfTextMarkup(input: InputStream, marker: number, term: number) {
         input.acceptToken(term, -(input.pos-initialPos))
         return
       }
-      c = input.advance()
-      log(stringifyCodeLogString(c))
     } else {  // NEWLINE
       if (isWhiteSpace(input.peek(1)) || isEndOfLine(input.peek(1))) {
         let peek_distance = 1
@@ -872,8 +872,6 @@ function isStartOfTextMarkup(input: InputStream, marker: number, term: number) {
           log(`XX REFUSE isStartOfTextMarkup unfinished blank line ${inputStreamEndString(input)}`)
           return
         }
-        c = input.advance()
-        log(stringifyCodeLogString(c))
       } else if (input.peek(1) == STAR) {
         let peek_distance = 1
         c = input.peek(peek_distance)
@@ -885,15 +883,12 @@ function isStartOfTextMarkup(input: InputStream, marker: number, term: number) {
           log(`XX REFUSE isStartOfTextMarkup, start of heading ${inputStreamEndString(input)}`)
           return
         }
-        c = input.advance()
-        log(stringifyCodeLogString(c))
       } else if (input.peek(1) == HASH) {
           log(`XX REFUSE isStartOfTextMarkup, start of comment ${inputStreamEndString(input)}`)
           return
-      } else {  // regular newline
-        c = input.advance()
-        log(stringifyCodeLogString(c))
-      }
+      } else { }  // regular newline
     }
+    c = input.advance()
+    log(stringifyCodeLogString(c))
   }
 }
