@@ -25,6 +25,10 @@ Heading {
   stars TodoKeyword? Priority? Title Tags? endofline
 }
 
+Title {
+  sectionSpace? (titleObject sectionSpace?)*
+}
+
 Section {
   notStartOfHeading
   (CommentLine | Planning)*
@@ -46,56 +50,74 @@ paragraph {
   )
 }
 
+titleObject {
+  titleTextMarkup | titleWord
+}
+
 object {
   textMarkup | sectionword
 }
 
+titleTextMarkup {
+  (isStartOfTitleTextBold TextBold) |
+  (isStartOfTitleTextItalic TextItalic) |
+  (isStartOfTitleTextUnderline TextUnderline) |
+  (isStartOfTitleTextVerbatim TextVerbatim) |
+  (isStartOfTitleTextCode TextCode) |
+  (isStartOfTitleTextStrikeThrough TextStrikeThrough)
+}
+
 textMarkup {
-  TextBold | TextItalic | TextUnderline | TextVerbatim | TextCode | TextStrikeThrough
+  (isStartOfTextBold TextBold) |
+  (isStartOfTextItalic TextItalic) |
+  (isStartOfTextUnderline TextUnderline) |
+  (isStartOfTextVerbatim TextVerbatim) |
+  (isStartOfTextCode TextCode) |
+  (isStartOfTextStrikeThrough TextStrikeThrough)
 }
 
 TextBold {
-  isStartOfTextBold
   "*"
   sectionwordBold (sectionSpace sectionwordBold)*
   "*"
 }
 
 TextItalic {
-  isStartOfTextItalic
   "/"
   sectionwordItalic (sectionSpace sectionwordItalic)*
   "/"
 }
 
 TextUnderline {
-  isStartOfTextUnderline
   "_"
   sectionwordUnderline (sectionSpace sectionwordUnderline)*
   "_"
 }
 
 TextVerbatim {
-  isStartOfTextVerbatim
   "="
   sectionwordVerbatim (sectionSpace sectionwordVerbatim)*
   "="
 }
 
 TextCode {
-  isStartOfTextCode
   "~"
   sectionwordCode (sectionSpace sectionwordCode)*
   "~"
 }
 
 TextStrikeThrough {
-  isStartOfTextStrikeThrough
   "+"
   sectionwordStrikeThrough (sectionSpace sectionwordStrikeThrough)*
   "+"
 }
 
+@external tokens isStartOfTitleTextBold_lookaround from "./external-tokens" { isStartOfTitleTextBold }
+@external tokens isStartOfTitleTextItalic_lookaround from "./external-tokens" { isStartOfTitleTextItalic }
+@external tokens isStartOfTitleTextUnderline_lookaround from "./external-tokens" { isStartOfTitleTextUnderline }
+@external tokens isStartOfTitleTextVerbatim_lookaround from "./external-tokens" { isStartOfTitleTextVerbatim }
+@external tokens isStartOfTitleTextCode_lookaround from "./external-tokens" { isStartOfTitleTextCode }
+@external tokens isStartOfTitleTextStrikeThrough_lookaround from "./external-tokens" { isStartOfTitleTextStrikeThrough }
 
 @external tokens isStartOfTextBold_lookaround from "./external-tokens" { isStartOfTextBold }
 @external tokens isStartOfTextItalic_lookaround from "./external-tokens" { isStartOfTextItalic }
@@ -110,8 +132,6 @@ Planning { planningStart endofline }
 // https://orgmode.org/worg/org-syntax.html#Property_Drawers
 @external tokens propertydrawer_tokenizer from "./external-tokens" { PropertyDrawer }
 
-@external tokens title_tokenizer from "./external-tokens" { Title }
-
 @external tokens todokeyword_tokenizer from "./external-tokens" { TodoKeyword }
 
 
@@ -121,14 +141,18 @@ Planning { planningStart endofline }
 @external tokens notStartOfHeading_lookaround from "./external-tokens" { notStartOfHeading }
 @external tokens notStartOfComment_lookaround from "./external-tokens" { notStartOfComment }
 
-// need to be between after Section and before endofline
+
 @tokens {
   Priority { $[ \t]* "[" "#" $[a-zA-Z0-9] "]" $[ \t]* }
-  Tags { ":" ($[a-zA-Z0-9_@#%]+ ":")+ }
   stars { "*"+ $[ \t]+ }
   CommentLine { "#" ![\n]* ("\n" | @eof) }
   planningStart { ("DEADLINE:"|"SCHEDULED:"|"CLOSED:") }
 }
+
+@external tokens sectionEnd_tokenizer from "./external-tokens" { sectionEnd }
+@external tokens sectionSpace_tokenizer from "./external-tokens" { sectionSpace }
+@external tokens titleWord_tokenizer from "./external-tokens" { titleWord }
+@external tokens tags_tokenizer from "./external-tokens" { Tags }
 
 // need to be last to not override something else
 @external tokens endofline_tokenizer from "./external-tokens" { endofline }
@@ -143,5 +167,3 @@ Planning { planningStart endofline }
 @external tokens sectionWordCode_tokenizer from "./external-tokens" { sectionwordCode }
 @external tokens sectionWordStrikeThrough_tokenizer from "./external-tokens" { sectionwordStrikeThrough }
 
-@external tokens sectionSpace_tokenizer from "./external-tokens" { sectionSpace }
-@external tokens sectionEnd_tokenizer from "./external-tokens" { sectionEnd }

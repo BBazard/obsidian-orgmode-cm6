@@ -8,7 +8,8 @@
 }
 
 .theme-dark .org-heading,
-.theme-dark .org-title {
+.theme-dark .org-title,
+.theme-dark :is(.org-heading, .org-priority, .org-title) + :is(.org-text-bold, .org-text-italic, .org-text-underline, .org-text-verbatim, .org-text-code, .org-text-strikethrough) {
   color: #2fbd23;
 }
 
@@ -71,7 +72,8 @@
 
 
 .theme-light .org-heading,
-.theme-light .org-title {
+.theme-light .org-title,
+.theme-light :is(.org-heading, .org-priority, .org-title) + :is(.org-text-bold, .org-text-italic, .org-text-underline, .org-text-verbatim, .org-text-code, .org-text-strikethrough) {
   color: #2f8925;
 }
 

@@ -26,6 +26,14 @@ import {
   isStartOfTextVerbatim_lookaround,
   isStartOfTextCode_lookaround,
   isStartOfTextStrikeThrough_lookaround,
+  titleWord_tokenizer,
+  tags_tokenizer,
+  isStartOfTitleTextBold_lookaround,
+  isStartOfTitleTextItalic_lookaround,
+  isStartOfTitleTextUnderline_lookaround,
+  isStartOfTitleTextVerbatim_lookaround,
+  isStartOfTitleTextCode_lookaround,
+  isStartOfTitleTextStrikeThrough_lookaround,
 } from "./external-tokens"
 import { grammarFile } from "./generated_grammar";
 
@@ -99,6 +107,30 @@ const configurableExternalTokenizer = (words: string[]) => {
     }
     if (name == 'isStartOfTextStrikeThrough_lookaround') {
       return isStartOfTextStrikeThrough_lookaround
+    }
+    if (name == 'titleWord_tokenizer') {
+      return titleWord_tokenizer
+    }
+    if (name == 'tags_tokenizer') {
+      return tags_tokenizer
+    }
+    if (name == 'isStartOfTitleTextBold_lookaround') {
+      return isStartOfTitleTextBold_lookaround
+    }
+    if (name == 'isStartOfTitleTextItalic_lookaround') {
+      return isStartOfTitleTextItalic_lookaround
+    }
+    if (name == 'isStartOfTitleTextUnderline_lookaround') {
+      return isStartOfTitleTextUnderline_lookaround
+    }
+    if (name == 'isStartOfTitleTextVerbatim_lookaround') {
+      return isStartOfTitleTextVerbatim_lookaround
+    }
+    if (name == 'isStartOfTitleTextCode_lookaround') {
+      return isStartOfTitleTextCode_lookaround
+    }
+    if (name == 'isStartOfTitleTextStrikeThrough_lookaround') {
+      return isStartOfTitleTextStrikeThrough_lookaround
     }
 
     throw new Error("Undefined external tokenizer " + name)

@@ -117,6 +117,7 @@ test("PropertyDrawer trailing characters", () => {
 test("Heading", () => {
   const content = [
     "* TODO item1",
+    "* TODO [#A] item1",
     "# comment",
     "** TODO subitem :tag1:",
     "** subitem",
@@ -124,7 +125,8 @@ test("Heading", () => {
   const tree = parser.parse(content)
   const spec = [
     "Program(",
-    "    Block(Heading(TodoKeyword, Title), Section(CommentLine)),",
+    "    Block(Heading(TodoKeyword, Title)),",
+    "    Block(Heading(TodoKeyword, Priority, Title), Section(CommentLine)),",
     "    Block(Heading(TodoKeyword, Title, Tags)),",
     "    Block(Heading(Title)),",
     ")",
@@ -302,6 +304,35 @@ test("text markup", () => {
     "        CommentLine,",  // # by a\n
     "        TextBold,",  // *a b*
     "    )),",
+    ")",
+  ].join("\n")
+  console.log(printTree(tree, content))
+  parser.configure({strict: true}).parse(content)
+  testTree(tree, spec)
+})
+
+test("title text markup", () => {
+  const content = [
+    "* normal title",
+    "* normal *bold* :tag:",
+    "* normal *bold* title :tag:",
+    "* normal *bold*",
+    "* normal *unfinished",
+    "bold*",
+  ].join("\n")
+  const tree = parser.parse(content)
+  const spec = [
+    "Program(",
+    "    Block(Heading(",
+    "        Title)),",
+    "    Block(Heading(",
+    "        Title(TextBold), Tags)),",
+    "    Block(Heading(",
+    "        Title(TextBold), Tags)),",
+    "    Block(Heading(",
+    "        Title(TextBold))),",
+    "    Block(Heading(",
+    "        Title), Section),",
     ")",
   ].join("\n")
   console.log(printTree(tree, content))

@@ -19,6 +19,14 @@ import {
   isStartOfTextVerbatim,
   isStartOfTextCode,
   isStartOfTextStrikeThrough,
+  titleWord,
+  Tags,
+  isStartOfTitleTextBold,
+  isStartOfTitleTextItalic,
+  isStartOfTitleTextUnderline,
+  isStartOfTitleTextVerbatim,
+  isStartOfTitleTextCode,
+  isStartOfTitleTextStrikeThrough,
 } from './parser.terms';
 
 const NEW_LINE = '\n'.charCodeAt(0);
@@ -140,7 +148,7 @@ function checkMarkupPOST(codeUnit: number) {
   )
 }
 
-function checkTags(input: InputStream) {
+function checkTags(input: InputStream, advanceInput: boolean) {
   log(`start checkTags ${inputStreamBeginString(input)}`)
   let c = input.peek(0)
   if (c !== COLON) {
@@ -170,6 +178,9 @@ function checkTags(input: InputStream) {
       log(`peeking c: ${stringifyCodeLogString(c)}`)
       if (isEndOfLine(c)) {
         // example ":tag1:\n"
+        if (advanceInput) {
+          input.advance(peek_distance + extra_peek_distance)
+        }
         return true
       } else if (isWhiteSpace(c)) {
         while (isWhiteSpace(c)) {
@@ -179,6 +190,9 @@ function checkTags(input: InputStream) {
         }
         if (isEndOfLine(c)) {
           // example ":tag1: \n"
+          if (advanceInput) {
+            input.advance(peek_distance + extra_peek_distance)
+          }
           return true
         } else {
           // example ":tag1:a\n" extra chars after tags
@@ -240,7 +254,7 @@ export const title_tokenizer = (words: string[]) => { return new ExternalTokeniz
       return
     }
     if (c == COLON) {
-      if (checkTags(input)) {
+      if (checkTags(input, false)) {
         input.acceptToken(Title)
         log(`== ACCEPT Title before Tags ${inputStreamEndString(input)}`)
         return
@@ -726,31 +740,56 @@ export function checkEndOfTextMarkup(input: InputStream, marker: number) {
 }
 
 export const isStartOfTextBold_lookaround = new ExternalTokenizer((input, stack) => {
-  isStartOfTextMarkup(input, STAR, isStartOfTextBold)
+  isStartOfTextMarkup(input, STAR, isStartOfTextBold, false)
 })
 
 export const isStartOfTextItalic_lookaround = new ExternalTokenizer((input, stack) => {
-  isStartOfTextMarkup(input, '/'.charCodeAt(0), isStartOfTextItalic)
+  isStartOfTextMarkup(input, '/'.charCodeAt(0), isStartOfTextItalic, false)
 })
 
 export const isStartOfTextUnderline_lookaround = new ExternalTokenizer((input, stack) => {
-  isStartOfTextMarkup(input, '_'.charCodeAt(0), isStartOfTextUnderline)
+  isStartOfTextMarkup(input, '_'.charCodeAt(0), isStartOfTextUnderline, false)
 })
 
 export const isStartOfTextVerbatim_lookaround = new ExternalTokenizer((input, stack) => {
-  isStartOfTextMarkup(input, '='.charCodeAt(0), isStartOfTextVerbatim)
+  isStartOfTextMarkup(input, '='.charCodeAt(0), isStartOfTextVerbatim, false)
 })
 
 export const isStartOfTextCode_lookaround = new ExternalTokenizer((input, stack) => {
-  isStartOfTextMarkup(input, '~'.charCodeAt(0), isStartOfTextCode)
+  isStartOfTextMarkup(input, '~'.charCodeAt(0), isStartOfTextCode, false)
 })
 
 export const isStartOfTextStrikeThrough_lookaround = new ExternalTokenizer((input, stack) => {
-  isStartOfTextMarkup(input, '+'.charCodeAt(0), isStartOfTextStrikeThrough)
+  isStartOfTextMarkup(input, '+'.charCodeAt(0), isStartOfTextStrikeThrough, false)
 })
 
 
-function isStartOfTextMarkup(input: InputStream, marker: number, term: number) {
+export const isStartOfTitleTextBold_lookaround = new ExternalTokenizer((input, stack) => {
+  isStartOfTextMarkup(input, STAR, isStartOfTitleTextBold, true)
+})
+
+export const isStartOfTitleTextItalic_lookaround = new ExternalTokenizer((input, stack) => {
+  isStartOfTextMarkup(input, '/'.charCodeAt(0), isStartOfTitleTextItalic, true)
+})
+
+export const isStartOfTitleTextUnderline_lookaround = new ExternalTokenizer((input, stack) => {
+  isStartOfTextMarkup(input, '_'.charCodeAt(0), isStartOfTitleTextUnderline, true)
+})
+
+export const isStartOfTitleTextVerbatim_lookaround = new ExternalTokenizer((input, stack) => {
+  isStartOfTextMarkup(input, '='.charCodeAt(0), isStartOfTitleTextVerbatim, true)
+})
+
+export const isStartOfTitleTextCode_lookaround = new ExternalTokenizer((input, stack) => {
+  isStartOfTextMarkup(input, '~'.charCodeAt(0), isStartOfTitleTextCode, true)
+})
+
+export const isStartOfTitleTextStrikeThrough_lookaround = new ExternalTokenizer((input, stack) => {
+  isStartOfTextMarkup(input, '+'.charCodeAt(0), isStartOfTitleTextStrikeThrough, true)
+})
+
+
+function isStartOfTextMarkup(input: InputStream, marker: number, term: number, noEndOfLine: boolean) {
   const MARKER = marker
   const initialPos = input.pos
   log(`-- START isStartOfTextMarkup ${stringifyCodeLogString(marker)} ${inputStreamBeginString(input)}`)
@@ -810,6 +849,10 @@ function isStartOfTextMarkup(input: InputStream, marker: number, term: number) {
         return
       }
     } else {  // NEWLINE
+      if (noEndOfLine) {
+        log(`XX REFUSE isStartOfTextMarkup reached endofline ${inputStreamEndString(input)}`)
+        return
+      }
       if (isWhiteSpace(input.peek(1)) || isEndOfLine(input.peek(1))) {
         let peek_distance = 1
         while (isWhiteSpace(input.peek(peek_distance))) {
@@ -839,3 +882,39 @@ function isStartOfTextMarkup(input: InputStream, marker: number, term: number) {
     log(stringifyCodeLogString(c))
   }
 }
+
+export const titleWord_tokenizer = new ExternalTokenizer((input, stack) => {
+  log(`-- START titleWord ${inputStreamBeginString(input)}`)
+  let c = input.peek(0)
+  if (c === EOF) {
+    log(`XX REFUSE titleWord, only EOF left ${inputStreamEndString(input)}`)
+    return
+  }
+  log(stringifyCodeLogString(c))
+  if (isWhiteSpace(c) || isEndOfLine(c)) {
+    log(`XX REFUSE titleWord, whitespace ${inputStreamEndString(input)}`)
+    return
+  }
+  if (c === COLON && checkTags(input, false)) {
+    log(`XX REFUSE titleWord, Tags ${inputStreamEndString(input)}`)
+    return
+  }
+  while (!isWhiteSpace(c) && !isEndOfLine(c)) {
+    c = input.advance()
+    log(stringifyCodeLogString(c))
+  }
+  log(`== ACCEPT titleWord ${inputStreamEndString(input)}`)
+  input.acceptToken(titleWord)
+  return
+});
+
+export const tags_tokenizer = new ExternalTokenizer((input, stack) => {
+  log(`-- START Tags ${inputStreamBeginString(input)}`)
+  if (checkTags(input, true)) {
+    log(`== ACCEPT Tags ${inputStreamEndString(input)}`)
+    input.acceptToken(Tags)
+    return
+  }
+  log(`XX REFUSE Tags ${inputStreamEndString(input)}`)
+  return
+})
