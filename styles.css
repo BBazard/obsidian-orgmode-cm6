@@ -163,3 +163,11 @@
 .orgmode-view.cm-focused {
   outline: unset;
 }
+
+.orgmode-view .cm-foldPlaceholder {
+  color: var(--text-faint);
+  background-color: transparent;
+  border: none;
+  margin-left: 8px;
+  user-select: none;
+}

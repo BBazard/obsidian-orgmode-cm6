@@ -257,7 +257,7 @@ class OrgView extends TextFileView {
               foldIcon_svg.addClass("open-fold-icon");
             } else {
               foldIcon_svg.addClass("closed-fold-icon");
-              foldIcon_svg.setCssStyles({ "transform": "rotate(-90deg)" });
+              foldIcon_svg.setCssStyles({ "transform": "rotate(-90deg)", "color": "var(--text-accent)" });
             }
             foldIcon.appendChild(foldIcon_svg);
             return foldIcon
