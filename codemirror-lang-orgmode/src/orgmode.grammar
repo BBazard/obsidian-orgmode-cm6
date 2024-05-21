@@ -1,6 +1,6 @@
 @top Program {
   ZerothSection?
-  Block*
+  (Heading Section?)*
 }
 
 ZerothSection {
@@ -14,10 +14,6 @@ ZerothSection {
       (paragraph)
     )+
   )?
-}
-
-Block {
-  Heading Section?
 }
 
 // https://orgmode.org/worg/org-syntax.html#Headings

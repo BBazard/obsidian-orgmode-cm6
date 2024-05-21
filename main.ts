@@ -1,58 +1,20 @@
 import { EditorView, keymap, drawSelection } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands"
-import { syntaxHighlighting, HighlightStyle, foldGutter, foldService, syntaxTree, LanguageSupport } from "@codemirror/language"
+import { syntaxHighlighting, foldGutter, LanguageSupport } from "@codemirror/language"
 import { EditorState, Extension, Compartment } from "@codemirror/state";
-import { SyntaxNode } from "@lezer/common";
 import { LRParser } from "@lezer/lr";
-import { tags } from "@lezer/highlight"
 import { vim, Vim } from "@replit/codemirror-vim"
 
 import { App, PluginSettingTab, Plugin, WorkspaceLeaf, TextFileView, Setting, parseYaml, MarkdownRenderChild } from "obsidian";
 
-import { TOKEN, OrgmodeLanguage, OrgmodeParser } from 'codemirror-lang-orgmode';
+import { OrgmodeLanguage, OrgmodeParser } from 'codemirror-lang-orgmode';
 
 import { DEFAULT_SETTINGS, OrgmodePluginSettings } from 'settings';
 import { OrgmodeTask, StatusType } from 'org-tasks';
 import { OrgTasksSync } from 'org-tasks-file-sync';
+import { myHighlightStyle, makeHeadingsFoldable } from 'language-extensions';
 
 let todoKeywordsReloader = new Compartment
-
-const myHighlightStyle = HighlightStyle.define([
-  // Block
-  // {tag: tags.atom},
-  // Heading
-  { tag: tags.heading, class: "org-heading" },
-  // Title
-  { tag: tags.contentSeparator, class: "org-title" },
-  // Planning
-  { tag: tags.annotation, class: "org-planning" },
-  // PropertyDrawer
-  { tag: tags.meta, class: "org-propertydrawer" },
-  // Section/ZerothSection
-  { tag: tags.content, class: "org-section" },
-  // CommentLine
-  { tag: tags.lineComment, class: "org-comment" },
-  // TodoKeyword
-  { tag: tags.keyword, class: "org-keyword" },
-  // Priority
-  { tag: tags.unit, class: "org-priority" },
-  // Tags
-  { tag: tags.tagName, class: "org-tags" },
-  // TextBold
-  { tag: tags.strong, class: "org-text-bold" },
-  // TextItalic
-  { tag: tags.emphasis, class: "org-text-italic" },
-  // TextUnderline
-  { tag: tags.modifier, class: "org-text-underline" },
-  // TextVerbatim
-  { tag: tags.literal, class: "org-text-verbatim" },
-  // TextCode
-  { tag: tags.monospace, class: "org-text-code" },
-  // TextStrikeThrough
-  { tag: tags.strikethrough, class: "org-text-strikethrough" },
-]);
-
-
 
 export class OrgmodeSettingTab extends PluginSettingTab {
   plugin: OrgmodePlugin;
@@ -180,42 +142,6 @@ export default class OrgmodePlugin extends Plugin {
     })
   }
 }
-
-export const makeHeadingsFoldable = foldService.of((state: EditorState, from, to) => {
-  let is_heading = false
-  let block_to = null
-  let heading_level = null
-  for (let node: SyntaxNode | null = syntaxTree(state).resolveInner(to, -1); node; node = node.parent) {
-    if (node.type.id == TOKEN.Heading) {
-      heading_level = state.doc.sliceString(node.from, node.to).match(/^\*+/g)[0].length
-      is_heading = true
-    }
-    if (node.type.id == TOKEN.Block) {
-      block_to = node.to
-      let current_node = node.nextSibling
-      while (current_node) {
-        const stars_match = state.doc.sliceString(current_node.from, current_node.to).match(/^\*+/g)
-        if (!stars_match) {
-          break
-        }
-        const current_heading_level = stars_match[0].length
-        if (current_heading_level <= heading_level) {
-          break
-        }
-        block_to = current_node.to
-        current_node = current_node.nextSibling
-      }
-    }
-  }
-  if (state.doc.sliceString(block_to-1, block_to) === '\n') {
-    block_to = block_to - 1
-  }
-  if (is_heading && block_to && block_to > to) {
-    return { from: to, to: block_to };
-  }
-  return null
-});
-
 class OrgView extends TextFileView {
   // Internal code mirror instance:
   codeMirror: EditorView;
