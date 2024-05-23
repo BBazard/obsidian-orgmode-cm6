@@ -2,7 +2,7 @@
 
 [Orgmode](https://orgmode.org) for [Obsidian](https://obsidian.md).
 
-![Screenshot](https://github.com/BBazard/obsidian-orgmode-cm6/assets/10139245/527e3f78-2779-4f98-b4d8-9f18f6b3711a)
+![Screenshot](./screenshot.png)
 
 This plugin is using a separate [codemirror 6](https://codemirror.net) instance with a custom [lezer](https://lezer.codemirror.net) grammar (not [everything](https://orgmode.org/worg/org-syntax.html) is implemented).
 Inspired by https://github.com/ryanpcmcquen/obsidian-org-mode and https://github.com/nothingislost/obsidian-cm6-attributes.
