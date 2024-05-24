@@ -8,7 +8,7 @@ export const myHighlightStyle = HighlightStyle.define([
   // Heading
   { tag: tags.heading, class: "org-heading" },
   // Title
-  { tag: tags.contentSeparator, class: "org-title" },
+  { tag: tags.contentSeparator, class: "org-title org-heading" },
   // Planning
   { tag: tags.annotation, class: "org-planning" },
   // PropertyDrawer
@@ -20,21 +20,21 @@ export const myHighlightStyle = HighlightStyle.define([
   // TodoKeyword
   { tag: tags.keyword, class: "org-keyword" },
   // Priority
-  { tag: tags.unit, class: "org-priority" },
+  { tag: tags.unit, class: "org-priority org-heading" },
   // Tags
-  { tag: tags.tagName, class: "org-tags" },
+  { tag: tags.tagName, class: "org-tags org-heading" },
   // TextBold
-  { tag: tags.strong, class: "org-text-bold" },
+  { tag: tags.strong, class: "org-text-bold org-section" },
   // TextItalic
-  { tag: tags.emphasis, class: "org-text-italic" },
+  { tag: tags.emphasis, class: "org-text-italic org-section" },
   // TextUnderline
-  { tag: tags.modifier, class: "org-text-underline" },
+  { tag: tags.modifier, class: "org-text-underline org-section" },
   // TextVerbatim
-  { tag: tags.literal, class: "org-text-verbatim" },
+  { tag: tags.literal, class: "org-text-verbatim org-section" },
   // TextCode
-  { tag: tags.monospace, class: "org-text-code" },
+  { tag: tags.monospace, class: "org-text-code org-section" },
   // TextStrikeThrough
-  { tag: tags.strikethrough, class: "org-text-strikethrough" },
+  { tag: tags.strikethrough, class: "org-text-strikethrough org-section" },
 ]);
 
 export const OrgFoldCompute = (state: EditorState, from: number, to: number) => {

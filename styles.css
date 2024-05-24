@@ -8,8 +8,7 @@
 }
 
 .theme-dark .org-heading,
-.theme-dark .org-title,
-.theme-dark :is(.org-heading, .org-priority, .org-title) + :is(.org-text-bold, .org-text-italic, .org-text-underline, .org-text-verbatim, .org-text-code, .org-text-strikethrough) {
+.theme-dark .org-heading + .org-section {
   color: #2fbd23;
 }
 
@@ -21,12 +20,6 @@
   color: #aa944f;
 }
 
-.theme-dark .org-text-bold,
-.theme-dark .org-text-italic,
-.theme-dark .org-text-underline,
-.theme-dark .org-text-verbatim,
-.theme-dark .org-text-code,
-.theme-dark .org-text-strikethrough,
 .theme-dark .org-section {
   color: #b9cddb;
 }
@@ -72,8 +65,7 @@
 
 
 .theme-light .org-heading,
-.theme-light .org-title,
-.theme-light :is(.org-heading, .org-priority, .org-title) + :is(.org-text-bold, .org-text-italic, .org-text-underline, .org-text-verbatim, .org-text-code, .org-text-strikethrough) {
+.theme-light .org-heading + .org-section {
   color: #2f8925;
 }
 
@@ -85,12 +77,6 @@
   color: #705f2c;
 }
 
-.theme-light .org-text-bold,
-.theme-light .org-text-italic,
-.theme-light .org-text-underline,
-.theme-light .org-text-verbatim,
-.theme-light .org-text-code,
-.theme-light .org-text-strikethrough,
 .theme-light .org-section {
   color: rgb(58, 69, 74);
 }
