@@ -653,7 +653,7 @@ export const sectionEnd_tokenizer = new ExternalTokenizer((input, stack) => {
   return
 });
 
-export function sectionWordMarkup(input: InputStream, marker: number, term: number) {
+function sectionWordMarkup(input: InputStream, marker: number, term: number) {
   const MARKER = marker
   log(`-- START sectionWordMarkup ${stringifyCodeLogString(marker)} ${inputStreamBeginString(input)}`)
   let c = input.peek(0)
@@ -717,7 +717,7 @@ export const sectionWordStrikeThrough_tokenizer = new ExternalTokenizer((input, 
   sectionWordMarkup(input, '+'.charCodeAt(0), sectionwordStrikeThrough)
 })
 
-export function checkEndOfTextMarkup(input: InputStream, marker: number) {
+function checkEndOfTextMarkup(input: InputStream, marker: number) {
   const MARKER = marker
   const previous = input.peek(-1)
   const current = input.peek(0)
