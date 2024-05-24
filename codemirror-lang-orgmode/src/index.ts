@@ -20,20 +20,10 @@ import {
   sectionWordVerbatim_tokenizer,
   sectionWordCode_tokenizer,
   sectionWordStrikeThrough_tokenizer,
-  isStartOfTextBold_lookaround,
-  isStartOfTextItalic_lookaround,
-  isStartOfTextUnderline_lookaround,
-  isStartOfTextVerbatim_lookaround,
-  isStartOfTextCode_lookaround,
-  isStartOfTextStrikeThrough_lookaround,
   titleWord_tokenizer,
   tags_tokenizer,
-  isStartOfTitleTextBold_lookaround,
-  isStartOfTitleTextItalic_lookaround,
-  isStartOfTitleTextUnderline_lookaround,
-  isStartOfTitleTextVerbatim_lookaround,
-  isStartOfTitleTextCode_lookaround,
-  isStartOfTitleTextStrikeThrough_lookaround,
+  isStartOfTextMarkup_lookaround,
+  isStartOfTitleTextMarkup_lookaround,
 } from "./external-tokens"
 import { grammarFile } from "./generated_grammar";
 
@@ -90,47 +80,17 @@ const configurableExternalTokenizer = (words: string[]) => {
     if (name == 'sectionWordStrikeThrough_tokenizer') {
       return sectionWordStrikeThrough_tokenizer
     }
-    if (name == 'isStartOfTextBold_lookaround') {
-      return isStartOfTextBold_lookaround
-    }
-    if (name == 'isStartOfTextItalic_lookaround') {
-      return isStartOfTextItalic_lookaround
-    }
-    if (name == 'isStartOfTextUnderline_lookaround') {
-      return isStartOfTextUnderline_lookaround
-    }
-    if (name == 'isStartOfTextVerbatim_lookaround') {
-      return isStartOfTextVerbatim_lookaround
-    }
-    if (name == 'isStartOfTextCode_lookaround') {
-      return isStartOfTextCode_lookaround
-    }
-    if (name == 'isStartOfTextStrikeThrough_lookaround') {
-      return isStartOfTextStrikeThrough_lookaround
-    }
     if (name == 'titleWord_tokenizer') {
       return titleWord_tokenizer
     }
     if (name == 'tags_tokenizer') {
       return tags_tokenizer
     }
-    if (name == 'isStartOfTitleTextBold_lookaround') {
-      return isStartOfTitleTextBold_lookaround
+    if (name == 'isStartOfTextMarkup_lookaround') {
+      return isStartOfTextMarkup_lookaround
     }
-    if (name == 'isStartOfTitleTextItalic_lookaround') {
-      return isStartOfTitleTextItalic_lookaround
-    }
-    if (name == 'isStartOfTitleTextUnderline_lookaround') {
-      return isStartOfTitleTextUnderline_lookaround
-    }
-    if (name == 'isStartOfTitleTextVerbatim_lookaround') {
-      return isStartOfTitleTextVerbatim_lookaround
-    }
-    if (name == 'isStartOfTitleTextCode_lookaround') {
-      return isStartOfTitleTextCode_lookaround
-    }
-    if (name == 'isStartOfTitleTextStrikeThrough_lookaround') {
-      return isStartOfTitleTextStrikeThrough_lookaround
+    if (name == 'isStartOfTitleTextMarkup_lookaround') {
+      return isStartOfTitleTextMarkup_lookaround
     }
 
     throw new Error("Undefined external tokenizer " + name)

@@ -108,19 +108,24 @@ TextStrikeThrough {
   "+"
 }
 
-@external tokens isStartOfTitleTextBold_lookaround from "./external-tokens" { isStartOfTitleTextBold }
-@external tokens isStartOfTitleTextItalic_lookaround from "./external-tokens" { isStartOfTitleTextItalic }
-@external tokens isStartOfTitleTextUnderline_lookaround from "./external-tokens" { isStartOfTitleTextUnderline }
-@external tokens isStartOfTitleTextVerbatim_lookaround from "./external-tokens" { isStartOfTitleTextVerbatim }
-@external tokens isStartOfTitleTextCode_lookaround from "./external-tokens" { isStartOfTitleTextCode }
-@external tokens isStartOfTitleTextStrikeThrough_lookaround from "./external-tokens" { isStartOfTitleTextStrikeThrough }
+@external tokens isStartOfTitleTextMarkup_lookaround from "./external-tokens" {
+  isStartOfTitleTextBold,
+  isStartOfTitleTextItalic,
+  isStartOfTitleTextUnderline,
+  isStartOfTitleTextVerbatim,
+  isStartOfTitleTextCode,
+  isStartOfTitleTextStrikeThrough
+}
 
-@external tokens isStartOfTextBold_lookaround from "./external-tokens" { isStartOfTextBold }
-@external tokens isStartOfTextItalic_lookaround from "./external-tokens" { isStartOfTextItalic }
-@external tokens isStartOfTextUnderline_lookaround from "./external-tokens" { isStartOfTextUnderline }
-@external tokens isStartOfTextVerbatim_lookaround from "./external-tokens" { isStartOfTextVerbatim }
-@external tokens isStartOfTextCode_lookaround from "./external-tokens" { isStartOfTextCode }
-@external tokens isStartOfTextStrikeThrough_lookaround from "./external-tokens" { isStartOfTextStrikeThrough }
+@external tokens isStartOfTextMarkup_lookaround from "./external-tokens" {
+  isStartOfTextBold,
+  isStartOfTextItalic,
+  isStartOfTextUnderline,
+  isStartOfTextVerbatim,
+  isStartOfTextCode,
+  isStartOfTextStrikeThrough
+}
+
 
 // https://orgmode.org/worg/org-syntax.html#Planning
 Planning { planningStart endofline }

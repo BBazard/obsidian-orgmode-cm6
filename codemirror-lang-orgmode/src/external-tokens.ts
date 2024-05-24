@@ -739,60 +739,33 @@ export function checkEndOfTextMarkup(input: InputStream, marker: number) {
   return true
 }
 
-export const isStartOfTextBold_lookaround = new ExternalTokenizer((input, stack) => {
-  isStartOfTextMarkup(input, STAR, isStartOfTextBold, false)
+export const isStartOfTextMarkup_lookaround = new ExternalTokenizer((input, stack) => {
+  const termsByMarker = new Map([
+    [STAR, isStartOfTextBold],
+    ['/'.charCodeAt(0), isStartOfTextItalic],
+    ['_'.charCodeAt(0), isStartOfTextUnderline],
+    ['='.charCodeAt(0), isStartOfTextVerbatim],
+    ['~'.charCodeAt(0), isStartOfTextCode],
+    ['+'.charCodeAt(0), isStartOfTextStrikeThrough],
+  ])
+  isStartOfTextMarkup(input, termsByMarker, false)
 })
 
-export const isStartOfTextItalic_lookaround = new ExternalTokenizer((input, stack) => {
-  isStartOfTextMarkup(input, '/'.charCodeAt(0), isStartOfTextItalic, false)
+export const isStartOfTitleTextMarkup_lookaround = new ExternalTokenizer((input, stack) => {
+  const termsByMarker = new Map([
+    [STAR, isStartOfTitleTextBold],
+    ['/'.charCodeAt(0), isStartOfTitleTextItalic],
+    ['_'.charCodeAt(0), isStartOfTitleTextUnderline],
+    ['='.charCodeAt(0), isStartOfTitleTextVerbatim],
+    ['~'.charCodeAt(0), isStartOfTitleTextCode],
+    ['+'.charCodeAt(0), isStartOfTitleTextStrikeThrough],
+  ])
+  isStartOfTextMarkup(input, termsByMarker, true)
 })
 
-export const isStartOfTextUnderline_lookaround = new ExternalTokenizer((input, stack) => {
-  isStartOfTextMarkup(input, '_'.charCodeAt(0), isStartOfTextUnderline, false)
-})
-
-export const isStartOfTextVerbatim_lookaround = new ExternalTokenizer((input, stack) => {
-  isStartOfTextMarkup(input, '='.charCodeAt(0), isStartOfTextVerbatim, false)
-})
-
-export const isStartOfTextCode_lookaround = new ExternalTokenizer((input, stack) => {
-  isStartOfTextMarkup(input, '~'.charCodeAt(0), isStartOfTextCode, false)
-})
-
-export const isStartOfTextStrikeThrough_lookaround = new ExternalTokenizer((input, stack) => {
-  isStartOfTextMarkup(input, '+'.charCodeAt(0), isStartOfTextStrikeThrough, false)
-})
-
-
-export const isStartOfTitleTextBold_lookaround = new ExternalTokenizer((input, stack) => {
-  isStartOfTextMarkup(input, STAR, isStartOfTitleTextBold, true)
-})
-
-export const isStartOfTitleTextItalic_lookaround = new ExternalTokenizer((input, stack) => {
-  isStartOfTextMarkup(input, '/'.charCodeAt(0), isStartOfTitleTextItalic, true)
-})
-
-export const isStartOfTitleTextUnderline_lookaround = new ExternalTokenizer((input, stack) => {
-  isStartOfTextMarkup(input, '_'.charCodeAt(0), isStartOfTitleTextUnderline, true)
-})
-
-export const isStartOfTitleTextVerbatim_lookaround = new ExternalTokenizer((input, stack) => {
-  isStartOfTextMarkup(input, '='.charCodeAt(0), isStartOfTitleTextVerbatim, true)
-})
-
-export const isStartOfTitleTextCode_lookaround = new ExternalTokenizer((input, stack) => {
-  isStartOfTextMarkup(input, '~'.charCodeAt(0), isStartOfTitleTextCode, true)
-})
-
-export const isStartOfTitleTextStrikeThrough_lookaround = new ExternalTokenizer((input, stack) => {
-  isStartOfTextMarkup(input, '+'.charCodeAt(0), isStartOfTitleTextStrikeThrough, true)
-})
-
-
-function isStartOfTextMarkup(input: InputStream, marker: number, term: number, noEndOfLine: boolean) {
-  const MARKER = marker
+function isStartOfTextMarkup(input: InputStream, termsByMarker: Map<number, number>, noEndOfLine: boolean) {
   const initialPos = input.pos
-  log(`-- START isStartOfTextMarkup ${stringifyCodeLogString(marker)} ${inputStreamBeginString(input)}`)
+  log(`-- START isStartOfTextMarkup ${inputStreamBeginString(input)}`)
   const previous = input.peek(-1)
   log(`previous ${stringifyCodeLogString(previous)}`)
   if (!checkMarkupPRE(previous)) {
@@ -801,10 +774,12 @@ function isStartOfTextMarkup(input: InputStream, marker: number, term: number, n
   }
   let c = input.peek(0)
   log(stringifyCodeLogString(c))
-  if (c !== MARKER) {
-    log(`XX REFUSE isStartOfTextMarkup, not starting with ${stringifyCodeLogString(MARKER)} ${inputStreamEndString(input)}`)
+  if (!termsByMarker.has(c)) {
+    log(`XX REFUSE isStartOfTextMarkup, not starting with a textmarkup marker ${inputStreamEndString(input)}`)
     return
   }
+  const MARKER = c
+  const term = termsByMarker.get(MARKER)
   if (isEndOfLine(previous) && c === STAR) {
     let peek_distance = 1
     c = input.peek(peek_distance)
