@@ -121,7 +121,13 @@ export default class OrgmodePlugin extends Plugin {
     rootEl.innerHTML = ""
     var list = rootEl.createEl("ul", { cls: "contains-task-list plugin-tasks-query-result tasks-layout-hide-urgency tasks-layout-hide-edit-button" });
     orgmode_tasks.forEach((orgmode_task, i) => {
+      this.renderTask(orgmode_task, i, list, onStatusChange, 0)
+    })
+  }
+
+  private renderTask(orgmode_task: OrgmodeTask, i: number, list: HTMLElement, onStatusChange: (orgmode_task: OrgmodeTask) => void, indentLevel: number) {
       const li = list.createEl("li", { cls: "task-list-item plugin-tasks-list-item" })
+      li.setCssStyles({"paddingLeft": 16*indentLevel+"px"})
       li.setAttribute("data-line", i.toString())
       li.setAttribute("data-task-priority", "normal")  // orgmode_task.priority
       li.setAttribute("data-task-status-type", orgmode_task.statusType)
@@ -139,7 +145,9 @@ export default class OrgmodePlugin extends Plugin {
         onStatusChange(orgmode_task)
       })
       li.createSpan({ cls: "tasks-list-text" }).createSpan({ cls: "task-description" }).createSpan({ text: orgmode_task.description })
-    })
+      orgmode_task.children.forEach((orgmode_task, i) => {
+        this.renderTask(orgmode_task, i, list, onStatusChange, indentLevel+1)
+      })
   }
 }
 class OrgView extends TextFileView {

@@ -2,7 +2,7 @@ import { LRLanguage } from "@codemirror/language"
 import { styleTags, tags } from "@lezer/highlight"
 import { BuildOptions, buildParser } from '@lezer/generator';
 import { LRParser } from "@lezer/lr";
-import { title_tokenizer, todokeyword_tokenizer } from "./external-tokens"
+import { title_tokenizer, todokeyword_tokenizer, context_tracker } from "./external-tokens"
 import * as ExtToken from "./external-tokens"
 import { grammarFile } from "./generated_grammar";
 
@@ -20,7 +20,8 @@ const configurableExternalTokenizer = (words: string[]) => {
 
 export const OrgmodeParser = (words: string[]) => {
   const options: BuildOptions = {
-    externalTokenizer: configurableExternalTokenizer(words)
+    externalTokenizer: configurableExternalTokenizer(words),
+    contextTracker: context_tracker,
   }
   return buildParser(grammarFile.toString(), options)
 }

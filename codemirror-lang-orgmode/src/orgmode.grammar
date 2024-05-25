@@ -1,6 +1,14 @@
 @top Program {
   ZerothSection?
-  (Heading Section?)*
+  Heading*
+}
+
+
+Heading {
+  shouldIndentHeading indentHeading
+  headingLine Section?
+  Heading*
+  shouldDedentHeading dedentHeading
 }
 
 ZerothSection {
@@ -17,7 +25,7 @@ ZerothSection {
 }
 
 // https://orgmode.org/worg/org-syntax.html#Headings
-Heading {
+headingLine {
   stars TodoKeyword? Priority? Title Tags? endofline
 }
 
@@ -108,6 +116,9 @@ TextStrikeThrough {
   "+"
 }
 
+@context context_tracker from "./external-tokens"
+
+
 @external tokens isStartOfTitleTextMarkup_lookaround from "./external-tokens" {
   isStartOfTitleTextBold,
   isStartOfTitleTextItalic,
@@ -142,10 +153,16 @@ Planning { planningStart endofline }
 @external tokens notStartOfHeading_lookaround from "./external-tokens" { notStartOfHeading }
 @external tokens notStartOfComment_lookaround from "./external-tokens" { notStartOfComment }
 
+@external tokens shouldIndentHeading_lookaround from "./external-tokens" { shouldIndentHeading }
+@external tokens indentHeading_lookaround from "./external-tokens" { indentHeading }
+@external tokens shouldDedentHeading_lookaround from "./external-tokens" { shouldDedentHeading }
+@external tokens dedentHeading_lookaround from "./external-tokens" { dedentHeading }
+
+
+@external tokens stars_tokenizer from "./external-tokens" { stars }
 
 @tokens {
   Priority { $[ \t]* "[" "#" $[a-zA-Z0-9] "]" $[ \t]* }
-  stars { "*"+ $[ \t]+ }
   CommentLine { "#" ![\n]* ("\n" | @eof) }
   planningStart { ("DEADLINE:"|"SCHEDULED:"|"CLOSED:") }
 }

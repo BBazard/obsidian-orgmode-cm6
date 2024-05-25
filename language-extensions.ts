@@ -43,32 +43,11 @@ export const OrgFoldCompute = (state: EditorState, from: number, to: number) => 
     return null
   }
   const heading = currentLineNode
-  const heading_level = state.doc.sliceString(heading.from, heading.to).match(/^\*+/g)[0].length
-  let next = currentLineNode.nextSibling
+  const hasSection = currentLineNode.getChild(TOKEN.Section)
+  const hasHeading = currentLineNode.getChild(TOKEN.Heading)
   let block_to = null
-  if (next !== null && next.type.id === TOKEN.Section) {
-    const section = next
-    block_to = section.to
-  }
-  while (true) {
-    if (next !== null && next.type.id === TOKEN.Heading) {
-      const current_heading = next
-      const current_heading_level = state.doc.sliceString(current_heading.from, current_heading.to).match(/^\*+/g)[0].length
-      if (current_heading_level <= heading_level) {
-        break
-      }
-      block_to = current_heading.to
-      next = current_heading.nextSibling
-      if (next !== null && next.type.id === TOKEN.Section) {
-        const section = next
-        block_to = section.to
-        next = next.nextSibling
-      }
-    } else if (next !== null && next.type.id == TOKEN.Section) {
-      next = next.nextSibling
-    } else {
-      break
-    }
+  if (hasSection || hasHeading) {
+    block_to = heading.to
   }
   if (state.doc.sliceString(block_to-1, block_to) === '\n') {
     block_to = block_to - 1

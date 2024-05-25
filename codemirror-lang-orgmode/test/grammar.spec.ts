@@ -26,9 +26,40 @@ test("simple case", () => {
   const tree = parser.parse(content)
   const spec = [
     "Program(",
-    "    Heading(TodoKeyword, Title), Section,",
-    "    Heading(TodoKeyword, Title), Section,",
+    "    Heading(TodoKeyword, Title, Section),",
+    "    Heading(TodoKeyword, Title, Section),",
     "    Heading(TodoKeyword, Title),",
+    ")",
+  ].join("\n")
+  console.log(printTree(tree, content))
+  parser.configure({strict: true}).parse(content)
+  testTree(tree, spec)
+})
+
+test("nested heading", () => {
+  const content = [
+    "** item",
+    "content",
+    "* TODO item 2",
+    "",
+    "content",
+    "",
+    "*** [#A] item",
+    "**** item",
+    "** item",
+    "* [#A] item",
+  ].join("\n")
+  const tree = parser.parse(content)
+  const spec = [
+    "Program(",
+    "    Heading(Title, Section),",
+    "    Heading(TodoKeyword, Title, Section,",
+    "        Heading(Priority, Title,",
+    "            Heading(Title),",
+    "        ),",
+    "        Heading(Title),",
+    "    ),",
+    "    Heading(Priority, Title),",
     ")",
   ].join("\n")
   console.log(printTree(tree, content))
@@ -46,7 +77,7 @@ test("zeroth section not in a block", () => {
   const spec = [
     "Program(",
     "    ZerothSection,",
-    "    Heading(TodoKeyword, Title),Section",
+    "    Heading(TodoKeyword, Title, Section)",
     ")",
   ].join("\n")
   console.log(printTree(tree, content))
@@ -85,7 +116,7 @@ test("deadline and scheduled", () => {
   const tree = parser.parse(content)
   const spec = [
     "Program(",
-    "    Heading(TodoKeyword, Title), Section(Planning, Planning, PropertyDrawer),",
+    "    Heading(TodoKeyword, Title, Section(Planning, Planning, PropertyDrawer)),",
     "    Heading(TodoKeyword, Title),",
     ")",
   ].join("\n")
@@ -106,7 +137,7 @@ test("PropertyDrawer trailing characters", () => {
   const tree = parser.parse(content)
   const spec = [
     "Program(",
-    "    Heading(TodoKeyword, Title), Section(PropertyDrawer),",
+    "    Heading(TodoKeyword, Title, Section(PropertyDrawer)),",
     ")",
   ].join("\n")
   console.log(printTree(tree, content))
@@ -126,9 +157,10 @@ test("Heading", () => {
   const spec = [
     "Program(",
     "    Heading(TodoKeyword, Title),",
-    "    Heading(TodoKeyword, Priority, Title), Section(CommentLine),",
-    "    Heading(TodoKeyword, Title, Tags),",
-    "    Heading(Title),",
+    "    Heading(TodoKeyword, Priority, Title, Section(CommentLine),",
+    "        Heading(TodoKeyword, Title, Tags),",
+    "        Heading(Title),",
+    "    ),",
     ")",
   ].join("\n")
   console.log(printTree(tree, content))
@@ -150,7 +182,7 @@ test("Heading edge cases", () => {
     "    Heading(Priority, Title),",
     "    Heading(TodoKeyword, Title),",
     "    Heading(Title),",
-    "    Heading(Title), Section,",
+    "    Heading(Title, Section),",
     ")",
   ].join("\n")
   console.log(printTree(tree, content))
@@ -184,7 +216,7 @@ test("leading star in first line of section", () => {
   const tree = parser.parse(content)
   const spec = [
     "Program(",
-    "    Heading(Title), Section,",
+    "    Heading(Title, Section),",
     ")",
   ].join("\n")
   console.log(printTree(tree, content))
@@ -220,7 +252,7 @@ test("no heading in a comment", () => {
   const tree = parser.parse(content)
   const spec = [
     "Program(",
-    "    Heading(Title), Section(CommentLine),",
+    "    Heading(Title, Section(CommentLine)),",
     ")",
   ].join("\n")
   console.log(printTree(tree, content))
@@ -238,7 +270,7 @@ test("no tags outside headings", () => {
   const tree = parser.parse(content)
   const spec = [
     "Program(",
-    "    Heading(Title, Tags), Section,",
+    "    Heading(Title, Tags, Section),",
     ")",
   ].join("\n")
   console.log(printTree(tree, content))
@@ -258,7 +290,7 @@ test("no priority outside headings", () => {
   const tree = parser.parse(content)
   const spec = [
     "Program(",
-    "    Heading(Priority, Title), Section,",
+    "    Heading(Priority, Title, Section),",
     ")",
   ].join("\n")
   console.log(printTree(tree, content))
@@ -297,12 +329,12 @@ test("text markup", () => {
     "        TextBold,",  // *bold*
     "        TextBold,",  // ***
     "        TextBold),",  // *bold encompassing\ntwo lines*
-    "    Heading(Title), Section(",
+    "    Heading(Title, Section(",
     "        TextBold,",  // *bold with a * inside*
     "        TextBold,",  // **bold***
     "        TextBold,",  // *start*inside*
     "        CommentLine,",  // # by a\n
-    "        TextBold,",  // *a b*
+    "        TextBold),",  // *a b*
     "    ),",
     ")",
   ].join("\n")
@@ -332,7 +364,7 @@ test("title text markup", () => {
     "    Heading(",
     "        Title(TextBold)),",
     "    Heading(",
-    "        Title), Section,",
+    "        Title, Section),",
     ")",
   ].join("\n")
   console.log(printTree(tree, content))
