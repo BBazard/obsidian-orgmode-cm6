@@ -2,17 +2,37 @@ import { LRLanguage } from "@codemirror/language"
 import { styleTags, tags } from "@lezer/highlight"
 import { BuildOptions, buildParser } from '@lezer/generator';
 import { LRParser } from "@lezer/lr";
-import { title_tokenizer, todokeyword_tokenizer, context_tracker } from "./external-tokens"
+import { title_tokenizer, todokeyword_tokenizer, plainLink_tokenizer, regularLink_lookaround, angleLink_lookaround, context_tracker } from "./external-tokens"
 import * as ExtToken from "./external-tokens"
 import { grammarFile } from "./generated_grammar";
 
 const configurableExternalTokenizer = (words: string[]) => {
+  const orgLinkParameters = [
+    "shell",
+    "news",
+    "mailto",
+    "https",
+    "http",
+    "ftp",
+    "help",
+    "file",
+    "elisp",
+  ]
   return (name: string, terms: { [name: string]: number }) => {
     if (name == 'title_tokenizer') {
       return title_tokenizer(words)
     }
     if (name == 'todokeyword_tokenizer') {
       return todokeyword_tokenizer(words)
+    }
+    if (name == 'plainLink_tokenizer') {
+      return plainLink_tokenizer(orgLinkParameters)
+    }
+    if (name == 'regularLink_lookaround') {
+      return regularLink_lookaround(orgLinkParameters)
+    }
+    if (name == 'angleLink_lookaround') {
+      return angleLink_lookaround(orgLinkParameters)
     }
     return ExtToken[name as keyof typeof ExtToken]
   }
@@ -47,6 +67,7 @@ export const OrgmodeLanguage = (parser: LRParser) => {
           "TextVerbatim": tags.literal,
           "TextCode": tags.monospace,
           "TextStrikeThrough": tags.strikethrough,
+          "Link": tags.link,
         })
       ]
     }),

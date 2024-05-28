@@ -59,7 +59,25 @@ titleObject {
 }
 
 object {
-  textMarkup | sectionword
+  Link | textMarkup | sectionword
+}
+
+Link {
+  plainLink |
+  (isRegularLink regularLink) |
+  (isAngleLink angleLink)
+}
+
+regularLink {
+  "[["
+  sectionWordRegularLink (sectionSpace sectionWordRegularLink)*
+  "]]"
+}
+
+angleLink {
+  "<"
+  sectionWordAngleLink (sectionSpace sectionWordAngleLink)*
+  ">"
 }
 
 titleTextMarkup {
@@ -167,6 +185,10 @@ Planning { planningStart endofline }
   planningStart { ("DEADLINE:"|"SCHEDULED:"|"CLOSED:") }
 }
 
+@external tokens plainLink_tokenizer from "./external-tokens" { plainLink }
+@external tokens regularLink_lookaround from "./external-tokens" { isRegularLink }
+@external tokens angleLink_lookaround from "./external-tokens" { isAngleLink }
+
 @external tokens sectionEnd_tokenizer from "./external-tokens" { sectionEnd }
 @external tokens sectionSpace_tokenizer from "./external-tokens" { sectionSpace }
 @external tokens titleWord_tokenizer from "./external-tokens" { titleWord }
@@ -184,4 +206,7 @@ Planning { planningStart endofline }
 @external tokens sectionWordVerbatim_tokenizer from "./external-tokens" { sectionwordVerbatim }
 @external tokens sectionWordCode_tokenizer from "./external-tokens" { sectionwordCode }
 @external tokens sectionWordStrikeThrough_tokenizer from "./external-tokens" { sectionwordStrikeThrough }
+
+@external tokens sectionWordAngleLink_tokenizer from "./external-tokens" { sectionWordAngleLink }
+@external tokens sectionWordRegularLink_tokenizer from "./external-tokens" { sectionWordRegularLink }
 

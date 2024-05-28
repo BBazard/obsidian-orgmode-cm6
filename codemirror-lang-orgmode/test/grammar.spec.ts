@@ -372,6 +372,42 @@ test("title text markup", () => {
   testTree(tree, spec)
 })
 
+test("links", () => {
+  const content = [
+    "text with [[regular link]] inside",
+    "[[link][description]] ",
+    "[[link with *markup* inside]]",
+    "[[broken [ link]]]",
+    "[[broken ] link]]]",
+    "[[broken ] broken][link]]]",
+    "[[broken [ broken][link]]]",
+    "https://plainlink",
+    "<https:angle link>>",
+    "<https:angle link with a",
+    "newline inside>>",
+    "<https:broken angle link with a",
+    "",
+    "blank line inside>>",
+  ].join("\n")
+  const tree = parser.parse(content)
+  const spec = [
+    "Program(",
+    "    ZerothSection(",
+    "        Link,",  // [[regular link]]
+    "        Link,",  // [[link][description]]
+    "        Link,",  // [[link with *markup* inside]]
+    "        Link,",  // https://plainlink
+    "        Link,",  // <https:angle link>
+    "        Link,",  // <https:angle link with a\nnewline inside>
+    "    ),",
+    ")",
+  ].join("\n")
+  console.log(printTree(tree, content))
+  parser.configure({strict: true}).parse(content)
+  testTree(tree, spec)
+})
+
+
 test("infinite loop testing", () => {
   parser.parse("")
   parser.parse("*")

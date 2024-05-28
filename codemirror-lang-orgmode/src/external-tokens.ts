@@ -31,6 +31,11 @@ import {
   indentHeading,
   shouldDedentHeading,
   dedentHeading,
+  plainLink,
+  isRegularLink,
+  isAngleLink,
+  sectionWordAngleLink,
+  sectionWordRegularLink,
 } from './parser.terms';
 
 const NEW_LINE = '\n'.charCodeAt(0);
@@ -61,6 +66,10 @@ function stringifyCodeLogString(charCode: number) {
     char = '<EOF/SOF>'
   }
   return char
+}
+
+function stringifyCodesLogString(charCodes: number[]) {
+  return charCodes.map(x=>stringifyCodeLogString(x)).join("")
 }
 
 function inputStreamBeginString(input: InputStream): string {
@@ -1007,6 +1016,199 @@ export const dedentHeading_lookaround = new ExternalTokenizer((input: InputStrea
   input.acceptToken(dedentHeading)
   return
 })
+
+export const plainLink_tokenizer = (orgLinkParameters: string[]) => { return new ExternalTokenizer((input, stack) => {
+    const pathPlainRegex = /(?:[^ \t\n\[\]<>()]|\((?:[^ \t\n\[\]<>()]|\([^ \t\n\[\]<>()]*\))*\))+(?:[^[:punct:] \t\n]|\/|\((?:[^ \t\n\[\]<>()]|\([^ \t\n\[\]<>()]*\))*\))/
+    log(`-- START plainLink ${inputStreamBeginString(input)}`)
+    let c = input.peek(0)
+    if (c === EOF) {
+      log(`XX REFUSE plainLink, only EOF left ${inputStreamEndString(input)}`)
+      return
+    }
+    log(stringifyCodeLogString(c))
+    if (isWhiteSpace(c) || isEndOfLine(c)) {
+      log(`XX REFUSE plainLink, whitespace ${inputStreamEndString(input)}`)
+      return
+    }
+    let s = String.fromCharCode(c)
+    while (!isWhiteSpace(c) && !isEndOfLine(c)) {
+      c = input.advance()
+      s += String.fromCharCode(c)
+      log(stringifyCodeLogString(c))
+    }
+    s = s.slice(0, s.length-1)
+    const [linkType, ...pathPlainSplit] = s.split(":")
+    const pathPlain = pathPlainSplit.join(":")
+    if (!orgLinkParameters.includes(linkType)) {
+      log(`XX REFUSE plainLink, not correct linkType ${inputStreamEndString(input)}`)
+      return
+    }
+    if (!pathPlainRegex.test(pathPlain)) {
+      log(`XX REFUSE plainLink, not correct pathPlain ${inputStreamEndString(input)}`)
+      return
+    }
+    log(`== ACCEPT plainLink ${inputStreamEndString(input)}`)
+    input.acceptToken(plainLink)
+    return
+  })
+}
+
+const checkRegularLink = (innerBracketText: string): boolean => {
+  const split = innerBracketText.split("][")
+  if (split.length > 2) {
+    // [[x][x][x]]
+    return false
+  }
+  if (split.length === 1) {
+    const pathreg = innerBracketText
+    if (/\[/.test(pathreg) || /\]/.test(pathreg)) {
+      // [[x]x]] or [[x[x]]
+      return false
+    }
+    return true
+  }
+  const [pathreg, description] = split
+  if (/\[/.test(pathreg) || /\]/.test(pathreg)) {
+    // [[x]x][desc]] or [[x[x][desc]]
+    return false
+  }
+  return true
+}
+
+export const regularLink_lookaround = (orgLinkParameters: string[]) => { return new ExternalTokenizer((input, stack) => {
+  const initialPos = input.pos
+  const L_SQUARE_BRACKET = '['.charCodeAt(0)
+  const R_SQUARE_BRACKET = ']'.charCodeAt(0)
+  if (input.peek(0) !== L_SQUARE_BRACKET || input.peek(1) !== L_SQUARE_BRACKET) {
+    return
+  }
+  input.advance()
+  let c = input.advance()
+  let s = ""
+  while (true) {
+    while (c !== R_SQUARE_BRACKET && !isEndOfLine(c)) {
+      s += String.fromCharCode(c)
+      c = input.advance()
+    }
+    if (isEndOfLine(c)) {
+      return
+    } else if (input.peek(0) === R_SQUARE_BRACKET && input.peek(1) === R_SQUARE_BRACKET) {
+      if (checkRegularLink(s)) {
+        input.advance()
+        input.advance()
+        input.acceptToken(isRegularLink, -(input.pos-initialPos))
+        return
+      }
+      return
+    }
+    s += String.fromCharCode(c)
+    c = input.advance()
+  }
+  })
+}
+
+export const angleLink_lookaround = (orgLinkParameters: string[]) => { return new ExternalTokenizer((input, stack) => {
+    const initialPos = input.pos
+    const L_ANGLE_BRACKET = '<'.charCodeAt(0)
+    const R_ANGLE_BRACKET = '>'.charCodeAt(0)
+    let c = input.peek(0)
+    if (c !== L_ANGLE_BRACKET) {
+      return
+    }
+    let linkTypeMatched = false
+    let linkTypeCandidate = ""
+    const maxLength = orgLinkParameters.reduce((acc,v)=>Math.max(acc, v.length), 0)
+    while (true) {
+      c = input.advance()
+      while (c !== COLON && !isEndOfLine(c) && c !== R_ANGLE_BRACKET) {
+        if (!linkTypeMatched && linkTypeCandidate.length < maxLength) {
+          linkTypeCandidate += String.fromCharCode(c)
+        }
+        c = input.advance()
+      }
+      if (c === COLON) {
+        if (!linkTypeMatched && orgLinkParameters.includes(linkTypeCandidate)) {
+          linkTypeMatched = true
+        }
+      } else if (c === EOF) {
+        return
+      } else if (c === NEW_LINE) {
+        let peek_distance = 1
+        while (isWhiteSpace(input.peek(peek_distance))) {
+          peek_distance += 1
+        }
+        if (isEndOfLine(input.peek(peek_distance))) {
+          log(`XX REFUSE isAngleLink unfinished blank line ${inputStreamEndString(input)}`)
+          return
+        }
+      } else if (c === R_ANGLE_BRACKET) {
+        if (linkTypeMatched) {
+          input.advance()
+          input.acceptToken(isAngleLink, -(input.pos-initialPos))
+          return
+        }
+        return
+      }
+    }
+  })
+}
+
+function sectionWordLink(input: InputStream, end: number[], term: number) {
+  const endFirstChar = end[0]
+  log(`-- START sectionWorkLink ${stringifyCodesLogString(end)} ${inputStreamBeginString(input)}`)
+  let c = input.peek(0)
+  log(stringifyCodeLogString(c))
+  if (isWhiteSpace(c)) {
+    log(`XX REFUSE sectionWorkLink ${stringifyCodesLogString(end)}, whitespace or endofline ${inputStreamEndString(input)}`)
+    return
+  }
+  while (true) {
+    while (!isWhiteSpace(c) && !isEndOfLine(c) && c !== endFirstChar) {
+      c = input.advance()
+      log(stringifyCodeLogString(c))
+    }
+    if (c === EOF) {
+      log(`== ACCEPT sectionWorkLink ${stringifyCodesLogString(end)} before eof ${inputStreamEndString(input)}`)
+      input.acceptToken(term)
+      return
+    } else if (c === NEW_LINE) {
+      c = input.advance()
+      log(stringifyCodeLogString(c))
+    } else if (isWhiteSpace(c)) {
+      log(`== ACCEPT sectionWorkLink ${stringifyCodesLogString(end)} before whitespace ${inputStreamEndString(input)}`)
+      input.acceptToken(term)
+      return
+    } else if (c === endFirstChar) {
+      let peek_distance = 1
+      while (end.length > peek_distance) {
+        if (input.peek(peek_distance) !== end[peek_distance]) {
+          break
+        }
+        peek_distance += 1
+      }
+      if (peek_distance === end.length) {
+        log(`== ACCEPT sectionWorkLink ${stringifyCodesLogString(end)} ${inputStreamEndString(input)}`)
+        input.acceptToken(term)
+        return
+      } else {
+        c = input.advance()
+        log(stringifyCodeLogString(c))
+      }
+    } else {
+      log(`XX REFUSE sectionWorkLink ${stringifyCodesLogString(end)}, unreachable code path ${inputStreamEndString(input)}`)
+      return
+    }
+  }
+}
+
+export const sectionWordRegularLink_tokenizer = new ExternalTokenizer((input, stack) => {
+  sectionWordLink(input, [']'.charCodeAt(0), ']'.charCodeAt(0)], sectionWordRegularLink)
+})
+
+export const sectionWordAngleLink_tokenizer = new ExternalTokenizer((input, stack) => {
+  sectionWordLink(input, ['>'.charCodeAt(0)], sectionWordAngleLink)
+})
+
 
 class OrgContext {
   headingLevelStack: number[]

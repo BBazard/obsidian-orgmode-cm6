@@ -35,6 +35,8 @@ export const myHighlightStyle = HighlightStyle.define([
   { tag: tags.monospace, class: "org-text-code org-section" },
   // TextStrikeThrough
   { tag: tags.strikethrough, class: "org-text-strikethrough org-section" },
+  // Link
+  { tag: tags.link, class: "org-link org-section" },
 ]);
 
 export const OrgFoldCompute = (state: EditorState, from: number, to: number) => {
