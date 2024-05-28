@@ -13,13 +13,21 @@ export class OrgmodeTaskLocation {
   priority: number[]
 }
 
+export class OrgmodeHeading {
+  status: string
+  statusType: StatusType
+  description: string
+  taskLocation: OrgmodeTaskLocation
+  priority: string
+  children: OrgmodeHeading[]
+}
+
 export class OrgmodeTask {
   status: string
   statusType: StatusType
   description: string
   taskLocation: OrgmodeTaskLocation
   priority: string
-  children: OrgmodeTask[]
 }
 
 export function cycleOrgmodeTaskStatusContent(orgmode_task: OrgmodeTask, orgmode_content: string) {
@@ -29,36 +37,53 @@ export function cycleOrgmodeTaskStatusContent(orgmode_task: OrgmodeTask, orgmode
     return replaced_content
 }
 
-function parseOrgmodeHeading(heading: SyntaxNode, orgmode_content: string, settings: OrgmodePluginSettings): OrgmodeTask {
-  const children = heading.getChildren(TOKEN.Heading)
-  const task: any = extractTaskFromHeadingNode(heading, orgmode_content, settings)
-  if (task === null) {
-    return null
-  }
+function parseOrgmodeHeading(headingNode: SyntaxNode, orgmode_content: string, settings: OrgmodePluginSettings): OrgmodeHeading {
+  const children = headingNode.getChildren(TOKEN.Heading)
+  const orgHeading = extractOrgHeadingFromHeadingNode(headingNode, orgmode_content, settings)
   if (children && children.length !== 0) {
-    const tasks = children.map(heading => parseOrgmodeHeading(heading, orgmode_content, settings))
-    task.children = tasks.filter(task => task !== null)
+    const orgHeadingChildren = children.map(heading => parseOrgmodeHeading(heading, orgmode_content, settings))
+    orgHeading.children = orgHeadingChildren.filter(task => task !== null)
   }
-  return task
+  return orgHeading
 }
 
-export function parseOrgmodeContent(orgmode_content: string, settings: OrgmodePluginSettings, orgmodeParser: LRParser): OrgmodeTask[] {
+function iterateTasks(heading: OrgmodeHeading): OrgmodeTask[] {
+  if (heading.status !== null) {
+    const task: OrgmodeTask = {
+      status: heading.status,
+      statusType: heading.statusType,
+      description: heading.description,
+      taskLocation: heading.taskLocation,
+      priority: heading.priority,
+    }
+    return [task, ...heading.children.map(x=>iterateTasks(x)).flat()]
+  } else {
+    return [...heading.children.map(x=>iterateTasks(x)).flat()]
+  }
+}
+
+export function parseOrgmodeTasks(orgmode_content: string, settings: OrgmodePluginSettings, orgmodeParser: LRParser): OrgmodeTask[] {
+  const headings = parseOrgmodeContent(orgmode_content, settings, orgmodeParser)
+  return headings.map(x=>iterateTasks(x)).flat()
+}
+
+
+export function parseOrgmodeContent(orgmode_content: string, settings: OrgmodePluginSettings, orgmodeParser: LRParser): OrgmodeHeading[] {
   const parsed = orgmodeParser.parse(orgmode_content)
   const topNode = parsed.topNode
   const children = topNode.getChildren(TOKEN.Heading)
-  const orgmode_tasks: Array<OrgmodeTask> = children.map(heading => {
+  const orgmode_headings = children.map(heading => {
     return parseOrgmodeHeading(heading, orgmode_content, settings)
   }).filter(x => x !== null)
-  console.log(JSON.stringify(orgmode_tasks, null, 2))
-  return orgmode_tasks
+  return orgmode_headings
 }
 
-function extractTaskFromHeadingNode(heading: SyntaxNode, orgmode_content: string, settings: OrgmodePluginSettings): OrgmodeTask | null {
-  let item: Map<string, any> = new Map()
+function extractOrgHeadingFromHeadingNode(headingNode: SyntaxNode, orgmode_content: string, settings: OrgmodePluginSettings): OrgmodeHeading {
+  const item: Map<string, any> = new Map()
   item.set('taskLocation', new Map())
-  const TodoKeywordNode = heading.getChild(TOKEN.TodoKeyword)
-  const TitleNode = heading.getChild(TOKEN.Title)
-  const PriorityNode = heading.getChild(TOKEN.Priority)
+  const TodoKeywordNode = headingNode.getChild(TOKEN.TodoKeyword)
+  const TitleNode = headingNode.getChild(TOKEN.Title)
+  const PriorityNode = headingNode.getChild(TOKEN.Priority)
   if (TodoKeywordNode) {
     item.set('status', orgmode_content.slice(TodoKeywordNode.from, TodoKeywordNode.to))
     item.get('taskLocation').set('status', [TodoKeywordNode.from, TodoKeywordNode.to])
@@ -71,22 +96,19 @@ function extractTaskFromHeadingNode(heading: SyntaxNode, orgmode_content: string
     item.set('priority', priority_match[1])
     item.get('taskLocation').set('priority', [PriorityNode.from + priority_match.index + 2, PriorityNode.from + priority_match.index + 3])
   }
-  if (item.get('status')) {
-    const taskLocation: OrgmodeTaskLocation = {
-      status: item.get('taskLocation').get('status') ?? null,
-      priority: item.get('taskLocation').get('priority') ?? null,
-    }
-    const status = item.get("status") ?? null
-    const statusType = settings.doneKeywords.includes(status) ? StatusType.DONE : StatusType.TODO
-    const task: OrgmodeTask = {
-      status: status,
-      statusType: statusType,
-      description: item.get("description"),
-      priority: item.get("priority") ?? null,
-      taskLocation: taskLocation,
-      children: [],  // will be set later
-    }
-    return task
+  const taskLocation: OrgmodeTaskLocation = {
+    status: item.get('taskLocation').get('status') ?? null,
+    priority: item.get('taskLocation').get('priority') ?? null,
   }
-  return null
+  const status = item.get("status") ?? null
+  const statusType = settings.doneKeywords.includes(status) ? StatusType.DONE : StatusType.TODO
+  const task: OrgmodeHeading = {
+    status: status,
+    statusType: statusType,
+    description: item.get("description"),
+    priority: item.get("priority") ?? null,
+    taskLocation: taskLocation,
+    children: [],  // will be set later
+  }
+  return task
 }

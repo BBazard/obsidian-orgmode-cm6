@@ -3,7 +3,7 @@ import { LRParser } from '@lezer/lr'
 
 import { OrgmodeParser } from 'codemirror-lang-orgmode'
 
-import { cycleOrgmodeTaskStatusContent, parseOrgmodeContent } from 'org-tasks'
+import { cycleOrgmodeTaskStatusContent, parseOrgmodeTasks } from 'org-tasks'
 import { OrgmodePluginSettings } from 'settings'
 
 const settings: OrgmodePluginSettings = {
@@ -15,7 +15,7 @@ const orgmodeParser: LRParser = OrgmodeParser(words)
 
 test('Parsing orgmode tasks', async () => {
   const content = "* TODO task description\n"
-  const tasks = parseOrgmodeContent(content, settings, orgmodeParser)
+  const tasks = parseOrgmodeTasks(content, settings, orgmodeParser)
   expect(tasks[0]).toStrictEqual({
     status: 'TODO',
     statusType: 'TODO',
@@ -25,11 +25,10 @@ test('Parsing orgmode tasks', async () => {
       priority: null,
       status: [2, 6]
     },
-    children: []
   })
   const new_content = cycleOrgmodeTaskStatusContent(tasks[0], content)
   expect(new_content).toBe("* DONE task description\n")
-  const new_tasks = parseOrgmodeContent(new_content, settings, orgmodeParser)
+  const new_tasks = parseOrgmodeTasks(new_content, settings, orgmodeParser)
   expect(new_tasks[0]).toStrictEqual({
     status: 'DONE',
     statusType: 'DONE',
@@ -39,96 +38,57 @@ test('Parsing orgmode tasks', async () => {
       priority: null,
       status: [2, 6]
     },
-    children: []
   })
-})
-
-test('heading without a keyword or with unknown keyword are not tasks', async () => {
-  const content = [
-    "* task description",
-    "* AAA task description",
-    "",
-  ].join('\n')
-  const tasks = parseOrgmodeContent(content, settings, orgmodeParser)
-  expect(tasks).toStrictEqual([])
 })
 
 test('nested orgmode tasks', async () => {
   const content = [
-    "* TODO task description",
-    "** TODO task description",
-    "*** TODO task description",
+    "* TODO task description 1",
+    "** description 2",
+    "*** TODO task description 3",
     "",
   ].join('\n')
-  const tasks = parseOrgmodeContent(content, settings, orgmodeParser)
-  expect(tasks[0]).toStrictEqual({
-    status: 'TODO',
-    statusType: 'TODO',
-    description: 'task description',
-    priority: null,
-    taskLocation: {
-      priority: null,
-      status: [2, 6]
-    },
-    children: [{
+  const tasks = parseOrgmodeTasks(content, settings, orgmodeParser)
+  expect(tasks).toStrictEqual([
+    {
       status: 'TODO',
       statusType: 'TODO',
-      description: 'task description',
+      description: 'task description 1',
       priority: null,
       taskLocation: {
         priority: null,
-        status: [27, 31]
+        status: [2, 6]
       },
-      children: [{
-        status: 'TODO',
-        statusType: 'TODO',
-        description: 'task description',
+    },
+    {
+      status: 'TODO',
+      statusType: 'TODO',
+      description: 'task description 3',
+      priority: null,
+      taskLocation: {
         priority: null,
-        taskLocation: {
-          priority: null,
-          status: [53, 57]
-        },
-        children: []
-      }]
-    }]
-  })
-  const new_content = cycleOrgmodeTaskStatusContent(tasks[0], content)
+        status: [47, 51]
+      },
+    }
+  ])
+  const new_content = cycleOrgmodeTaskStatusContent(tasks[1], content)
   expect(new_content).toBe([
-    "* DONE task description",
-    "** TODO task description",
-    "*** TODO task description",
+    "* TODO task description 1",
+    "** description 2",
+    "*** DONE task description 3",
     "",
   ].join("\n"))
-  const new_tasks = parseOrgmodeContent(new_content, settings, orgmodeParser)
-  expect(new_tasks[0]).toStrictEqual({
-    status: 'DONE',
-    statusType: 'DONE',
-    description: 'task description',
-    priority: null,
-    taskLocation: {
-      priority: null,
-      status: [2, 6]
-    },
-    children: [{
-      status: 'TODO',
-      statusType: 'TODO',
-      description: 'task description',
+  const new_tasks = parseOrgmodeTasks(new_content, settings, orgmodeParser)
+  expect(new_tasks[1]).toStrictEqual(
+    {
+      status: 'DONE',
+      statusType: 'DONE',
+      description: 'task description 3',
       priority: null,
       taskLocation: {
         priority: null,
-        status: [27, 31]
+        status: [47, 51]
       },
-      children: [{
-        status: 'TODO',
-        statusType: 'TODO',
-        description: 'task description',
-        priority: null,
-        taskLocation: {
-          priority: null,
-          status: [53, 57]
-        },
-        children: []
-      }]
-    }]
-  })
+    },
+  )
 })

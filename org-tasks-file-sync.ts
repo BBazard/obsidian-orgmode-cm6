@@ -2,7 +2,7 @@ import { LRParser } from '@lezer/lr';
 import { TFile, Vault, EventRef } from "obsidian";
 
 import { OrgmodePluginSettings } from 'settings';
-import { OrgmodeTask, parseOrgmodeContent, cycleOrgmodeTaskStatusContent } from 'org-tasks';
+import { OrgmodeTask, parseOrgmodeTasks, cycleOrgmodeTaskStatusContent } from 'org-tasks';
 
 export class OrgTasksSync {
   private onModifiedRef: EventRef | null
@@ -41,7 +41,7 @@ export class OrgTasksSync {
         return
       }
       const newest_orgmode_content = await this.vault.read(tfile)
-      const orgmode_tasks: Array<OrgmodeTask> = parseOrgmodeContent(newest_orgmode_content, this.settings, this.orgmodeParser)
+      const orgmode_tasks: Array<OrgmodeTask> = parseOrgmodeTasks(newest_orgmode_content, this.settings, this.orgmodeParser)
       callback(orgmode_tasks)
     })
   }
@@ -60,7 +60,7 @@ export class OrgTasksSync {
     if (this.unloaded) {
       return
     }
-    const orgmode_tasks: Array<OrgmodeTask> = parseOrgmodeContent(await this.vault.read(tfile), this.settings, this.orgmodeParser)
+    const orgmode_tasks: Array<OrgmodeTask> = parseOrgmodeTasks(await this.vault.read(tfile), this.settings, this.orgmodeParser)
     return orgmode_tasks
   }
 }
