@@ -157,3 +157,7 @@
   margin-left: 8px;
   user-select: none;
 }
+
+.orgmode-view .org-link {
+  color: var(--link-color);
+}

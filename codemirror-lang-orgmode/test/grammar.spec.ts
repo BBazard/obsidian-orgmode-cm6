@@ -393,12 +393,12 @@ test("links", () => {
   const spec = [
     "Program(",
     "    ZerothSection(",
-    "        Link,",  // [[regular link]]
-    "        Link,",  // [[link][description]]
-    "        Link,",  // [[link with *markup* inside]]
-    "        Link,",  // https://plainlink
-    "        Link,",  // <https:angle link>
-    "        Link,",  // <https:angle link with a\nnewline inside>
+    "        RegularLink,",  // [[regular link]]
+    "        RegularLink,",  // [[link][description]]
+    "        RegularLink,",  // [[link with *markup* inside]]
+    "        PlainLink,",  // https://plainlink
+    "        AngleLink,",  // <https:angle link>
+    "        AngleLink,",  // <https:angle link with a\nnewline inside>
     "    ),",
     ")",
   ].join("\n")

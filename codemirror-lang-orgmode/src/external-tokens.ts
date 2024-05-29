@@ -31,7 +31,7 @@ import {
   indentHeading,
   shouldDedentHeading,
   dedentHeading,
-  plainLink,
+  PlainLink,
   isRegularLink,
   isAngleLink,
   sectionWordAngleLink,
@@ -1048,7 +1048,7 @@ export const plainLink_tokenizer = (orgLinkParameters: string[]) => { return new
       return
     }
     log(`== ACCEPT plainLink ${inputStreamEndString(input)}`)
-    input.acceptToken(plainLink)
+    input.acceptToken(PlainLink)
     return
   })
 }

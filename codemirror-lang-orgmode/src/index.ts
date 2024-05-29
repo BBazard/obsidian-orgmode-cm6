@@ -6,18 +6,19 @@ import { title_tokenizer, todokeyword_tokenizer, plainLink_tokenizer, regularLin
 import * as ExtToken from "./external-tokens"
 import { grammarFile } from "./generated_grammar";
 
+export const orgLinkParameters = [
+  // "shell",
+  // "news",
+  "mailto",
+  "https",
+  "http",
+  // "ftp",
+  // "help",
+  "file",
+  // "elisp",
+]
+
 const configurableExternalTokenizer = (words: string[]) => {
-  const orgLinkParameters = [
-    "shell",
-    "news",
-    "mailto",
-    "https",
-    "http",
-    "ftp",
-    "help",
-    "file",
-    "elisp",
-  ]
   return (name: string, terms: { [name: string]: number }) => {
     if (name == 'title_tokenizer') {
       return title_tokenizer(words)
@@ -67,7 +68,9 @@ export const OrgmodeLanguage = (parser: LRParser) => {
           "TextVerbatim": tags.literal,
           "TextCode": tags.monospace,
           "TextStrikeThrough": tags.strikethrough,
-          "Link": tags.link,
+          "PlainLink": tags.link,
+          "RegularLink": tags.link,
+          "AngleLink": tags.link,
         })
       ]
     }),

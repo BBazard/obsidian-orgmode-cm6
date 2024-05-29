@@ -13,6 +13,7 @@ import { DEFAULT_SETTINGS, OrgmodePluginSettings } from 'settings';
 import { OrgmodeTask, StatusType } from 'org-tasks';
 import { OrgTasksSync } from 'org-tasks-file-sync';
 import { myHighlightStyle, makeHeadingsFoldable } from 'language-extensions';
+import { orgmodeLivePreview } from "org-live-preview";
 
 let todoKeywordsReloader = new Compartment
 
@@ -213,6 +214,14 @@ class OrgView extends TextFileView {
         EditorView.updateListener.of((v) => {
           if (v.docChanged) {
             this.requestSave()
+          }
+        }),
+        orgmodeLivePreview((href: string) => {
+          const tfile = this.app.vault.getFileByPath(href)
+          if (tfile) {
+            this.leaf.openFile(tfile)
+          } else {
+            console.log(`no handler for link "${href}"`)
           }
         }),
       ]

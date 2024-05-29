@@ -59,22 +59,22 @@ titleObject {
 }
 
 object {
-  Link | textMarkup | sectionword
+  link | textMarkup | sectionword
 }
 
-Link {
-  plainLink |
-  (isRegularLink regularLink) |
-  (isAngleLink angleLink)
+link {
+  PlainLink |
+  (isRegularLink RegularLink) |
+  (isAngleLink AngleLink)
 }
 
-regularLink {
+RegularLink {
   "[["
   sectionWordRegularLink (sectionSpace sectionWordRegularLink)*
   "]]"
 }
 
-angleLink {
+AngleLink {
   "<"
   sectionWordAngleLink (sectionSpace sectionWordAngleLink)*
   ">"
@@ -185,7 +185,7 @@ Planning { planningStart endofline }
   planningStart { ("DEADLINE:"|"SCHEDULED:"|"CLOSED:") }
 }
 
-@external tokens plainLink_tokenizer from "./external-tokens" { plainLink }
+@external tokens plainLink_tokenizer from "./external-tokens" { PlainLink }
 @external tokens regularLink_lookaround from "./external-tokens" { isRegularLink }
 @external tokens angleLink_lookaround from "./external-tokens" { isAngleLink }
 
