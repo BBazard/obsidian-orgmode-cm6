@@ -137,6 +137,17 @@ function loadDecorations(state: EditorState, openLinkCallback: (href: string) =>
           )
         }
       }
+      if (
+        node.type.name === "TextBold" ||
+        node.type.name === "TextItalic" ||
+        node.type.name === "TextUnderline" ||
+        node.type.name === "TextVerbatim" ||
+        node.type.name === "TextCode" ||
+        node.type.name === "TextStrikeThrough"
+      ) {
+        builder.add(node.from, node.from+1, Decoration.replace({}))
+        builder.add(node.to-1, node.to, Decoration.replace({}))
+      }
     },
   })
   return builder.finish();

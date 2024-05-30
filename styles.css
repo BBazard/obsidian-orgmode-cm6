@@ -8,7 +8,7 @@
 }
 
 .theme-dark .org-heading,
-.theme-dark .org-heading + .org-section {
+.theme-dark .cm-line:has(.org-heading) > .org-section {
   color: #2fbd23;
 }
 
@@ -65,7 +65,7 @@
 
 
 .theme-light .org-heading,
-.theme-light .org-heading + .org-section {
+.theme-light .cm-line:has(.org-heading) > .org-section {
   color: #2f8925;
 }
 
