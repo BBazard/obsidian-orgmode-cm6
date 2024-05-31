@@ -216,13 +216,27 @@ class OrgView extends TextFileView {
             this.requestSave()
           }
         }),
-        orgmodeLivePreview((href: string) => {
-          const tfile = this.app.vault.getFileByPath(href)
-          if (tfile) {
-            this.leaf.openFile(tfile)
-          } else {
-            console.log(`no handler for link "${href}"`)
-          }
+        orgmodeLivePreview({
+          navigateToFile: (filePath: string) => {
+            try {
+              let tfile = this.app.metadataCache.getFirstLinkpathDest(filePath, ".");
+              if (!tfile) {
+                tfile = this.app.metadataCache.getFirstLinkpathDest(filePath+".org", ".");
+              }
+              this.leaf.openFile(tfile)
+            } catch {
+              return null
+            }
+          },
+          getImageUri: (linkPath: string) => {
+            try {
+              let imageFile = this.app.metadataCache.getFirstLinkpathDest(linkPath, ".");
+              let browserUri = this.app.vault.getResourcePath(imageFile)
+              return browserUri
+            } catch {
+              return null
+            }
+          },
         }),
       ]
     // see https://github.com/replit/codemirror-vim/blob/ab5a5a42171573604e8ae74b8a720aecd53d9eb1/src/vim.js#L266

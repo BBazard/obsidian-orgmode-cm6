@@ -61,3 +61,69 @@ export const OrgFoldCompute = (state: EditorState, from: number, to: number) => 
 }
 
 export const makeHeadingsFoldable = foldService.of(OrgFoldCompute);
+
+function linkIsImage(linkText: string) {
+  if (!linkText.includes(".")) {
+    return false
+  }
+  const ext = linkText.slice(linkText.lastIndexOf("."))
+  const imageExtensions = ['.apng', '.avif', '.gif', '.jpeg', '.jpg', '.png', '.svg', '.webp']
+  return imageExtensions.includes(ext)
+}
+
+export type LinkHandler = "external" | "internal" | "internal-inline-image"
+
+function parseLinkText(linkText: string): [string, LinkHandler] {
+  const idx = linkText.indexOf(':')
+  let linkPath = null
+  let linkHandler: LinkHandler = null
+  let linkType = null
+  if (idx === -1) {  // case 'PATHINNER'
+    linkHandler = "internal"
+    linkPath = linkText
+  } else if (/:\/\//.test(linkText)) {  // case 'LINKTYPE://PATHINNER'
+    linkPath = linkText
+    linkHandler = "external"
+  } else {  // case 'LINKTYPE:PATHINNER'
+    linkType = linkText.slice(0, idx)
+    linkPath = linkText.slice(idx+1)
+    if (linkType === 'file') {
+      linkHandler = "internal"
+    } else {
+      // not handled
+      linkHandler = "internal"
+    }
+  }
+  return [linkPath, linkHandler]
+}
+
+export const extractLinkFromNode = (node: number, linkText: string): [string, string, LinkHandler] => {
+  let linkHandler: LinkHandler = null
+  let linkPath = null
+  let displayText = null
+  let hasLinkDescription = false
+  if (node === TOKEN.PlainLink) {
+    linkPath = linkText
+    displayText = linkText
+    linkHandler = "external"
+  } else if (node === TOKEN.RegularLink) {
+    let innerLinkText
+    if (/\]\[/.test(linkText)) {
+      innerLinkText = linkText.split("][")[0].slice(2)
+      displayText = linkText.split("][")[1].slice(0, -2)
+      hasLinkDescription = true
+    } else {
+      innerLinkText = linkText.slice(2, -2)
+      displayText = innerLinkText
+    }
+    [linkPath, linkHandler] = parseLinkText(innerLinkText)
+  } else if (node === TOKEN.AngleLink) {
+    [linkPath, linkHandler] = parseLinkText(linkText.slice(1, -1))
+    displayText = linkText.slice(1, -1)
+  }
+  if (linkHandler === 'internal' && linkIsImage(linkPath) && !hasLinkDescription) {
+    linkHandler = "internal-inline-image"
+    displayText = null
+  }
+  return [linkPath, displayText, linkHandler]
+}

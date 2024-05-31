@@ -12,139 +12,124 @@ import {
   WidgetType,
 } from "@codemirror/view";
 import { syntaxTree } from "@codemirror/language";
-import { orgLinkParameters } from "codemirror-lang-orgmode";
+import { TOKEN } from 'codemirror-lang-orgmode';
+import { LinkHandler, extractLinkFromNode } from 'language-extensions';
 
-class PlainLinkWidget extends WidgetType {
-  linkText: string
-  constructor(linkText: string) {
+class ImageWidget extends WidgetType {
+  path: string
+  getImageUri: (linkPath: string) => string
+  constructor(path: string, getImageUri: (linkPath: string) => string) {
     super()
-    this.linkText = linkText
+    this.path = path
+    this.getImageUri = getImageUri
   }
-  eq(other: PlainLinkWidget) {
-    return this.linkText == other.linkText
+  eq(other: ImageWidget) {
+    return this.path == other.path
+  }
+  toDOM(view: EditorView): HTMLElement {
+    const image = document.createElement("img");
+    const obsidianPath = this.getImageUri(this.path)
+    if (obsidianPath) {
+      image.src = this.getImageUri(this.path)
+    } else {
+      image.src = this.path
+    }
+    return image
+  }
+}
+
+class LinkWidget extends WidgetType {
+  linkPath: string
+  displayText: string
+  linkHandler: LinkHandler
+  navigateToFile: (filePath: string) => void
+  constructor(
+    linkPath: string,
+    displayText: string,
+    linkHandler: LinkHandler,
+    navigateToFile: (filePath: string) => void,
+  ) {
+    super()
+    this.linkPath = linkPath
+    this.displayText = displayText
+    this.linkHandler = linkHandler
+    this.navigateToFile = navigateToFile
+  }
+  eq(other: LinkWidget) {
+    return this.linkPath == other.linkPath && this.displayText == other.displayText
   }
   toDOM(view: EditorView): HTMLElement {
     const link = document.createElement("a");
-    link.innerText = this.linkText
+    link.innerText = this.displayText
     link.href = "#"
     link.addEventListener("click", () => {
-      window.open(this.linkText)
+      if (this.linkHandler === "external") {
+        window.open(this.linkPath)
+      } else if (this.linkHandler === "internal") {
+        this.navigateToFile(this.linkPath)
+      }
     })
     return link
   }
 }
 
-class RegularLinkWidget extends WidgetType {
-  linkText: string
-  href: string
-  openLink: (href: string) => void
-  constructor(linkText: string, openLinkCallback: (href: string) => void) {
-    super()
-    this.openLink = openLinkCallback
-    if (/\]\[/.test(linkText)) {
-      let desc = linkText.split("][")[1]
-      let href = linkText.split("][")[0].substring(2)
-      desc = desc.substring(0, desc.length-2)
-      this.linkText = desc
-      this.href = href
-    } else {
-      this.linkText = linkText.substring(2, linkText.length-2)
-      this.href = this.linkText
-    }
-  }
-  eq(other: RegularLinkWidget) {
-    return this.linkText == other.linkText
-  }
-  toDOM(view: EditorView): HTMLElement {
-    const link = document.createElement("a");
-    link.innerText = this.linkText
-    link.href = "#"
-    let type = null
-    for (const lparam of orgLinkParameters) {
-      if (this.href.startsWith(`${lparam}:`)) {
-        type = "LINKTYPE"
-      }
-    }
-    link.addEventListener("click", () => {
-      if (type === "LINKTYPE") {
-        window.open(this.href)
-      } else {
-        this.openLink(this.href)
-      }
-    });
-    return link;
-  }
-}
-
-class AngleLinkWidget extends WidgetType {
-  linkText: string
-  constructor(linkText: string) {
-    super()
-    this.linkText = linkText.substring(1, linkText.length-1)
-  }
-  eq(other: AngleLinkWidget) {
-    return this.linkText == other.linkText
-  }
-  toDOM(view: EditorView): HTMLElement {
-    const link = document.createElement("a");
-    link.innerText = this.linkText
-    link.href = "#"
-    link.addEventListener("click", () => {
-      window.open(this.linkText)
-    });
-    return link;
-  }
-}
-
-function loadDecorations(state: EditorState, openLinkCallback: (href: string) => void) {
+function loadDecorations(
+  state: EditorState,
+  obsidianUtils: {
+    navigateToFile: (filePath: string) => void,
+    getImageUri: (linkPath: string) => any,
+}) {
   const builder = new RangeSetBuilder<Decoration>();
   const cursorPos = state.selection.main.head
   syntaxTree(state).iterate({
     enter(node) {
       const isCursorInsideDecoration = (cursorPos >= node.from && cursorPos <= node.to)
-      if (isCursorInsideDecoration) {
-        return
-      }
       if (
-        node.type.name === "PlainLink" ||
-        node.type.name === "RegularLink" ||
-        node.type.name === "AngleLink"
+        node.type.id === TOKEN.PlainLink ||
+        node.type.id === TOKEN.RegularLink ||
+        node.type.id === TOKEN.AngleLink
       ) {
         const linkText = state.doc.sliceString(node.from, node.to)
-        if (node.type.name === "PlainLink") {
+        const [linkPath, displayText, linkHandler] = extractLinkFromNode(node.type.id, linkText)
+        if (linkHandler === "internal-inline-image") {
+          if (isCursorInsideDecoration) {
+            builder.add(
+              node.to,
+              node.to,
+              Decoration.widget({
+                widget: new ImageWidget(linkPath, obsidianUtils.getImageUri),
+                block: true,
+              })
+            )
+          } else {
+            builder.add(
+              node.from,
+              node.to,
+              Decoration.replace({
+                widget: new ImageWidget(linkPath, obsidianUtils.getImageUri),
+              })
+            )
+          }
+        } else if (!isCursorInsideDecoration) {
           builder.add(
             node.from,
             node.to,
             Decoration.replace({
-              widget: new PlainLinkWidget(linkText),
-            })
-          )
-        } else if (node.type.name === "RegularLink") {
-          builder.add(
-            node.from,
-            node.to,
-            Decoration.replace({
-              widget: new RegularLinkWidget(linkText, openLinkCallback),
-            })
-          )
-        } else if (node.type.name === "AngleLink") {
-          builder.add(
-            node.from,
-            node.to,
-            Decoration.replace({
-              widget: new AngleLinkWidget(linkText),
+              widget: new LinkWidget(linkPath, displayText, linkHandler, obsidianUtils.navigateToFile),
             })
           )
         }
-      }
-      if (
-        node.type.name === "TextBold" ||
-        node.type.name === "TextItalic" ||
-        node.type.name === "TextUnderline" ||
-        node.type.name === "TextVerbatim" ||
-        node.type.name === "TextCode" ||
-        node.type.name === "TextStrikeThrough"
+      } else if (
+        node.type.id === TOKEN.TextBold ||
+        node.type.id === TOKEN.TextItalic ||
+        node.type.id === TOKEN.TextUnderline ||
+        node.type.id === TOKEN.TextVerbatim ||
+        node.type.id === TOKEN.TextCode ||
+        node.type.id === TOKEN.TextStrikeThrough
       ) {
+        if (isCursorInsideDecoration) {
+          return
+        }
         builder.add(node.from, node.from+1, Decoration.replace({}))
         builder.add(node.to-1, node.to, Decoration.replace({}))
       }
@@ -153,13 +138,16 @@ function loadDecorations(state: EditorState, openLinkCallback: (href: string) =>
   return builder.finish();
 }
 
-export const orgmodeLivePreview = (openLinkCallback: (href: string) => void) => {
+export const orgmodeLivePreview = (obsidianUtils: {
+    navigateToFile: (filePath: string) => void,
+    getImageUri: (linkPath: string) => string,
+}) => {
   return StateField.define<DecorationSet>({
     create(state: EditorState): DecorationSet {
-      return loadDecorations(state, openLinkCallback)
+      return loadDecorations(state, obsidianUtils)
     },
     update(oldState: DecorationSet, transaction: Transaction): DecorationSet {
-      return loadDecorations(transaction.state, openLinkCallback)
+      return loadDecorations(transaction.state, obsidianUtils)
     },
     provide(field: StateField<DecorationSet>): Extension {
       return EditorView.decorations.from(field);
