@@ -12,6 +12,8 @@ Inspired by https://github.com/ryanpcmcquen/obsidian-org-mode and https://github
 - collapsable headings
 - customizable todo keywords in the settings
 - customizable colors via css (use the [styles.css](./styles.css) as a [css snippet](https://help.obsidian.md/Extending+Obsidian/CSS+snippets) and tweak it)
+- text markup (bold, italic, underline, strike-through)
+- links (url, vault file, a link to an image is rendered)
 - show orgmode tasks in markdown files (unstable feature, see the [dedicated section](#show-orgmode-tasks-in-markdown-files))
 
 ## Usage
@@ -28,7 +30,7 @@ To create an org file in your vault, you currently have to create outside obsidi
 If you don't already have an org file, try to create a file called `todo.org` with the following content:
 
 ```org
-* TODO [#A] A task with high priority
+* TODO [#A] A task with *high* priority
 
 The description of the task
 
@@ -41,6 +43,8 @@ SCHEDULED: <2023-12-08 Fri 11:13>
 :PROPERTIES:
 :CREATED: [2023-12-03 Sun 10:48]
 :END:
+
+a [[https://github.com/BBazard/obsidian-orgmode-cm6][link]]
 ```
 
 ## Show orgmode tasks in markdown files
