@@ -150,7 +150,7 @@ export default class OrgmodePlugin extends Plugin {
 class OrgView extends TextFileView {
   // Internal code mirror instance:
   codeMirror: EditorView;
-  extensions: Extension;
+  extensions: Extension[];
 
   constructor(leaf: WorkspaceLeaf, orgmodeParser: LRParser) {
     super(leaf);
@@ -158,8 +158,6 @@ class OrgView extends TextFileView {
       parent: this.contentEl
     })
     this.extensions = [
-        // @ts-expect-error, not typed
-        vim(this.app?.vault?.config?.vimMode),
         history(),
         keymap.of([...defaultKeymap, ...historyKeymap]),
         drawSelection(),
@@ -239,10 +237,14 @@ class OrgView extends TextFileView {
           },
         }),
       ]
-    // see https://github.com/replit/codemirror-vim/blob/ab5a5a42171573604e8ae74b8a720aecd53d9eb1/src/vim.js#L266
-    Vim.defineEx('write', 'w', () => {
-      this.save()
-    });
+    // @ts-expect-error, not typed
+    if (this.app?.vault?.config?.vimMode) {
+      this.extensions.push(vim()),
+      // see https://github.com/replit/codemirror-vim/blob/ab5a5a42171573604e8ae74b8a720aecd53d9eb1/src/vim.js#L266
+      Vim.defineEx('write', 'w', () => {
+        this.save()
+      });
+    }
   }
 
   getViewData = () => {
