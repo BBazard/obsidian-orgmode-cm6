@@ -17,6 +17,10 @@ import { orgmodeLivePreview } from "org-live-preview";
 
 let todoKeywordsReloader = new Compartment
 
+function parseKeywordTextArea(value: string): string[] {
+  return value.replace(/\n/g, ",").split(',').map(x=>x.trim()).filter(x => x != "");
+}
+
 export class OrgmodeSettingTab extends PluginSettingTab {
   plugin: OrgmodePlugin;
 
@@ -31,20 +35,20 @@ export class OrgmodeSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName('Keywords for active (todo) tasks')
       .addTextArea((text) => {
-        text.setValue(this.plugin.settings.todoKeywords.toString())
+        text.setValue(this.plugin.settings.todoKeywords.join(","))
           .setPlaceholder('comma-separated values')
           .onChange(async (value) => {
-            this.plugin.settings.todoKeywords = value.split(',');
+            this.plugin.settings.todoKeywords = parseKeywordTextArea(value)
             await this.plugin.saveSettings();
           })
       })
     new Setting(containerEl)
       .setName('Keywords for completed (done) tasks')
       .addTextArea((text) => {
-        text.setValue(this.plugin.settings.doneKeywords.toString())
+        text.setValue(this.plugin.settings.doneKeywords.join(","))
           .setPlaceholder('comma-separated values')
           .onChange(async (value) => {
-            this.plugin.settings.doneKeywords = value.split(',');
+            this.plugin.settings.doneKeywords = parseKeywordTextArea(value)
             await this.plugin.saveSettings();
           })
       })
@@ -59,6 +63,8 @@ export default class OrgmodePlugin extends Plugin {
 
   async loadSettings() {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    this.settings.todoKeywords = parseKeywordTextArea(this.settings.todoKeywords.join(","))
+    this.settings.doneKeywords = parseKeywordTextArea(this.settings.doneKeywords.join(","))
     const words = [...this.settings.todoKeywords, ...this.settings.doneKeywords]
     this.orgmodeParser = OrgmodeParser(words)
   }
