@@ -75,6 +75,22 @@ test("nested headings fold", async () => {
   expect(foldRangeFromContent(content, 0, 6)).toStrictEqual({"from": 6, "to": 24})
 })
 
+test("property drawer fold", async () => {
+  let content = [
+    "* title",
+    ":PROPERTIES:",
+    ":CREATED:  [2020-10-06 Tue 18:12]",
+    ":END:",
+  ].join("\n")
+  expect(foldRangeFromContent(content, 8, 19)).toStrictEqual({"from": 19, "to": 60})
+
+  // no fold on second line
+  expect(foldRangeFromContent(content, 21, 53)).toStrictEqual(null)
+
+  // no fold on third line
+  expect(foldRangeFromContent(content, 55, 59)).toStrictEqual(null)
+})
+
 
 test("link handling", async () => {
   expect(

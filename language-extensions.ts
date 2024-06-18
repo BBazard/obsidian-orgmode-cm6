@@ -41,20 +41,28 @@ export const myHighlightStyle = HighlightStyle.define([
 
 export const OrgFoldCompute = (state: EditorState, from: number, to: number) => {
   let currentLineNode = syntaxTree(state).topNode.resolve(from, 1).node
-  if (currentLineNode.type.id !== TOKEN.Heading) {
-    return null
-  }
-  const heading = currentLineNode
-  const hasSection = currentLineNode.getChild(TOKEN.Section)
-  const hasHeading = currentLineNode.getChild(TOKEN.Heading)
-  let block_to = null
-  if (hasSection || hasHeading) {
-    block_to = heading.to
-  }
-  if (state.doc.sliceString(block_to-1, block_to) === '\n') {
-    block_to = block_to - 1
-  }
-  if (block_to) {
+  const onFirstLine = (state.doc.lineAt(from).number === state.doc.lineAt(currentLineNode.from).number)
+  if (currentLineNode.type.id === TOKEN.Heading) {
+    const heading = currentLineNode
+    const hasSection = currentLineNode.getChild(TOKEN.Section)
+    const hasHeading = currentLineNode.getChild(TOKEN.Heading)
+    if (!hasSection && !hasHeading) {
+      return null
+    }
+    let block_to = heading.to
+    if (state.doc.sliceString(block_to-1, block_to) === '\n') {
+      block_to = block_to - 1
+    }
+    return { from: to, to: block_to };
+  } else if (currentLineNode.type.id === TOKEN.PropertyDrawer) {
+    if (!onFirstLine) {
+      return null
+    }
+    const propertyDrawer = currentLineNode
+    let block_to = propertyDrawer.to
+    if (state.doc.sliceString(block_to-1, block_to) === '\n') {
+      block_to = block_to - 1
+    }
     return { from: to, to: block_to };
   }
   return null
