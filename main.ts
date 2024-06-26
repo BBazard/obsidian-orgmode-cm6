@@ -189,9 +189,9 @@ class OrgView extends TextFileView {
             foldIcon_svg_path.setAttribute("d", "M3 8L12 17L21 8");
             foldIcon_svg.appendChild(foldIcon_svg_path);
             if (open) {
-              foldIcon_svg.addClass("open-fold-icon");
+              foldIcon.addClass("open-fold-icon");
             } else {
-              foldIcon_svg.addClass("closed-fold-icon");
+              foldIcon.addClass("closed-fold-icon");
               foldIcon_svg.setCssStyles({ "transform": "rotate(-90deg)", "color": "var(--text-accent)" });
             }
             foldIcon.appendChild(foldIcon_svg);
