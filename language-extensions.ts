@@ -1,6 +1,8 @@
 import { HighlightStyle, foldService, syntaxTree } from "@codemirror/language"
 import { EditorState } from "@codemirror/state";
+import { SyntaxNode } from "@lezer/common"
 import { tags } from "@lezer/highlight"
+import { LRParser } from "@lezer/lr";
 
 import { TOKEN } from 'codemirror-lang-orgmode';
 
@@ -79,7 +81,7 @@ function linkIsImage(linkText: string) {
   return imageExtensions.includes(ext)
 }
 
-export type LinkHandler = "external" | "internal" | "internal-inline-image"
+export type LinkHandler = "external" | "internal-file" | "internal-inline-image" | "internal-id"
 
 function parseLinkText(linkText: string): [string, LinkHandler] {
   const idx = linkText.indexOf(':')
@@ -87,7 +89,7 @@ function parseLinkText(linkText: string): [string, LinkHandler] {
   let linkHandler: LinkHandler = null
   let linkType = null
   if (idx === -1) {  // case 'PATHINNER'
-    linkHandler = "internal"
+    linkHandler = "internal-file"
     linkPath = linkText
   } else if (/:\/\//.test(linkText)) {  // case 'LINKTYPE://PATHINNER'
     linkPath = linkText
@@ -96,10 +98,12 @@ function parseLinkText(linkText: string): [string, LinkHandler] {
     linkType = linkText.slice(0, idx)
     linkPath = linkText.slice(idx+1)
     if (linkType === 'file') {
-      linkHandler = "internal"
+      linkHandler = "internal-file"
+    } else if (linkType === 'id') {
+      linkHandler = "internal-id"
     } else {
       // not handled
-      linkHandler = "internal"
+      linkHandler = "internal-file"
     }
   }
   return [linkPath, linkHandler]
@@ -114,6 +118,11 @@ export const extractLinkFromNode = (node: number, linkText: string): [string, st
     linkPath = linkText
     displayText = linkText
     linkHandler = "external"
+    let [linkPathDetected, linkHandlerDetected] = parseLinkText(linkText)
+    if (linkHandlerDetected == "internal-id") {
+      linkHandler = "internal-id"
+      linkPath = linkPathDetected
+    }
   } else if (node === TOKEN.RegularLink) {
     let innerLinkText
     if (/\]\[/.test(linkText)) {
@@ -129,9 +138,44 @@ export const extractLinkFromNode = (node: number, linkText: string): [string, st
     [linkPath, linkHandler] = parseLinkText(linkText.slice(1, -1))
     displayText = linkText.slice(1, -1)
   }
-  if (linkHandler === 'internal' && linkIsImage(linkPath) && !hasLinkDescription) {
+  if (linkHandler === "internal-file" && linkIsImage(linkPath) && !hasLinkDescription) {
     linkHandler = "internal-inline-image"
     displayText = null
   }
   return [linkPath, displayText, linkHandler]
+}
+
+function* iterateHeadings(node: SyntaxNode): Iterable<SyntaxNode> {
+  const headings = node.getChildren(TOKEN.Heading)
+  for (const heading of headings) {
+    yield heading
+    yield* iterateHeadings(heading)
+  }
+}
+
+export function* iterateOrgIds(orgmodeParser: LRParser, orgContent: string) {
+  const tree = orgmodeParser.parse(orgContent)
+  const id_regex = /:ID:\s+([^\s]+)\s*/  // TODO: to replace by a grammar token?
+  const topPropertyDrawer = tree.topNode.getChild(TOKEN.ZerothSection)?.getChild(TOKEN.PropertyDrawer)
+  if (topPropertyDrawer) {
+    const top_pd_content = orgContent.slice(topPropertyDrawer.from, topPropertyDrawer.to)
+    const match_file = id_regex.exec(top_pd_content)
+    if (match_file) {
+      const extracted_id = match_file[1]
+      yield {orgId: extracted_id, start: 0}
+    }
+  }
+  for (const heading of iterateHeadings(tree.topNode)) {
+    const propertyDrawer = heading.node.getChild(TOKEN.Section)?.getChild(TOKEN.PropertyDrawer)
+    if (!propertyDrawer) {
+      continue
+    }
+    const heading_start = heading.from
+    const pd_content = orgContent.slice(propertyDrawer.from, propertyDrawer.to)
+    const match_heading = id_regex.exec(pd_content)
+    if (match_heading) {
+      const extracted_id = match_heading[1]
+      yield {orgId: extracted_id, start: heading_start}
+    }
+  }
 }

@@ -16,6 +16,7 @@ export const orgLinkParameters = [
   // "help",
   "file",
   // "elisp",
+  "id",
 ]
 
 const configurableExternalTokenizer = (words: string[]) => {

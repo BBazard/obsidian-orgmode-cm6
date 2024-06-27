@@ -6,7 +6,7 @@ import { LanguageSupport } from "@codemirror/language"
 import { OrgmodeLanguage, OrgmodeParser, TOKEN } from 'codemirror-lang-orgmode';
 
 import { OrgmodePluginSettings } from 'settings'
-import { OrgFoldCompute, makeHeadingsFoldable } from 'language-extensions'
+import { OrgFoldCompute, iterateOrgIds, makeHeadingsFoldable } from 'language-extensions'
 import { extractLinkFromNode } from 'language-extensions';
 
 const settings: OrgmodePluginSettings = {
@@ -108,11 +108,16 @@ test("link handling", async () => {
   ).toStrictEqual(
     ["file:///file.png", "file:///file.png", "external"]
   )
+  expect(
+    extractLinkFromNode(TOKEN.PlainLink, "id:custom-id")
+  ).toStrictEqual(
+    ["custom-id", "id:custom-id", "internal-id"]
+  )
 
   expect(
     extractLinkFromNode(TOKEN.AngleLink, "<file:file.org>")
   ).toStrictEqual(
-    ["file.org", "file:file.org", "internal"]
+    ["file.org", "file:file.org", "internal-file"]
   )
   expect(
     extractLinkFromNode(TOKEN.AngleLink, "<file:///my file.org>")
@@ -148,7 +153,7 @@ test("link handling", async () => {
   expect(
     extractLinkFromNode(TOKEN.RegularLink, "[[my file.org]]")
   ).toStrictEqual(
-    ["my file.org", "my file.org", "internal"]
+    ["my file.org", "my file.org", "internal-file"]
   )
   expect(
     extractLinkFromNode(TOKEN.RegularLink, "[[my file.png]]")
@@ -158,6 +163,65 @@ test("link handling", async () => {
   expect(
     extractLinkFromNode(TOKEN.RegularLink, "[[my file.png][desc]]")
   ).toStrictEqual(
-    ["my file.png", "desc", "internal"]
+    ["my file.png", "desc", "internal-file"]
   )
+})
+
+test("iterating org IDs", async () => {
+  let content = [
+    ":PROPERTIES:",
+    ":ID: 3500235a-67f2-4730-b01c-913b7ba7972a",
+    ":END:"
+  ].join("\n")
+  expect(
+    Array.from(iterateOrgIds(orgmodeParser, content))
+  ).toStrictEqual([
+    { orgId: "3500235a-67f2-4730-b01c-913b7ba7972a", start: 0 },
+  ])
+
+  content = [
+    "* heading",
+    ":PROPERTIES:",
+    ":ID: idname",
+    ":END:"
+  ].join("\n")
+  expect(
+    Array.from(iterateOrgIds(orgmodeParser, content))
+  ).toStrictEqual([
+    { orgId: "idname", start: 0 },
+  ])
+
+  content = [
+    "* heading",
+    "** subheading",
+    ":PROPERTIES:",
+    ":ID: idname",
+    ":END:"
+  ].join("\n")
+  expect(
+    Array.from(iterateOrgIds(orgmodeParser, content))
+  ).toStrictEqual([
+    { orgId: "idname", start: 10 },
+  ])
+
+  content = [
+    ":PROPERTIES:",
+    ":ID: idfile",
+    ":END:",
+    "* heading",
+    ":PROPERTIES:",
+    ":ID: idheading",
+    ":END:",
+    "** subheading",
+    ":PROPERTIES:",
+    ":ID: idsubheading",
+    ":END:"
+  ].join("\n")
+  expect(
+    Array.from(iterateOrgIds(orgmodeParser, content))
+  ).toStrictEqual([
+    { orgId: "idfile", start: 0 },
+    { orgId: "idheading", start: 31 },
+    { orgId: "idsubheading", start: 75 },
+  ])
 })

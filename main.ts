@@ -5,14 +5,14 @@ import { EditorState, Extension, Compartment } from "@codemirror/state";
 import { LRParser } from "@lezer/lr";
 import { vim, Vim } from "@replit/codemirror-vim"
 
-import { App, PluginSettingTab, Plugin, WorkspaceLeaf, TextFileView, Setting, parseYaml, MarkdownRenderChild } from "obsidian";
+import { App, PluginSettingTab, Plugin, WorkspaceLeaf, TextFileView, Setting, parseYaml, MarkdownRenderChild, Notice } from "obsidian";
 
 import { OrgmodeLanguage, OrgmodeParser } from 'codemirror-lang-orgmode';
 
 import { DEFAULT_SETTINGS, OrgmodePluginSettings } from 'settings';
 import { OrgmodeTask, StatusType } from 'org-tasks';
 import { OrgTasksSync } from 'org-tasks-file-sync';
-import { myHighlightStyle, makeHeadingsFoldable } from 'language-extensions';
+import { myHighlightStyle, makeHeadingsFoldable, iterateOrgIds } from 'language-extensions';
 import { orgmodeLivePreview } from "org-live-preview";
 
 let todoKeywordsReloader = new Compartment
@@ -229,7 +229,7 @@ class OrgView extends TextFileView {
               }
               this.leaf.openFile(tfile)
             } catch {
-              return null
+              return
             }
           },
           getImageUri: (linkPath: string) => {
@@ -241,6 +241,30 @@ class OrgView extends TextFileView {
               return null
             }
           },
+          navigateToOrgId: async (orgCustomId: string) => {
+            try {
+              const orgFiles = this.app.vault.getFiles().filter(x => x.extension == 'org')
+              for (const orgFile of orgFiles) {
+                const orgContent = await this.app.vault.cachedRead(orgFile)
+                for (const {orgId, start} of iterateOrgIds(orgmodeParser, orgContent)) {
+                  if (orgCustomId === orgId) {
+                    this.leaf.openFile(orgFile).then(() => {
+                      this.codeMirror.focus()
+                      this.codeMirror.dispatch(
+                        { selection: { head: start, anchor: start } },
+                        { effects: EditorView.scrollIntoView(start, { y: "start" }) }
+                      )
+                    })
+                    return
+                  }
+                }
+              }
+              new Notice(`Cannot find entry with ID "${orgCustomId}"`)
+            } catch (e) {
+              console.log(e)
+              return
+            }
+          }
         }),
       ]
     // @ts-expect-error, not typed

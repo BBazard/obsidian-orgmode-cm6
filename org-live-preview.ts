@@ -43,17 +43,20 @@ class LinkWidget extends WidgetType {
   displayText: string
   linkHandler: LinkHandler
   navigateToFile: (filePath: string) => void
+  navigateToOrgId: (orgCustomId: string) => void
   constructor(
     linkPath: string,
     displayText: string,
     linkHandler: LinkHandler,
     navigateToFile: (filePath: string) => void,
+    navigateToOrgId: (orgCustomId: string) => void,
   ) {
     super()
     this.linkPath = linkPath
     this.displayText = displayText
     this.linkHandler = linkHandler
     this.navigateToFile = navigateToFile
+    this.navigateToOrgId = navigateToOrgId
   }
   eq(other: LinkWidget) {
     return this.linkPath == other.linkPath && this.displayText == other.displayText
@@ -65,8 +68,11 @@ class LinkWidget extends WidgetType {
     link.addEventListener("click", () => {
       if (this.linkHandler === "external") {
         window.open(this.linkPath)
-      } else if (this.linkHandler === "internal") {
+      } else if (this.linkHandler === "internal-file") {
         this.navigateToFile(this.linkPath)
+      } else if (this.linkHandler === "internal-id") {
+        const orgCustomId = this.linkPath
+        this.navigateToOrgId(orgCustomId)
       }
     })
     return link
@@ -77,7 +83,8 @@ function loadDecorations(
   state: EditorState,
   obsidianUtils: {
     navigateToFile: (filePath: string) => void,
-    getImageUri: (linkPath: string) => any,
+    getImageUri: (linkPath: string) => string,
+    navigateToOrgId: (orgCustomId: string) => void,
 }) {
   const builder = new RangeSetBuilder<Decoration>();
   const cursorPos = state.selection.main.head
@@ -115,7 +122,7 @@ function loadDecorations(
             node.from,
             node.to,
             Decoration.replace({
-              widget: new LinkWidget(linkPath, displayText, linkHandler, obsidianUtils.navigateToFile),
+              widget: new LinkWidget(linkPath, displayText, linkHandler, obsidianUtils.navigateToFile, obsidianUtils.navigateToOrgId),
             })
           )
         }
@@ -141,6 +148,7 @@ function loadDecorations(
 export const orgmodeLivePreview = (obsidianUtils: {
     navigateToFile: (filePath: string) => void,
     getImageUri: (linkPath: string) => string,
+    navigateToOrgId: (orgCustomId: string) => void,
 }) => {
   return StateField.define<DecorationSet>({
     create(state: EditorState): DecorationSet {

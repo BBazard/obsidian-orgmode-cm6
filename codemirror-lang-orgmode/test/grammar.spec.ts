@@ -388,6 +388,10 @@ test("links", () => {
     "<https:broken angle link with a",
     "",
     "blank line inside>>",
+    "id:custom-id",
+    "<id:custom-id>",
+    "[[id:custom-id]]",
+    "[[id:custom-id][id link]]",
   ].join("\n")
   const tree = parser.parse(content)
   const spec = [
@@ -399,6 +403,29 @@ test("links", () => {
     "        PlainLink,",  // https://plainlink
     "        AngleLink,",  // <https:angle link>
     "        AngleLink,",  // <https:angle link with a\nnewline inside>
+    "        PlainLink,",  // id:custom-id
+    "        AngleLink,",  // <id:custom-id>
+    "        RegularLink,",  // [[id:custom-id]]
+    "        RegularLink,",  // [[id:custom-id][id link]]
+    "    ),",
+    ")",
+  ].join("\n")
+  console.log(printTree(tree, content))
+  parser.configure({strict: true}).parse(content)
+  testTree(tree, spec)
+})
+
+test.skip("inline links", () => {
+  const content = [
+    "(id:custom-id)",
+    "x[[file]]x",
+  ].join("\n")
+  const tree = parser.parse(content)
+  const spec = [
+    "Program(",
+    "    ZerothSection(",
+    "        PlainLink,",  // id:custom-id
+    "        RegularLink,",  // file
     "    ),",
     ")",
   ].join("\n")

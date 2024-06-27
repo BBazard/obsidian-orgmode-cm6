@@ -1043,7 +1043,7 @@ export const plainLink_tokenizer = (orgLinkParameters: string[]) => { return new
       log(`XX REFUSE plainLink, not correct linkType ${inputStreamEndString(input)}`)
       return
     }
-    if (!pathPlainRegex.test(pathPlain)) {
+    if (!pathPlainRegex.test(pathPlain) && linkType != 'id') {
       log(`XX REFUSE plainLink, not correct pathPlain ${inputStreamEndString(input)}`)
       return
     }
