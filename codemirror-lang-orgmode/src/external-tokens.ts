@@ -95,6 +95,19 @@ function isEndOfLine(charCode: number) {
   return charCode === NEW_LINE || charCode === SOF || charCode === EOF
 }
 
+function isAlphaNum(charCode: number): boolean {
+  if (charCode >= '0'.charCodeAt(0) && charCode <= '9'.charCodeAt(0)) {
+    return true
+  }
+  if (charCode >= 'A'.charCodeAt(0) && charCode <= 'Z'.charCodeAt(0)) {
+    return true
+  }
+  if (charCode >= 'a'.charCodeAt(0) && charCode <= 'z'.charCodeAt(0)) {
+    return true
+  }
+  return false
+}
+
 function checkPriority(s: string) {
   const matched = s.match(/^[ \t]*\[#[a-zA-Z0-9]\][ \t]*$/)
   if (matched) {
@@ -316,6 +329,50 @@ export const todokeyword_tokenizer = (words: string[]) => { return new ExternalT
   return
 })
 }
+
+export const priority_tokenizer = new ExternalTokenizer((input, stack) => {
+  // Priority { $[ \t]* "[" "#" $[a-zA-Z0-9] "]" $[ \t]* }
+  log(`-- START Priority ${inputStreamBeginString(input)}`)
+  let c = input.peek(0)
+  log(stringifyCodeLogString(c))
+  while (isWhiteSpace(c)) {
+    c = input.advance()
+    log(stringifyCodeLogString(c))
+  }
+  const OPENING_BRACKET = '['.charCodeAt(0);
+  const CLOSING_BRACKET = ']'.charCodeAt(0);
+  if (c !== OPENING_BRACKET) {
+    log(`XX REFUSE Priority, expecting [ ${inputStreamEndString(input)}`)
+    return
+  }
+  c = input.advance()
+  log(stringifyCodeLogString(c))
+  if (c !== HASH) {
+    log(`XX REFUSE Priority, expecting # ${inputStreamEndString(input)}`)
+    return
+  }
+  c = input.advance()
+  log(stringifyCodeLogString(c))
+  if (!isAlphaNum(c)) {
+    log(`XX REFUSE Priority, expecting alphanum char ${inputStreamEndString(input)}`)
+    return
+  }
+  c = input.advance()
+  log(stringifyCodeLogString(c))
+  if (c !== CLOSING_BRACKET) {
+    log(`XX REFUSE Priority, expecting ] ${inputStreamEndString(input)}`)
+    return
+  }
+  c = input.advance()
+  log(stringifyCodeLogString(c))
+  while (isWhiteSpace(c)) {
+    c = input.advance()
+    log(stringifyCodeLogString(c))
+  }
+  log(`== ACCEPT Priority ${inputStreamAccept(input, stack)}`)
+  input.acceptToken(Priority)
+  return
+})
 
 export const endofline_tokenizer = new ExternalTokenizer((input, stack) => {
   log(`-- START endofline ${inputStreamBeginString(input)}`)

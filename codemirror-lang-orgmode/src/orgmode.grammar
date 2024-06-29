@@ -163,6 +163,7 @@ Planning { planningStart endofline }
 @external tokens propertydrawer_tokenizer from "./external-tokens" { PropertyDrawer }
 
 @external tokens todokeyword_tokenizer from "./external-tokens" { TodoKeyword }
+@external tokens priority_tokenizer from "./external-tokens" { Priority }
 
 
 @external tokens notStartOfPlanning_lookaround from "./external-tokens" { notStartOfPlanning }
@@ -180,7 +181,6 @@ Planning { planningStart endofline }
 @external tokens stars_tokenizer from "./external-tokens" { stars }
 
 @tokens {
-  Priority { $[ \t]* "[" "#" $[a-zA-Z0-9] "]" $[ \t]* }
   CommentLine { "#" ![\n]* ("\n" | @eof) }
   planningStart { ("DEADLINE:"|"SCHEDULED:"|"CLOSED:") }
 }
