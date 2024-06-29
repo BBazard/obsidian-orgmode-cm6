@@ -459,6 +459,24 @@ test.skip("inline links", () => {
   testTree(tree, spec)
 })
 
+test.skip("links with surrounding spaces are not links", () => {
+  const content = [
+    "[[ link ]]",
+    "[[link ]]",
+    "[[ link]]",
+  ].join("\n")
+  const tree = parser.parse(content)
+  const spec = [
+    "Program(",
+    "    ZerothSection(",
+    "        RegularLink,",  // [[ link ]]
+    "    ),",
+    ")",
+  ].join("\n")
+  console.log(printTree(tree, content))
+  parser.configure({strict: true}).parse(content)
+  testTree(tree, spec)
+})
 
 test("infinite loop testing", () => {
   parser.parse("")
