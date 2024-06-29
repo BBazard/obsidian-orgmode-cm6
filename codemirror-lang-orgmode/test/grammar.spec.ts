@@ -415,6 +415,31 @@ test("links", () => {
   testTree(tree, spec)
 })
 
+test("title with links", () => {
+  const content = [
+    "* heading with [[link]] inside",
+    "* [[link]]",
+  ].join("\n")
+  const tree = parser.parse(content)
+  const spec = [
+    "Program(",
+    "    Heading(",
+    "        Title(",
+    "            RegularLink,",  // [[link]]
+    "        ),",
+    "    ),",
+    "    Heading(",
+    "        Title(",
+    "            RegularLink,",  // [[link]]
+    "        ),",
+    "    ),",
+    ")",
+  ].join("\n")
+  console.log(printTree(tree, content))
+  parser.configure({strict: true}).parse(content)
+  testTree(tree, spec)
+})
+
 test.skip("inline links", () => {
   const content = [
     "(id:custom-id)",

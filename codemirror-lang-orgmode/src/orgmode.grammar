@@ -55,7 +55,7 @@ paragraph {
 }
 
 titleObject {
-  titleTextMarkup | titleWord
+  link | titleTextMarkup | titleWord
 }
 
 object {
