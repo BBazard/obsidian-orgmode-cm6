@@ -76,7 +76,10 @@ function inputStreamBeginString(input: InputStream): string {
   return `at ${input.pos}:"${stringifyCodeLogString(input.peek(0))}"`
 }
 
-function inputStreamEndString(input: InputStream): string {
+function inputStreamEndString(input: InputStream, stack: Stack): string {
+  if (stack.pos === input.pos) {
+    return `at ]${input.pos-1}:${stack.pos}[ between "${stringifyCodeLogString(input.peek(-1))}" and "${stringifyCodeLogString(input.peek(0))}"`
+  }
   return `at ${input.pos-1}:"${stringifyCodeLogString(input.peek(-1))}"`
 }
 
@@ -271,12 +274,12 @@ export const title_tokenizer = (words: string[]) => { return new ExternalTokeniz
       s += String.fromCharCode(c)
       log(`${stringifyCodeLogString(c)}`)
       if (!priority_already_matched && checkPriority(s)) {
-        log(`XX REFUSE Title, is priority ${inputStreamEndString(input)}`)
+        log(`XX REFUSE Title, is priority ${inputStreamEndString(input, stack)}`)
         return
       }
       if (!todo_keyword_already_matched && checkTodoKeyword(s, input, words)) {
         if (isWhiteSpace(input.peek(1))) {
-          log(`XX REFUSE Title, is TodoKeyword ${inputStreamEndString(input)}`)
+          log(`XX REFUSE Title, is TodoKeyword ${inputStreamEndString(input, stack)}`)
           return
         }
       }
@@ -325,7 +328,7 @@ export const todokeyword_tokenizer = (words: string[]) => { return new ExternalT
     log(`${stringifyCodeLogString(c)}`)
     s += String.fromCharCode(c)
   }
-  log(`XX REFUSE TodoKeyword ${inputStreamEndString(input)}`)
+  log(`XX REFUSE TodoKeyword ${inputStreamEndString(input, stack)}`)
   return
 })
 }
@@ -342,25 +345,25 @@ export const priority_tokenizer = new ExternalTokenizer((input, stack) => {
   const OPENING_BRACKET = '['.charCodeAt(0);
   const CLOSING_BRACKET = ']'.charCodeAt(0);
   if (c !== OPENING_BRACKET) {
-    log(`XX REFUSE Priority, expecting [ ${inputStreamEndString(input)}`)
+    log(`XX REFUSE Priority, expecting [ ${inputStreamEndString(input, stack)}`)
     return
   }
   c = input.advance()
   log(stringifyCodeLogString(c))
   if (c !== HASH) {
-    log(`XX REFUSE Priority, expecting # ${inputStreamEndString(input)}`)
+    log(`XX REFUSE Priority, expecting # ${inputStreamEndString(input, stack)}`)
     return
   }
   c = input.advance()
   log(stringifyCodeLogString(c))
   if (!isAlphaNum(c)) {
-    log(`XX REFUSE Priority, expecting alphanum char ${inputStreamEndString(input)}`)
+    log(`XX REFUSE Priority, expecting alphanum char ${inputStreamEndString(input, stack)}`)
     return
   }
   c = input.advance()
   log(stringifyCodeLogString(c))
   if (c !== CLOSING_BRACKET) {
-    log(`XX REFUSE Priority, expecting ] ${inputStreamEndString(input)}`)
+    log(`XX REFUSE Priority, expecting ] ${inputStreamEndString(input, stack)}`)
     return
   }
   c = input.advance()
@@ -378,7 +381,7 @@ export const endofline_tokenizer = new ExternalTokenizer((input, stack) => {
   log(`-- START endofline ${inputStreamBeginString(input)}`)
   let previous = input.peek(-1)
   if (isEndOfLine(previous)) {
-    log(`XX REFUSE endofline, previous not endofline ${inputStreamEndString(input)}`)
+    log(`XX REFUSE endofline, previous not endofline ${inputStreamEndString(input, stack)}`)
     return
   }
   let c = input.peek(0)
@@ -403,19 +406,19 @@ export const notStartOfPlanning_lookaround = new ExternalTokenizer((input, stack
   const previous = input.peek(-1)
   log(`previous ${stringifyCodeLogString(previous)}`)
   if (!isEndOfLine(previous)) {
-    log(`XX REFUSE notStartOfPlanning, previous not endofline ${inputStreamEndString(input)}`)
+    log(`XX REFUSE notStartOfPlanning, previous not endofline ${inputStreamEndString(input, stack)}`)
     return
   }
   let c = input.peek(0)
   let planning_word = String.fromCharCode(c)
   log(stringifyCodeLogString(c))
   if (c === EOF) {
-      log(`XX REFUSE notStartOfPlanning, only EOF left ${inputStreamEndString(input)}`)
+      log(`XX REFUSE notStartOfPlanning, only EOF left ${inputStreamEndString(input, stack)}`)
       return
   } else if (c === COLON) {
     planning_word = ''
   } else if (c === HASH) {
-    log(`XX REFUSE notStartOfPlanning, start of comment ${inputStreamEndString(input)}`)
+    log(`XX REFUSE notStartOfPlanning, start of comment ${inputStreamEndString(input, stack)}`)
     return
   } else if (c === STAR) {
     // only start of heading if it matches the stars token { "*"+ $[ \t]+ }
@@ -426,12 +429,12 @@ export const notStartOfPlanning_lookaround = new ExternalTokenizer((input, stack
       peek_c = input.peek(peek_distance)
     }
     if (isWhiteSpace(peek_c)) {
-      log(`XX REFUSE notStartOfPlanning, start of heading ${inputStreamEndString(input)}`)
+      log(`XX REFUSE notStartOfPlanning, start of heading ${inputStreamEndString(input, stack)}`)
       return // start of HEADING
     }
   }
   if (c === HASH) {
-    log(`XX REFUSE notStartOfPlanning, start of comment ${inputStreamEndString(input)}`)
+    log(`XX REFUSE notStartOfPlanning, start of comment ${inputStreamEndString(input, stack)}`)
     return
   }
   let primary_peek_distance = 0
@@ -444,7 +447,7 @@ export const notStartOfPlanning_lookaround = new ExternalTokenizer((input, stack
         planning_word.toUpperCase() === 'DEADLINE' ||
         planning_word.toUpperCase() === 'SCHEDULED' ||
         planning_word.toUpperCase() === 'CLOSED') {
-        log(`XX REFUSE notStartOfPlanning, start of Planning ${inputStreamEndString(input)}`)
+        log(`XX REFUSE notStartOfPlanning, start of Planning ${inputStreamEndString(input, stack)}`)
         return
       }
     }
@@ -477,7 +480,7 @@ export const notStartOfPropertyDrawer_lookaround = new ExternalTokenizer((input,
   const previous = input.peek(-1)
   log(`previous ${stringifyCodeLogString(previous)}`)
   if (!isEndOfLine(previous)) {
-    log(`XX REFUSE notStartOfPropertyDrawer, previous not endofline ${inputStreamEndString(input)}`)
+    log(`XX REFUSE notStartOfPropertyDrawer, previous not endofline ${inputStreamEndString(input, stack)}`)
     return
   }
   let c = input.peek(0)
@@ -485,13 +488,13 @@ export const notStartOfPropertyDrawer_lookaround = new ExternalTokenizer((input,
   let could_be_property_drawer = false
   log(stringifyCodeLogString(c))
   if (c === EOF) {
-      log(`XX REFUSE notStartOfPropertyDrawer, only EOF left ${inputStreamEndString(input)}`)
+      log(`XX REFUSE notStartOfPropertyDrawer, only EOF left ${inputStreamEndString(input, stack)}`)
       return
   } else if (c === COLON) {
     could_be_property_drawer = true
     planning_word = ''
   } else if (c === HASH) {
-    log(`XX REFUSE notStartOfPropertyDrawer, start of comment ${inputStreamEndString(input)}`)
+    log(`XX REFUSE notStartOfPropertyDrawer, start of comment ${inputStreamEndString(input, stack)}`)
     return
   } else if (c === STAR) {
     // only start of heading if it matches the stars token { "*"+ $[ \t]+ }
@@ -502,12 +505,12 @@ export const notStartOfPropertyDrawer_lookaround = new ExternalTokenizer((input,
       peek_c = input.peek(peek_distance)
     }
     if (isWhiteSpace(peek_c)) {
-      log(`XX REFUSE notStartOfPropertyDrawer, start of heading ${inputStreamEndString(input)}`)
+      log(`XX REFUSE notStartOfPropertyDrawer, start of heading ${inputStreamEndString(input, stack)}`)
       return // start of HEADING
     }
   }
   if (c === HASH) {
-    log(`XX REFUSE notStartOfPropertyDrawer, start of comment ${inputStreamEndString(input)}`)
+    log(`XX REFUSE notStartOfPropertyDrawer, start of comment ${inputStreamEndString(input, stack)}`)
     return
   }
   let primary_peek_distance = 0
@@ -517,7 +520,7 @@ export const notStartOfPropertyDrawer_lookaround = new ExternalTokenizer((input,
     log(stringifyCodeLogString(c))
     if (c === COLON) {
       if (could_be_property_drawer && planning_word.toUpperCase() === 'PROPERTIES') {
-        log(`XX REFUSE notStartOfPropertyDrawer, start of PropertyDrawer ${inputStreamEndString(input)}`)
+        log(`XX REFUSE notStartOfPropertyDrawer, start of PropertyDrawer ${inputStreamEndString(input, stack)}`)
         return
       }
     }
@@ -550,13 +553,13 @@ export const propertydrawer_tokenizer = new ExternalTokenizer((input, stack) => 
   const previous = input.peek(-1)
   log(`previous ${stringifyCodeLogString(previous)}`)
   if (!isEndOfLine(previous)) {
-    log(`XX REFUSE PropertyDrawer, previous not endofline ${inputStreamEndString(input)}`)
+    log(`XX REFUSE PropertyDrawer, previous not endofline ${inputStreamEndString(input, stack)}`)
     return
   }
   let c = input.peek(0)
   log(stringifyCodeLogString(c))
   if (c !== COLON) {
-    log(`XX REFUSE PropertyDrawer, first not colon ${inputStreamEndString(input)}`)
+    log(`XX REFUSE PropertyDrawer, first not colon ${inputStreamEndString(input, stack)}`)
     return
   }
   c = input.advance()
@@ -609,7 +612,7 @@ export const propertydrawer_tokenizer = new ExternalTokenizer((input, stack) => 
     }
     first_line = false
     if (!properties_found_on_first_line) {
-      log(`XX REFUSE PropertyDrawer, no :PROPERTIES: on first line ${inputStreamEndString(input)}`)
+      log(`XX REFUSE PropertyDrawer, no :PROPERTIES: on first line ${inputStreamEndString(input, stack)}`)
       return
     }
     log(`next start? ${stringifyCodeLogString(input.peek(1))}`)
@@ -651,11 +654,11 @@ function checkStartOfHeading(input: InputStream) {
 export const notStartOfHeading_lookaround = new ExternalTokenizer((input, stack) => {
   log(`-- START notStartOfHeading_lookaround ${inputStreamBeginString(input)}`)
   if (!isEndOfLine(input.peek(-1))) {
-    log(`XX REFUSE notStartOfHeading_lookaround, previous not endofline ${inputStreamEndString(input)}`)
+    log(`XX REFUSE notStartOfHeading_lookaround, previous not endofline ${inputStreamEndString(input, stack)}`)
     return
   }
   if (input.peek(0) === EOF) {
-    log(`XX REFUSE notStartOfHeading_lookaround, EOF ${inputStreamEndString(input)}`)
+    log(`XX REFUSE notStartOfHeading_lookaround, EOF ${inputStreamEndString(input, stack)}`)
     return
   }
   if (!checkStartOfHeading(input)) {
@@ -672,13 +675,13 @@ export const notStartOfComment_lookaround = new ExternalTokenizer((input, stack)
   const previous = input.peek(-1)
   log(`previous ${stringifyCodeLogString(previous)}`)
   if (!isEndOfLine(previous)) {
-    log(`XX REFUSE notStartOfComment_lookaround, previous not endofline ${inputStreamEndString(input)}`)
+    log(`XX REFUSE notStartOfComment_lookaround, previous not endofline ${inputStreamEndString(input, stack)}`)
     return
   }
   let c = input.peek(0)
   log(stringifyCodeLogString(c))
   if (c === HASH) {
-    log(`XX REFUSE notStartOfComment_lookaround, start of comment ${inputStreamEndString(input)}`)
+    log(`XX REFUSE notStartOfComment_lookaround, start of comment ${inputStreamEndString(input, stack)}`)
     return
   }
   log(`== ACCEPT notStartOfComment_lookaround ${inputStreamAccept(input, stack)}`)
@@ -690,12 +693,12 @@ export const sectionWord_tokenizer = new ExternalTokenizer((input, stack) => {
   log(`-- START sectionWord ${inputStreamBeginString(input)}`)
   let c = input.peek(0)
   if (c === EOF) {
-    log(`XX REFUSE sectionWord, only EOF left ${inputStreamEndString(input)}`)
+    log(`XX REFUSE sectionWord, only EOF left ${inputStreamEndString(input, stack)}`)
     return
   }
   log(stringifyCodeLogString(c))
   if (isWhiteSpace(c) || isEndOfLine(c)) {
-    log(`XX REFUSE sectionWord, whitespace ${inputStreamEndString(input)}`)
+    log(`XX REFUSE sectionWord, whitespace ${inputStreamEndString(input, stack)}`)
     return
   }
   while (!isWhiteSpace(c) && !isEndOfLine(c)) {
@@ -711,11 +714,11 @@ export const sectionSpace_tokenizer = new ExternalTokenizer((input, stack) => {
   log(`-- START sectionSpace ${inputStreamBeginString(input)}`)
   let c = input.peek(0)
   if (c === EOF) {
-    log(`XX REFUSE sectionSpace, only EOF left ${inputStreamEndString(input)}`)
+    log(`XX REFUSE sectionSpace, only EOF left ${inputStreamEndString(input, stack)}`)
     return
   }
   if (!isWhiteSpace(c)) {
-    log(`XX REFUSE sectionSpace, not whitespace ${inputStreamEndString(input)}`)
+    log(`XX REFUSE sectionSpace, not whitespace ${inputStreamEndString(input, stack)}`)
     return
   }
   log(stringifyCodeLogString(c))
@@ -737,7 +740,7 @@ export const sectionEnd_tokenizer = new ExternalTokenizer((input, stack) => {
     input.acceptToken(sectionEnd)
     return
   }
-  log(`XX REFUSE sectionSpace, ${inputStreamEndString(input)}`)
+  log(`XX REFUSE sectionSpace, ${inputStreamEndString(input, stack)}`)
   return
 });
 
@@ -747,7 +750,7 @@ function sectionWordMarkup(input: InputStream, stack: Stack, marker: number, ter
   let c = input.peek(0)
   log(stringifyCodeLogString(c))
   if (isWhiteSpace(c)) {
-    log(`XX REFUSE sectionWordMarkup ${stringifyCodeLogString(marker)}, whitespace or endofline ${inputStreamEndString(input)}`)
+    log(`XX REFUSE sectionWordMarkup ${stringifyCodeLogString(marker)}, whitespace or endofline ${inputStreamEndString(input, stack)}`)
     return
   }
   while (true) {
@@ -767,7 +770,7 @@ function sectionWordMarkup(input: InputStream, stack: Stack, marker: number, ter
       input.acceptToken(term)
       return
     } else if (c === MARKER) {
-      if (checkEndOfTextMarkup(input, MARKER)) {
+      if (checkEndOfTextMarkup(input, stack, MARKER)) {
         log(`== ACCEPT sectionWordMarkup ${stringifyCodeLogString(marker)} at stuff ${inputStreamAccept(input, stack)}`)
         input.acceptToken(term)
         return
@@ -775,7 +778,7 @@ function sectionWordMarkup(input: InputStream, stack: Stack, marker: number, ter
       c = input.advance()
       log(stringifyCodeLogString(c))
     } else {
-      log(`XX REFUSE sectionWordMarkup ${stringifyCodeLogString(marker)}, unreachable code path ${inputStreamEndString(input)}`)
+      log(`XX REFUSE sectionWordMarkup ${stringifyCodeLogString(marker)}, unreachable code path ${inputStreamEndString(input, stack)}`)
       return
     }
   }
@@ -805,7 +808,7 @@ export const sectionWordStrikeThrough_tokenizer = new ExternalTokenizer((input, 
   sectionWordMarkup(input, stack, '+'.charCodeAt(0), sectionwordStrikeThrough)
 })
 
-function checkEndOfTextMarkup(input: InputStream, marker: number) {
+function checkEndOfTextMarkup(input: InputStream, stack: Stack, marker: number) {
   const MARKER = marker
   const previous = input.peek(-1)
   const current = input.peek(0)
@@ -815,13 +818,13 @@ function checkEndOfTextMarkup(input: InputStream, marker: number) {
   }
   log(`current ${stringifyCodeLogString(current)}`)
   if (current !== MARKER) {
-    log(`not MARKER ${inputStreamEndString(input)}`)
+    log(`not MARKER ${inputStreamEndString(input, stack)}`)
     return false
   }
   const next = input.peek(1)
   log(`next ${stringifyCodeLogString(next)}`)
   if (!checkMarkupPOST(next)) {
-    log(`no POST ${inputStreamEndString(input)}`)
+    log(`no POST ${inputStreamEndString(input, stack)}`)
     return false
   }
   return true
@@ -857,13 +860,13 @@ function isStartOfTextMarkup(input: InputStream, stack: Stack, termsByMarker: Ma
   const previous = input.peek(-1)
   log(`previous ${stringifyCodeLogString(previous)}`)
   if (!checkMarkupPRE(previous)) {
-    log(`XX REFUSE isStartOfTextMarkup, not preceded by PRE ${inputStreamEndString(input)}`)
+    log(`XX REFUSE isStartOfTextMarkup, not preceded by PRE ${inputStreamEndString(input, stack)}`)
     return
   }
   let c = input.peek(0)
   log(stringifyCodeLogString(c))
   if (!termsByMarker.has(c)) {
-    log(`XX REFUSE isStartOfTextMarkup, not starting with a textmarkup marker ${inputStreamEndString(input)}`)
+    log(`XX REFUSE isStartOfTextMarkup, not starting with a textmarkup marker ${inputStreamEndString(input, stack)}`)
     return
   }
   const MARKER = c
@@ -876,20 +879,20 @@ function isStartOfTextMarkup(input: InputStream, stack: Stack, termsByMarker: Ma
       c = input.peek(peek_distance)
     }
     if (isWhiteSpace(c)) {
-      log(`XX REFUSE isStartOfTextMarkup, start of heading ${inputStreamEndString(input)}`)
+      log(`XX REFUSE isStartOfTextMarkup, start of heading ${inputStreamEndString(input, stack)}`)
       return
     }
   }
   c = input.advance()
   log(stringifyCodeLogString(c))
   if (isWhiteSpace(c)) {
-    log(`XX REFUSE isStartOfTextMarkup, ${stringifyCodeLogString(MARKER)} followed by whitespace ${inputStreamEndString(input)}`)
+    log(`XX REFUSE isStartOfTextMarkup, ${stringifyCodeLogString(MARKER)} followed by whitespace ${inputStreamEndString(input, stack)}`)
     return
   } else if (isEndOfLine(c)) {
-    log(`XX REFUSE isStartOfTextMarkup, ${stringifyCodeLogString(MARKER)} followed by endofline ${inputStreamEndString(input)}`)
+    log(`XX REFUSE isStartOfTextMarkup, ${stringifyCodeLogString(MARKER)} followed by endofline ${inputStreamEndString(input, stack)}`)
     return
-  } else if (c === MARKER && checkEndOfTextMarkup(input, MARKER)) {
-      log(`== REFUSE isStartOfTextMarkup double marker ${inputStreamEndString(input)}`)
+  } else if (c === MARKER && checkEndOfTextMarkup(input, stack, MARKER)) {
+      log(`== REFUSE isStartOfTextMarkup double marker ${inputStreamEndString(input, stack)}`)
       return
   }
   while (true) {
@@ -898,14 +901,14 @@ function isStartOfTextMarkup(input: InputStream, stack: Stack, termsByMarker: Ma
       log(stringifyCodeLogString(c))
     }
     if (c === EOF) {
-      log(`== REFUSE isStartOfTextMarkup unfinished EOF ${inputStreamEndString(input)}`)
+      log(`== REFUSE isStartOfTextMarkup unfinished EOF ${inputStreamEndString(input, stack)}`)
       return
     } else if (c === MARKER) {
       while (input.peek(1) === MARKER) {
         c = input.advance()
         log(stringifyCodeLogString(c))
       }
-      if (checkEndOfTextMarkup(input, MARKER)) {
+      if (checkEndOfTextMarkup(input, stack, MARKER)) {
         input.advance()
         log(`== ACCEPT isStartOfTextMarkup ${inputStreamAccept(input, stack)}`)
         input.acceptToken(term, -(input.pos-initialPos))
@@ -913,7 +916,7 @@ function isStartOfTextMarkup(input: InputStream, stack: Stack, termsByMarker: Ma
       }
     } else {  // NEWLINE
       if (noEndOfLine) {
-        log(`XX REFUSE isStartOfTextMarkup reached endofline ${inputStreamEndString(input)}`)
+        log(`XX REFUSE isStartOfTextMarkup reached endofline ${inputStreamEndString(input, stack)}`)
         return
       }
       if (isWhiteSpace(input.peek(1)) || isEndOfLine(input.peek(1))) {
@@ -922,7 +925,7 @@ function isStartOfTextMarkup(input: InputStream, stack: Stack, termsByMarker: Ma
           peek_distance += 1
         }
         if (isEndOfLine(input.peek(peek_distance))) {
-          log(`XX REFUSE isStartOfTextMarkup unfinished blank line ${inputStreamEndString(input)}`)
+          log(`XX REFUSE isStartOfTextMarkup unfinished blank line ${inputStreamEndString(input, stack)}`)
           return
         }
       } else if (input.peek(1) == STAR) {
@@ -933,11 +936,11 @@ function isStartOfTextMarkup(input: InputStream, stack: Stack, termsByMarker: Ma
           c = input.peek(peek_distance)
         }
         if (isWhiteSpace(c)) {
-          log(`XX REFUSE isStartOfTextMarkup, start of heading ${inputStreamEndString(input)}`)
+          log(`XX REFUSE isStartOfTextMarkup, start of heading ${inputStreamEndString(input, stack)}`)
           return
         }
       } else if (input.peek(1) == HASH) {
-          log(`XX REFUSE isStartOfTextMarkup, start of comment ${inputStreamEndString(input)}`)
+          log(`XX REFUSE isStartOfTextMarkup, start of comment ${inputStreamEndString(input, stack)}`)
           return
       } else { }  // regular newline
     }
@@ -950,16 +953,16 @@ export const titleWord_tokenizer = new ExternalTokenizer((input, stack) => {
   log(`-- START titleWord ${inputStreamBeginString(input)}`)
   let c = input.peek(0)
   if (c === EOF) {
-    log(`XX REFUSE titleWord, only EOF left ${inputStreamEndString(input)}`)
+    log(`XX REFUSE titleWord, only EOF left ${inputStreamEndString(input, stack)}`)
     return
   }
   log(stringifyCodeLogString(c))
   if (isWhiteSpace(c) || isEndOfLine(c)) {
-    log(`XX REFUSE titleWord, whitespace ${inputStreamEndString(input)}`)
+    log(`XX REFUSE titleWord, whitespace ${inputStreamEndString(input, stack)}`)
     return
   }
   if (c === COLON && checkTags(input, false)) {
-    log(`XX REFUSE titleWord, Tags ${inputStreamEndString(input)}`)
+    log(`XX REFUSE titleWord, Tags ${inputStreamEndString(input, stack)}`)
     return
   }
   while (!isWhiteSpace(c) && !isEndOfLine(c)) {
@@ -978,7 +981,7 @@ export const tags_tokenizer = new ExternalTokenizer((input, stack) => {
     input.acceptToken(Tags)
     return
   }
-  log(`XX REFUSE Tags ${inputStreamEndString(input)}`)
+  log(`XX REFUSE Tags ${inputStreamEndString(input, stack)}`)
   return
 })
 
@@ -988,13 +991,13 @@ export const stars_tokenizer = new ExternalTokenizer((input, stack) => {
   let previous = input.peek(-1)
   log(`previous ${stringifyCodeLogString(previous)}`)
   if (!isEndOfLine(previous)) {
-    log(`XX REFUSE stars, previous not endofline ${inputStreamEndString(input)}`)
+    log(`XX REFUSE stars, previous not endofline ${inputStreamEndString(input, stack)}`)
     return
   }
   let c = input.peek(0)
   log(stringifyCodeLogString(c))
   if (c !== STAR) {
-    log(`XX REFUSE stars, first char not * ${inputStreamEndString(input)}`)
+    log(`XX REFUSE stars, first char not * ${inputStreamEndString(input, stack)}`)
     return
   }
   let headingLevel = 0
@@ -1004,7 +1007,7 @@ export const stars_tokenizer = new ExternalTokenizer((input, stack) => {
     log(stringifyCodeLogString(c))
   }
   if (!isWhiteSpace(c)) {
-    log(`XX REFUSE stars, no whitespaces at the end ${inputStreamEndString(input)}`)
+    log(`XX REFUSE stars, no whitespaces at the end ${inputStreamEndString(input, stack)}`)
     return
   }
   while (isWhiteSpace(input.peek(0))) {
@@ -1022,7 +1025,7 @@ export const shouldIndentHeading_lookaround = new ExternalTokenizer((input, stac
   log(`-- START shouldIndentHeading ${inputStreamBeginString(input)}`)
   let nextHeadingLevel = checkStartOfHeading(input)
   if (!nextHeadingLevel) {
-    log(`XX REFUSE shouldIndentHeading, not heading ${inputStreamEndString(input)}`)
+    log(`XX REFUSE shouldIndentHeading, not heading ${inputStreamEndString(input, stack)}`)
     return
   }
   if (context.headingLevelStack.length === 0) {
@@ -1036,7 +1039,7 @@ export const shouldIndentHeading_lookaround = new ExternalTokenizer((input, stac
     input.acceptToken(shouldIndentHeading)
     return
   }
-  log(`XX REFUSE shouldIndentHeading ${inputStreamEndString(input)}`)
+  log(`XX REFUSE shouldIndentHeading ${inputStreamEndString(input, stack)}`)
   return
 })
 export const indentHeading_lookaround = new ExternalTokenizer((input, stack) => {
@@ -1060,11 +1063,11 @@ export const shouldDedentHeading_lookaround = new ExternalTokenizer((input, stac
   }
   let nextHeadingLevel = checkStartOfHeading(input)
   if (!nextHeadingLevel) {
-    log(`XX REFUSE shouldDedentHeading G ${inputStreamEndString(input)}`)
+    log(`XX REFUSE shouldDedentHeading G ${inputStreamEndString(input, stack)}`)
     return
   }
   if (context.headingLevelStack.length == 0) {
-    log(`XX REFUSE shouldDedentHeading A ${inputStreamEndString(input)}`)
+    log(`XX REFUSE shouldDedentHeading A ${inputStreamEndString(input, stack)}`)
     return
   }
   const currentHeadingLevel = context.headingLevelStack[context.headingLevelStack.length-1]
@@ -1073,7 +1076,7 @@ export const shouldDedentHeading_lookaround = new ExternalTokenizer((input, stac
     input.acceptToken(shouldDedentHeading)
     return
   }
-  log(`XX REFUSE shouldDedentHeading B ${inputStreamEndString(input)}`)
+  log(`XX REFUSE shouldDedentHeading B ${inputStreamEndString(input, stack)}`)
   return
 })
 
@@ -1087,12 +1090,12 @@ export const plainLink_tokenizer = (orgLinkParameters: string[]) => { return new
     log(`-- START plainLink ${inputStreamBeginString(input)}`)
     let c = input.peek(0)
     if (c === EOF) {
-      log(`XX REFUSE plainLink, only EOF left ${inputStreamEndString(input)}`)
+      log(`XX REFUSE plainLink, only EOF left ${inputStreamEndString(input, stack)}`)
       return
     }
     log(stringifyCodeLogString(c))
     if (isWhiteSpace(c) || isEndOfLine(c)) {
-      log(`XX REFUSE plainLink, whitespace ${inputStreamEndString(input)}`)
+      log(`XX REFUSE plainLink, whitespace ${inputStreamEndString(input, stack)}`)
       return
     }
     let s = String.fromCharCode(c)
@@ -1105,11 +1108,11 @@ export const plainLink_tokenizer = (orgLinkParameters: string[]) => { return new
     const [linkType, ...pathPlainSplit] = s.split(":")
     const pathPlain = pathPlainSplit.join(":")
     if (!orgLinkParameters.includes(linkType)) {
-      log(`XX REFUSE plainLink, not correct linkType ${inputStreamEndString(input)}`)
+      log(`XX REFUSE plainLink, not correct linkType ${inputStreamEndString(input, stack)}`)
       return
     }
     if (!pathPlainRegex.test(pathPlain) && linkType != 'id') {
-      log(`XX REFUSE plainLink, not correct pathPlain ${inputStreamEndString(input)}`)
+      log(`XX REFUSE plainLink, not correct pathPlain ${inputStreamEndString(input, stack)}`)
       return
     }
     log(`== ACCEPT plainLink ${inputStreamAccept(input, stack)}`)
@@ -1146,7 +1149,7 @@ export const regularLink_lookaround = (orgLinkParameters: string[]) => { return 
   const L_SQUARE_BRACKET = '['.charCodeAt(0)
   const R_SQUARE_BRACKET = ']'.charCodeAt(0)
   if (input.peek(0) !== L_SQUARE_BRACKET || input.peek(1) !== L_SQUARE_BRACKET) {
-    log(`XX REFUSE regularLink_lookaround ${inputStreamEndString(input)}`)
+    log(`XX REFUSE regularLink_lookaround ${inputStreamEndString(input, stack)}`)
     return
   }
   input.advance()
@@ -1158,7 +1161,7 @@ export const regularLink_lookaround = (orgLinkParameters: string[]) => { return 
       c = input.advance()
     }
     if (isEndOfLine(c)) {
-      log(`XX REFUSE regularLink_lookaround, EOL ${inputStreamEndString(input)}`)
+      log(`XX REFUSE regularLink_lookaround, EOL ${inputStreamEndString(input, stack)}`)
       return
     } else if (input.peek(0) === R_SQUARE_BRACKET && input.peek(1) === R_SQUARE_BRACKET) {
       if (checkRegularLink(s)) {
@@ -1168,7 +1171,7 @@ export const regularLink_lookaround = (orgLinkParameters: string[]) => { return 
         log(`== ACCEPT regularLink_lookaround, EOL ${inputStreamAccept(input, stack)}`)
         return
       }
-      log(`XX REFUSE regularLink_lookaround ${inputStreamEndString(input)}`)
+      log(`XX REFUSE regularLink_lookaround ${inputStreamEndString(input, stack)}`)
       return
     }
     s += String.fromCharCode(c)
@@ -1208,7 +1211,7 @@ export const angleLink_lookaround = (orgLinkParameters: string[]) => { return ne
           peek_distance += 1
         }
         if (isEndOfLine(input.peek(peek_distance))) {
-          log(`XX REFUSE isAngleLink unfinished blank line ${inputStreamEndString(input)}`)
+          log(`XX REFUSE isAngleLink unfinished blank line ${inputStreamEndString(input, stack)}`)
           return
         }
       } else if (c === R_ANGLE_BRACKET) {
@@ -1229,7 +1232,7 @@ function sectionWordLink(input: InputStream, stack: Stack, end: number[], term: 
   let c = input.peek(0)
   log(stringifyCodeLogString(c))
   if (isWhiteSpace(c)) {
-    log(`XX REFUSE sectionWordLink ${stringifyCodesLogString(end)}, whitespace or endofline ${inputStreamEndString(input)}`)
+    log(`XX REFUSE sectionWordLink ${stringifyCodesLogString(end)}, whitespace or endofline ${inputStreamEndString(input, stack)}`)
     return
   }
   while (true) {
@@ -1265,7 +1268,7 @@ function sectionWordLink(input: InputStream, stack: Stack, end: number[], term: 
         log(stringifyCodeLogString(c))
       }
     } else {
-      log(`XX REFUSE sectionWordLink ${stringifyCodesLogString(end)}, unreachable code path ${inputStreamEndString(input)}`)
+      log(`XX REFUSE sectionWordLink ${stringifyCodesLogString(end)}, unreachable code path ${inputStreamEndString(input, stack)}`)
       return
     }
   }
