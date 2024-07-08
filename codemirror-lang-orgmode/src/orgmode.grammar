@@ -63,9 +63,9 @@ object {
 }
 
 link {
-  PlainLink |
-  (isRegularLink RegularLink) |
-  (isAngleLink AngleLink)
+  (isStartOfRegularLink RegularLink) |
+  (isStartOfAngleLink AngleLink) |
+  (isStartOfPlainLink PlainLink)
 }
 
 RegularLink {
@@ -136,6 +136,11 @@ TextStrikeThrough {
 
 @context context_tracker from "./external-tokens"
 
+@external tokens isStartOfRegularLink_lookaround from "./external-tokens" { isStartOfRegularLink }
+@external tokens isStartOfAngleLink_lookaround from "./external-tokens" { isStartOfAngleLink }
+@external tokens isStartOfPlainLink_lookaround from "./external-tokens" { isStartOfPlainLink }
+
+@external tokens plainLink_tokenizer from "./external-tokens" { PlainLink }
 
 @external tokens isStartOfTitleTextMarkup_lookaround from "./external-tokens" {
   isStartOfTitleTextBold,
@@ -185,9 +190,6 @@ Planning { planningStart endofline }
   planningStart { ("DEADLINE:"|"SCHEDULED:"|"CLOSED:") }
 }
 
-@external tokens plainLink_tokenizer from "./external-tokens" { PlainLink }
-@external tokens regularLink_lookaround from "./external-tokens" { isRegularLink }
-@external tokens angleLink_lookaround from "./external-tokens" { isAngleLink }
 
 @external tokens sectionEnd_tokenizer from "./external-tokens" { sectionEnd }
 @external tokens sectionSpace_tokenizer from "./external-tokens" { sectionSpace }

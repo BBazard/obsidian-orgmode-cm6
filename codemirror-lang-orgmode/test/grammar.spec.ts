@@ -465,9 +465,10 @@ test("inline markup", () => {
   testTree(tree, spec)
 })
 
-test.skip("inline links", () => {
+test("inline links", () => {
   const content = [
     "(id:custom-id)",
+    "x id:custom-id x",
     "x[[file]]x",
   ].join("\n")
   const tree = parser.parse(content)
@@ -475,7 +476,26 @@ test.skip("inline links", () => {
     "Program(",
     "    ZerothSection(",
     "        PlainLink,",  // id:custom-id
+    "        PlainLink,",  // id:custom-id
     "        RegularLink,",  // file
+    "    ),",
+    ")",
+  ].join("\n")
+  console.log(printTree(tree, content))
+  parser.configure({strict: true}).parse(content)
+  testTree(tree, spec)
+})
+
+test.skip("plain links should not include brackets", () => {
+  const content = [
+    "(id:custom-id)(id:custom-id2)",
+  ].join("\n")
+  const tree = parser.parse(content)
+  const spec = [
+    "Program(",
+    "    ZerothSection(",
+    "        PlainLink,",  // id:custom-id
+    "        PlainLink,",  // id:custom-id2
     "    ),",
     ")",
   ].join("\n")

@@ -2,7 +2,11 @@ import { LRLanguage } from "@codemirror/language"
 import { styleTags, tags } from "@lezer/highlight"
 import { BuildOptions, buildParser } from '@lezer/generator';
 import { LRParser } from "@lezer/lr";
-import { title_tokenizer, todokeyword_tokenizer, plainLink_tokenizer, regularLink_lookaround, angleLink_lookaround, context_tracker } from "./external-tokens"
+import {
+  title_tokenizer, todokeyword_tokenizer, plainLink_tokenizer,
+  isStartOfRegularLink_lookaround, isStartOfAngleLink_lookaround, isStartOfPlainLink_lookaround,
+  sectionWord_tokenizer, titleWord_tokenizer,
+  context_tracker } from "./external-tokens"
 import * as ExtToken from "./external-tokens"
 import { grammarFile } from "./generated_grammar";
 
@@ -27,14 +31,23 @@ const configurableExternalTokenizer = (words: string[]) => {
     if (name == 'todokeyword_tokenizer') {
       return todokeyword_tokenizer(words)
     }
+    if (name == 'isStartOfRegularLink_lookaround') {
+      return isStartOfRegularLink_lookaround(orgLinkParameters)
+    }
+    if (name == 'isStartOfAngleLink_lookaround') {
+      return isStartOfAngleLink_lookaround(orgLinkParameters)
+    }
+    if (name == 'isStartOfPlainLink_lookaround') {
+      return isStartOfPlainLink_lookaround(orgLinkParameters)
+    }
     if (name == 'plainLink_tokenizer') {
       return plainLink_tokenizer(orgLinkParameters)
     }
-    if (name == 'regularLink_lookaround') {
-      return regularLink_lookaround(orgLinkParameters)
+    if (name == 'sectionWord_tokenizer') {
+      return sectionWord_tokenizer(orgLinkParameters)
     }
-    if (name == 'angleLink_lookaround') {
-      return angleLink_lookaround(orgLinkParameters)
+    if (name == 'titleWord_tokenizer') {
+      return titleWord_tokenizer(orgLinkParameters)
     }
     return ExtToken[name as keyof typeof ExtToken]
   }
