@@ -690,6 +690,14 @@ export const notStartOfComment_lookaround = new ExternalTokenizer((input, stack)
 });
 
 export const sectionWord_tokenizer = new ExternalTokenizer((input, stack) => {
+  const termsByMarker = new Map([
+    [STAR, isStartOfTextBold],
+    ['/'.charCodeAt(0), isStartOfTextItalic],
+    ['_'.charCodeAt(0), isStartOfTextUnderline],
+    ['='.charCodeAt(0), isStartOfTextVerbatim],
+    ['~'.charCodeAt(0), isStartOfTextCode],
+    ['+'.charCodeAt(0), isStartOfTextStrikeThrough],
+  ])
   log(`-- START sectionWord ${inputStreamBeginString(input)}`)
   let c = input.peek(0)
   if (c === EOF) {
@@ -701,7 +709,7 @@ export const sectionWord_tokenizer = new ExternalTokenizer((input, stack) => {
     log(`XX REFUSE sectionWord, whitespace ${inputStreamEndString(input, stack)}`)
     return
   }
-  while (!isWhiteSpace(c) && !isEndOfLine(c)) {
+  while (!isWhiteSpace(c) && !isEndOfLine(c) && !(isStartOfTextMarkup(input, stack, termsByMarker, false))) {
     c = input.advance()
     log(stringifyCodeLogString(c))
   }
@@ -808,10 +816,10 @@ export const sectionWordStrikeThrough_tokenizer = new ExternalTokenizer((input, 
   sectionWordMarkup(input, stack, '+'.charCodeAt(0), sectionwordStrikeThrough)
 })
 
-function checkEndOfTextMarkup(input: InputStream, stack: Stack, marker: number) {
+function checkEndOfTextMarkup(input: InputStream, stack: Stack, marker: number, peek_distance: number = 0) {
   const MARKER = marker
-  const previous = input.peek(-1)
-  const current = input.peek(0)
+  const previous = input.peek(peek_distance - 1)
+  const current = input.peek(peek_distance)
   if (isWhiteSpace(previous) || isEndOfLine(previous)) {
     log(`previous is whitespace ${stringifyCodeLogString(previous)}`)
     return false
@@ -821,7 +829,7 @@ function checkEndOfTextMarkup(input: InputStream, stack: Stack, marker: number) 
     log(`not MARKER ${inputStreamEndString(input, stack)}`)
     return false
   }
-  const next = input.peek(1)
+  const next = input.peek(peek_distance + 1)
   log(`next ${stringifyCodeLogString(next)}`)
   if (!checkMarkupPOST(next)) {
     log(`no POST ${inputStreamEndString(input, stack)}`)
@@ -839,11 +847,14 @@ export const isStartOfTextMarkup_lookaround = new ExternalTokenizer((input, stac
     ['~'.charCodeAt(0), isStartOfTextCode],
     ['+'.charCodeAt(0), isStartOfTextStrikeThrough],
   ])
-  isStartOfTextMarkup(input, stack, termsByMarker, false)
+  const term = isStartOfTextMarkup(input, stack, termsByMarker, false)
+  if (term) {
+    input.acceptToken(term, -(input.pos-stack.pos))
+  }
 })
 
 export const isStartOfTitleTextMarkup_lookaround = new ExternalTokenizer((input, stack) => {
-  const termsByMarker = new Map([
+  const termsByTitleMarker = new Map([
     [STAR, isStartOfTitleTextBold],
     ['/'.charCodeAt(0), isStartOfTitleTextItalic],
     ['_'.charCodeAt(0), isStartOfTitleTextUnderline],
@@ -851,11 +862,13 @@ export const isStartOfTitleTextMarkup_lookaround = new ExternalTokenizer((input,
     ['~'.charCodeAt(0), isStartOfTitleTextCode],
     ['+'.charCodeAt(0), isStartOfTitleTextStrikeThrough],
   ])
-  isStartOfTextMarkup(input, stack, termsByMarker, true)
+  const term = isStartOfTextMarkup(input, stack, termsByTitleMarker, true)
+  if (term) {
+    input.acceptToken(term, -(input.pos-stack.pos))
+  }
 })
 
 function isStartOfTextMarkup(input: InputStream, stack: Stack, termsByMarker: Map<number, number>, noEndOfLine: boolean) {
-  const initialPos = input.pos
   log(`-- START isStartOfTextMarkup ${inputStreamBeginString(input)}`)
   const previous = input.peek(-1)
   log(`previous ${stringifyCodeLogString(previous)}`)
@@ -863,7 +876,8 @@ function isStartOfTextMarkup(input: InputStream, stack: Stack, termsByMarker: Ma
     log(`XX REFUSE isStartOfTextMarkup, not preceded by PRE ${inputStreamEndString(input, stack)}`)
     return
   }
-  let c = input.peek(0)
+  let peek_distance = 0
+  let c = input.peek(peek_distance)
   log(stringifyCodeLogString(c))
   if (!termsByMarker.has(c)) {
     log(`XX REFUSE isStartOfTextMarkup, not starting with a textmarkup marker ${inputStreamEndString(input, stack)}`)
@@ -872,18 +886,19 @@ function isStartOfTextMarkup(input: InputStream, stack: Stack, termsByMarker: Ma
   const MARKER = c
   const term = termsByMarker.get(MARKER)
   if (isEndOfLine(previous) && c === STAR) {
-    let peek_distance = 1
-    c = input.peek(peek_distance)
+    let extra_peek_distance = 1
+    c = input.peek(peek_distance + extra_peek_distance)
     while (c === STAR) {
-      peek_distance += 1
-      c = input.peek(peek_distance)
+      extra_peek_distance += 1
+      c = input.peek(peek_distance + extra_peek_distance)
     }
     if (isWhiteSpace(c)) {
       log(`XX REFUSE isStartOfTextMarkup, start of heading ${inputStreamEndString(input, stack)}`)
       return
     }
   }
-  c = input.advance()
+  peek_distance += 1
+  c = input.peek(peek_distance)
   log(stringifyCodeLogString(c))
   if (isWhiteSpace(c)) {
     log(`XX REFUSE isStartOfTextMarkup, ${stringifyCodeLogString(MARKER)} followed by whitespace ${inputStreamEndString(input, stack)}`)
@@ -891,65 +906,76 @@ function isStartOfTextMarkup(input: InputStream, stack: Stack, termsByMarker: Ma
   } else if (isEndOfLine(c)) {
     log(`XX REFUSE isStartOfTextMarkup, ${stringifyCodeLogString(MARKER)} followed by endofline ${inputStreamEndString(input, stack)}`)
     return
-  } else if (c === MARKER && checkEndOfTextMarkup(input, stack, MARKER)) {
+  } else if (c === MARKER && checkEndOfTextMarkup(input, stack, MARKER, peek_distance)) {
       log(`== REFUSE isStartOfTextMarkup double marker ${inputStreamEndString(input, stack)}`)
       return
   }
   while (true) {
     while (c !== MARKER && !isEndOfLine(c)) {
-      c = input.advance()
+      peek_distance += 1
+      c = input.peek(peek_distance)
       log(stringifyCodeLogString(c))
     }
     if (c === EOF) {
       log(`== REFUSE isStartOfTextMarkup unfinished EOF ${inputStreamEndString(input, stack)}`)
       return
     } else if (c === MARKER) {
-      while (input.peek(1) === MARKER) {
-        c = input.advance()
+      while (input.peek(peek_distance + 1) === MARKER) {
+        peek_distance += 1
+        c = input.peek(peek_distance)
         log(stringifyCodeLogString(c))
       }
-      if (checkEndOfTextMarkup(input, stack, MARKER)) {
-        input.advance()
+      if (checkEndOfTextMarkup(input, stack, MARKER, peek_distance)) {
+        peek_distance += 1
+        c = input.peek(peek_distance)
         log(`== ACCEPT isStartOfTextMarkup ${inputStreamAccept(input, stack)}`)
-        input.acceptToken(term, -(input.pos-initialPos))
-        return
+        return term
       }
     } else {  // NEWLINE
       if (noEndOfLine) {
         log(`XX REFUSE isStartOfTextMarkup reached endofline ${inputStreamEndString(input, stack)}`)
         return
       }
-      if (isWhiteSpace(input.peek(1)) || isEndOfLine(input.peek(1))) {
-        let peek_distance = 1
-        while (isWhiteSpace(input.peek(peek_distance))) {
-          peek_distance += 1
+      if (isWhiteSpace(input.peek(peek_distance + 1)) || isEndOfLine(input.peek(peek_distance + 1))) {
+        let extra_peek_distance = 1
+        while (isWhiteSpace(input.peek(peek_distance + extra_peek_distance))) {
+          extra_peek_distance += 1
         }
-        if (isEndOfLine(input.peek(peek_distance))) {
+        if (isEndOfLine(input.peek(peek_distance + extra_peek_distance))) {
           log(`XX REFUSE isStartOfTextMarkup unfinished blank line ${inputStreamEndString(input, stack)}`)
           return
         }
-      } else if (input.peek(1) == STAR) {
-        let peek_distance = 1
-        c = input.peek(peek_distance)
+      } else if (input.peek(peek_distance + 1) == STAR) {
+        let extra_peek_distance = 1
+        c = input.peek(peek_distance + extra_peek_distance)
         while (c === STAR) {
-          peek_distance += 1
-          c = input.peek(peek_distance)
+          extra_peek_distance += 1
+          c = input.peek(peek_distance + extra_peek_distance)
         }
         if (isWhiteSpace(c)) {
           log(`XX REFUSE isStartOfTextMarkup, start of heading ${inputStreamEndString(input, stack)}`)
           return
         }
-      } else if (input.peek(1) == HASH) {
+      } else if (input.peek(peek_distance + 1) == HASH) {
           log(`XX REFUSE isStartOfTextMarkup, start of comment ${inputStreamEndString(input, stack)}`)
           return
       } else { }  // regular newline
     }
-    c = input.advance()
+    peek_distance += 1
+    c = input.peek(peek_distance)
     log(stringifyCodeLogString(c))
   }
 }
 
 export const titleWord_tokenizer = new ExternalTokenizer((input, stack) => {
+  const termsByTitleMarker = new Map([
+    [STAR, isStartOfTitleTextBold],
+    ['/'.charCodeAt(0), isStartOfTitleTextItalic],
+    ['_'.charCodeAt(0), isStartOfTitleTextUnderline],
+    ['='.charCodeAt(0), isStartOfTitleTextVerbatim],
+    ['~'.charCodeAt(0), isStartOfTitleTextCode],
+    ['+'.charCodeAt(0), isStartOfTitleTextStrikeThrough],
+  ])
   log(`-- START titleWord ${inputStreamBeginString(input)}`)
   let c = input.peek(0)
   if (c === EOF) {
@@ -965,7 +991,7 @@ export const titleWord_tokenizer = new ExternalTokenizer((input, stack) => {
     log(`XX REFUSE titleWord, Tags ${inputStreamEndString(input, stack)}`)
     return
   }
-  while (!isWhiteSpace(c) && !isEndOfLine(c)) {
+  while (!isWhiteSpace(c) && !isEndOfLine(c) && !(isStartOfTextMarkup(input, stack, termsByTitleMarker, true))) {
     c = input.advance()
     log(stringifyCodeLogString(c))
   }

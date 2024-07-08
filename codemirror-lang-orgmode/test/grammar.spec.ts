@@ -440,6 +440,31 @@ test("title with links", () => {
   testTree(tree, spec)
 })
 
+test("inline markup", () => {
+  const content = [
+    "(*bold1*){*bold2*}\"*bold3*\"'*bold4*'-*bold5*-",
+    "*bold6*, *bold7*? *bold8*!",
+  ].join("\n")
+  const tree = parser.parse(content)
+  const spec = [
+    "Program(",
+    "    ZerothSection(",
+    "        TextBold,",  // *bold1*
+    "        TextBold,",  // *bold2*
+    "        TextBold,",  // *bold3*
+    "        TextBold,",  // *bold4*
+    "        TextBold,",  // *bold5*
+    "        TextBold,",  // *bold6*
+    "        TextBold,",  // *bold7*
+    "        TextBold,",  // *bold8*
+    "    ),",
+    ")",
+  ].join("\n")
+  console.log(printTree(tree, content))
+  parser.configure({strict: true}).parse(content)
+  testTree(tree, spec)
+})
+
 test.skip("inline links", () => {
   const content = [
     "(id:custom-id)",
