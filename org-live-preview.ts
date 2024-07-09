@@ -86,7 +86,7 @@ function loadDecorations(
     getImageUri: (linkPath: string) => string,
     navigateToOrgId: (orgCustomId: string) => void,
 }) {
-  const builder = new RangeSetBuilder<Decoration>();
+  const builderBuffer = new Array<[number, number, Decoration]>
   const cursorPos = state.selection.main.head
   syntaxTree(state).iterate({
     enter(node) {
@@ -100,31 +100,31 @@ function loadDecorations(
         const [linkPath, displayText, linkHandler] = extractLinkFromNode(node.type.id, linkText)
         if (linkHandler === "internal-inline-image") {
           if (isCursorInsideDecoration) {
-            builder.add(
+            builderBuffer.push([
               node.to,
               node.to,
               Decoration.widget({
                 widget: new ImageWidget(linkPath, obsidianUtils.getImageUri),
                 block: true,
               })
-            )
+            ])
           } else {
-            builder.add(
+            builderBuffer.push([
               node.from,
               node.to,
               Decoration.replace({
                 widget: new ImageWidget(linkPath, obsidianUtils.getImageUri),
               })
-            )
+            ])
           }
         } else if (!isCursorInsideDecoration) {
-          builder.add(
+          builderBuffer.push([
             node.from,
             node.to,
             Decoration.replace({
               widget: new LinkWidget(linkPath, displayText, linkHandler, obsidianUtils.navigateToFile, obsidianUtils.navigateToOrgId),
             })
-          )
+          ])
         }
       } else if (
         node.type.id === TOKEN.TextBold ||
@@ -137,11 +137,16 @@ function loadDecorations(
         if (isCursorInsideDecoration) {
           return
         }
-        builder.add(node.from, node.from+1, Decoration.replace({}))
-        builder.add(node.to-1, node.to, Decoration.replace({}))
+        builderBuffer.push([node.from, node.from+1, Decoration.replace({})])
+        builderBuffer.push([node.to-1, node.to, Decoration.replace({})])
       }
     },
   })
+  builderBuffer.sort(([from, to, x], [from2, to2, x2]) => from - from2)
+  const builder = new RangeSetBuilder<Decoration>();
+  for (const [from, to, decoration] of builderBuffer) {
+    builder.add(from, to, decoration)
+  }
   return builder.finish();
 }
 

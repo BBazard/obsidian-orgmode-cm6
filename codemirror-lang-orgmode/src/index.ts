@@ -4,8 +4,10 @@ import { BuildOptions, buildParser } from '@lezer/generator';
 import { LRParser } from "@lezer/lr";
 import {
   title_tokenizer, todokeyword_tokenizer, plainLink_tokenizer,
-  isStartOfRegularLink_lookaround, isStartOfAngleLink_lookaround, isStartOfPlainLink_lookaround,
+  isStartOfRegularLink_lookaround, isStartOfAngleLink_lookaround,
   sectionWord_tokenizer, titleWord_tokenizer,
+  sectionWordBold_tokenizer, sectionWordItalic_tokenizer, sectionWordUnderline_tokenizer,
+  sectionWordVerbatim_tokenizer, sectionWordCode_tokenizer, sectionWordStrikeThrough_tokenizer,
   context_tracker } from "./external-tokens"
 import * as ExtToken from "./external-tokens"
 import { grammarFile } from "./generated_grammar";
@@ -37,9 +39,6 @@ const configurableExternalTokenizer = (words: string[]) => {
     if (name == 'isStartOfAngleLink_lookaround') {
       return isStartOfAngleLink_lookaround(orgLinkParameters)
     }
-    if (name == 'isStartOfPlainLink_lookaround') {
-      return isStartOfPlainLink_lookaround(orgLinkParameters)
-    }
     if (name == 'plainLink_tokenizer') {
       return plainLink_tokenizer(orgLinkParameters)
     }
@@ -48,6 +47,24 @@ const configurableExternalTokenizer = (words: string[]) => {
     }
     if (name == 'titleWord_tokenizer') {
       return titleWord_tokenizer(orgLinkParameters)
+    }
+    if (name == 'sectionWordBold_tokenizer') {
+      return sectionWordBold_tokenizer(orgLinkParameters)
+    }
+    if (name == 'sectionWordItalic_tokenizer') {
+      return sectionWordItalic_tokenizer(orgLinkParameters)
+    }
+    if (name == 'sectionWordUnderline_tokenizer') {
+      return sectionWordUnderline_tokenizer(orgLinkParameters)
+    }
+    if (name == 'sectionWordVerbatim_tokenizer') {
+      return sectionWordVerbatim_tokenizer(orgLinkParameters)
+    }
+    if (name == 'sectionWordCode_tokenizer') {
+      return sectionWordCode_tokenizer(orgLinkParameters)
+    }
+    if (name == 'sectionWordStrikeThrough_tokenizer') {
+      return sectionWordStrikeThrough_tokenizer(orgLinkParameters)
     }
     return ExtToken[name as keyof typeof ExtToken]
   }

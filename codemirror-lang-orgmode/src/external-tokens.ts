@@ -34,7 +34,6 @@ import {
   PlainLink,
   isStartOfRegularLink,
   isStartOfAngleLink,
-  isStartOfPlainLink,
   sectionWordAngleLink,
   sectionWordRegularLink,
 } from './parser.terms';
@@ -760,7 +759,7 @@ export const sectionEnd_tokenizer = new ExternalTokenizer((input, stack) => {
   return
 });
 
-function sectionWordMarkup(input: InputStream, stack: Stack, marker: number, term: number) {
+function sectionWordMarkup(input: InputStream, stack: Stack, marker: number, term: number, orgLinkParameters: string[]) {
   const MARKER = marker
   log(`-- START sectionWordMarkup ${stringifyCodeLogString(marker)} ${inputStreamBeginString(input)}`)
   let c = input.peek(0)
@@ -770,7 +769,13 @@ function sectionWordMarkup(input: InputStream, stack: Stack, marker: number, ter
     return
   }
   while (true) {
-    while (!isWhiteSpace(c) && !isEndOfLine(c) && c !== MARKER) {
+    while (
+      !isWhiteSpace(c) &&
+      !isEndOfLine(c) &&
+      c !== MARKER &&
+      !checkAngleLink(input, stack, orgLinkParameters) &&
+      !checkRegularLink(input, stack, orgLinkParameters)
+    ) {
       c = input.advance()
       log(stringifyCodeLogString(c))
     }
@@ -793,6 +798,13 @@ function sectionWordMarkup(input: InputStream, stack: Stack, marker: number, ter
       }
       c = input.advance()
       log(stringifyCodeLogString(c))
+    } else if (
+      checkAngleLink(input, stack, orgLinkParameters) ||
+      checkRegularLink(input, stack, orgLinkParameters)
+    ) {
+      log(`== ACCEPT sectionWordMarkup ${stringifyCodeLogString(marker)} before link ${inputStreamAccept(input, stack)}`)
+      input.acceptToken(term)
+      return
     } else {
       log(`XX REFUSE sectionWordMarkup ${stringifyCodeLogString(marker)}, unreachable code path ${inputStreamEndString(input, stack)}`)
       return
@@ -800,29 +812,35 @@ function sectionWordMarkup(input: InputStream, stack: Stack, marker: number, ter
   }
 }
 
-export const sectionWordBold_tokenizer = new ExternalTokenizer((input, stack) => {
-  sectionWordMarkup(input, stack, STAR, sectionwordBold)
-})
+export const sectionWordBold_tokenizer = (orgLinkParameters: string[]) => { return new ExternalTokenizer((input, stack) => {
+    sectionWordMarkup(input, stack, STAR, sectionwordBold, orgLinkParameters)
+  })
+}
 
-export const sectionWordItalic_tokenizer = new ExternalTokenizer((input, stack) => {
-  sectionWordMarkup(input, stack, '/'.charCodeAt(0), sectionwordItalic)
-})
+export const sectionWordItalic_tokenizer = (orgLinkParameters: string[]) => { return new ExternalTokenizer((input, stack) => {
+    sectionWordMarkup(input, stack, '/'.charCodeAt(0), sectionwordItalic, orgLinkParameters)
+  })
+}
 
-export const sectionWordUnderline_tokenizer = new ExternalTokenizer((input, stack) => {
-  sectionWordMarkup(input, stack, '_'.charCodeAt(0), sectionwordUnderline)
-})
+export const sectionWordUnderline_tokenizer = (orgLinkParameters: string[]) => { return new ExternalTokenizer((input, stack) => {
+    sectionWordMarkup(input, stack, '_'.charCodeAt(0), sectionwordUnderline, orgLinkParameters)
+  })
+}
 
-export const sectionWordVerbatim_tokenizer = new ExternalTokenizer((input, stack) => {
-  sectionWordMarkup(input, stack, '='.charCodeAt(0), sectionwordVerbatim)
-})
+export const sectionWordVerbatim_tokenizer = (orgLinkParameters: string[]) => { return new ExternalTokenizer((input, stack) => {
+    sectionWordMarkup(input, stack, '='.charCodeAt(0), sectionwordVerbatim, orgLinkParameters)
+  })
+}
 
-export const sectionWordCode_tokenizer = new ExternalTokenizer((input, stack) => {
-  sectionWordMarkup(input, stack, '~'.charCodeAt(0), sectionwordCode)
-})
+export const sectionWordCode_tokenizer = (orgLinkParameters: string[]) => { return new ExternalTokenizer((input, stack) => {
+    sectionWordMarkup(input, stack, '~'.charCodeAt(0), sectionwordCode, orgLinkParameters)
+  })
+}
 
-export const sectionWordStrikeThrough_tokenizer = new ExternalTokenizer((input, stack) => {
-  sectionWordMarkup(input, stack, '+'.charCodeAt(0), sectionwordStrikeThrough)
-})
+export const sectionWordStrikeThrough_tokenizer = (orgLinkParameters: string[]) => { return new ExternalTokenizer((input, stack) => {
+    sectionWordMarkup(input, stack, '+'.charCodeAt(0), sectionwordStrikeThrough, orgLinkParameters)
+  })
+}
 
 function checkEndOfTextMarkup(input: InputStream, stack: Stack, marker: number, peek_distance: number = 0) {
   const MARKER = marker
@@ -1176,14 +1194,6 @@ export const plainLink_tokenizer = (orgLinkParameters: string[]) => { return new
     if (checkPlainLink(input, stack, orgLinkParameters, false)) {
       log(`== ACCEPT plainLink ${inputStreamAccept(input, stack)}`)
       input.acceptToken(PlainLink)
-    }
-  })
-}
-
-export const isStartOfPlainLink_lookaround = (orgLinkParameters: string[]) => { return new ExternalTokenizer((input, stack) => {
-    if (checkPlainLink(input, stack, orgLinkParameters, true)) {
-      log(`== ACCEPT isStartOfPlainLink ${inputStreamAccept(input, stack)}`)
-      input.acceptToken(isStartOfPlainLink)
     }
   })
 }

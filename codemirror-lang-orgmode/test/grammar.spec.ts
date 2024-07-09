@@ -399,7 +399,9 @@ test("links", () => {
     "    ZerothSection(",
     "        RegularLink,",  // [[regular link]]
     "        RegularLink,",  // [[link][description]]
-    "        RegularLink,",  // [[link with *markup* inside]]
+    "        RegularLink(",  // [[link with *markup* inside]]
+    "            TextBold,",  // *markup*
+    "        ),",
     "        PlainLink,",  // https://plainlink
     "        AngleLink,",  // <https:angle link>
     "        AngleLink,",  // <https:angle link with a\nnewline inside>
@@ -478,6 +480,60 @@ test("inline links", () => {
     "        PlainLink,",  // id:custom-id
     "        PlainLink,",  // id:custom-id
     "        RegularLink,",  // file
+    "    ),",
+    ")",
+  ].join("\n")
+  console.log(printTree(tree, content))
+  parser.configure({strict: true}).parse(content)
+  testTree(tree, spec)
+})
+
+test("markup inside links", () => {
+  const content = [
+    "[[x *bold* x]]",
+    "<https://url *with* spaces>",
+  ].join("\n")
+  const tree = parser.parse(content)
+  const spec = [
+    "Program(",
+    "    ZerothSection(",
+    "        RegularLink(",  // [[x *bold* x]]
+    "            TextBold,",  // *bold*
+    "        ),",
+    "        AngleLink(",  // <https://url *with* spaces>
+    "            TextBold,",  // *with*
+    "        ),",
+    "    ),",
+    ")",
+  ].join("\n")
+  console.log(printTree(tree, content))
+  parser.configure({strict: true}).parse(content)
+  testTree(tree, spec)
+})
+
+test("link inside markup", () => {
+  const content = [
+    "*[[link]]*",
+    "*<https://url>*",
+    "*x[[link]]x*",
+    "*x<https://url>x*",
+  ].join("\n")
+  const tree = parser.parse(content)
+  const spec = [
+    "Program(",
+    "    ZerothSection(",
+    "        TextBold(",
+    "            RegularLink,",  // [[link]]
+    "        ),",
+    "        TextBold(",
+    "            AngleLink,",  // <https://url>
+    "        ),",
+    "        TextBold(",
+    "            RegularLink,",  // [[link]]
+    "        ),",
+    "        TextBold(",
+    "            AngleLink,",  // <https://url>
+    "        ),",
     "    ),",
     ")",
   ].join("\n")

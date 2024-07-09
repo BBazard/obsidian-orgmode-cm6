@@ -65,19 +65,27 @@ object {
 link {
   (isStartOfRegularLink RegularLink) |
   (isStartOfAngleLink AngleLink) |
-  (isStartOfPlainLink PlainLink)
+  PlainLink
 }
 
 RegularLink {
   "[["
-  sectionWordRegularLink (sectionSpace sectionWordRegularLink)*
+  regularLinkNestedObject (sectionSpace regularLinkNestedObject)*
   "]]"
 }
 
 AngleLink {
   "<"
-  sectionWordAngleLink (sectionSpace sectionWordAngleLink)*
+  angleLinkNestedObject (sectionSpace angleLinkNestedObject)*
   ">"
+}
+
+regularLinkNestedObject {
+  textMarkup | sectionWordRegularLink
+}
+
+angleLinkNestedObject {
+  textMarkup | sectionWordAngleLink
 }
 
 titleTextMarkup {
@@ -100,45 +108,68 @@ textMarkup {
 
 TextBold {
   "*"
-  sectionwordBold (sectionSpace sectionwordBold)*
+  markupBoldNestedObject (sectionSpace markupBoldNestedObject)*
   "*"
 }
 
 TextItalic {
   "/"
-  sectionwordItalic (sectionSpace sectionwordItalic)*
+  markupItalicNestedObject (sectionSpace markupItalicNestedObject)*
   "/"
 }
 
 TextUnderline {
   "_"
-  sectionwordUnderline (sectionSpace sectionwordUnderline)*
+  markupUnderlineNestedObject (sectionSpace markupUnderlineNestedObject)*
   "_"
 }
 
 TextVerbatim {
   "="
-  sectionwordVerbatim (sectionSpace sectionwordVerbatim)*
+  markupVerbatimNestedObject (sectionSpace markupVerbatimNestedObject)*
   "="
 }
 
 TextCode {
   "~"
-  sectionwordCode (sectionSpace sectionwordCode)*
+  markupCodeNestedObject (sectionSpace markupCodeNestedObject)*
   "~"
 }
 
 TextStrikeThrough {
   "+"
-  sectionwordStrikeThrough (sectionSpace sectionwordStrikeThrough)*
+  markupStrikeThroughNestedObject (sectionSpace markupStrikeThroughNestedObject)*
   "+"
+}
+
+markupBoldNestedObject {
+  (sectionwordBold | link)+
+}
+
+markupItalicNestedObject {
+  (sectionwordItalic | link)+
+}
+
+markupUnderlineNestedObject {
+  (sectionwordUnderline | link)+
+}
+
+markupVerbatimNestedObject {
+  (sectionwordVerbatim | link)+
+}
+
+markupCodeNestedObject {
+  (sectionwordCode | link)+
+}
+
+markupStrikeThroughNestedObject {
+  (sectionwordStrikeThrough | link)+
 }
 
 @context context_tracker from "./external-tokens"
 
 @external tokens isStartOfRegularLink_lookaround from "./external-tokens" { isStartOfRegularLink }
 @external tokens isStartOfAngleLink_lookaround from "./external-tokens" { isStartOfAngleLink }
-@external tokens isStartOfPlainLink_lookaround from "./external-tokens" { isStartOfPlainLink }
 
 @external tokens plainLink_tokenizer from "./external-tokens" { PlainLink }
 
