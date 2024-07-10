@@ -517,6 +517,7 @@ test("link inside markup", () => {
     "*<https://url>*",
     "*x[[link]]x*",
     "*x<https://url>x*",
+    "*[[x]]*y*",
   ].join("\n")
   const tree = parser.parse(content)
   const spec = [
@@ -534,6 +535,27 @@ test("link inside markup", () => {
     "        TextBold(",
     "            AngleLink,",  // <https://url>
     "        ),",
+    "        TextBold(",  // *[[x]]*y*
+    "            RegularLink,",  // [[x]]
+    "        ),",
+    "    ),",
+    ")",
+  ].join("\n")
+  console.log(printTree(tree, content))
+  parser.configure({strict: true}).parse(content)
+  testTree(tree, spec)
+})
+
+test("emacs weird case", () => {
+  const content = [
+    "*y*[[x]]*",  // should be TextBold(RegularLink) like *y*x*
+  ].join("\n")
+  const tree = parser.parse(content)
+  const spec = [
+    "Program(",
+    "    ZerothSection(",
+    "        TextBold,",  // *y*
+    "        RegularLink,",  // [[x]]
     "    ),",
     ")",
   ].join("\n")

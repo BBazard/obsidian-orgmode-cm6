@@ -19,6 +19,12 @@ import {
   isStartOfTextVerbatim,
   isStartOfTextCode,
   isStartOfTextStrikeThrough,
+  isEndOfTextBold,
+  isEndOfTextItalic,
+  isEndOfTextUnderline,
+  isEndOfTextVerbatim,
+  isEndOfTextCode,
+  isEndOfTextStrikeThrough,
   titleWord,
   Tags,
   isStartOfTitleTextBold,
@@ -876,6 +882,24 @@ export const isStartOfTextMarkup_lookaround = new ExternalTokenizer((input, stac
   const term = isStartOfTextMarkup(input, stack, termsByMarker, false)
   if (term) {
     input.acceptToken(term, -(input.pos-stack.pos))
+  }
+})
+
+export const isEndOfTextMarkup_lookaround = new ExternalTokenizer((input, stack) => {
+  const termsByMarker = new Map([
+    [STAR, isEndOfTextBold],
+    ['/'.charCodeAt(0), isEndOfTextItalic],
+    ['_'.charCodeAt(0), isEndOfTextUnderline],
+    ['='.charCodeAt(0), isEndOfTextVerbatim],
+    ['~'.charCodeAt(0), isEndOfTextCode],
+    ['+'.charCodeAt(0), isEndOfTextStrikeThrough],
+  ])
+  const MARKER = input.peek(0)
+  if (!termsByMarker.has(MARKER)) {
+    return
+  }
+  if (checkEndOfTextMarkup(input, stack, MARKER)) {
+    input.acceptToken(termsByMarker.get(MARKER), -(input.pos-stack.pos))
   }
 })
 

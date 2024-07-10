@@ -109,36 +109,42 @@ textMarkup {
 TextBold {
   "*"
   markupBoldNestedObject (sectionSpace markupBoldNestedObject)*
+  isEndOfTextBold
   "*"
 }
 
 TextItalic {
   "/"
   markupItalicNestedObject (sectionSpace markupItalicNestedObject)*
+  isEndOfTextItalic
   "/"
 }
 
 TextUnderline {
   "_"
   markupUnderlineNestedObject (sectionSpace markupUnderlineNestedObject)*
+  isEndOfTextUnderline
   "_"
 }
 
 TextVerbatim {
   "="
   markupVerbatimNestedObject (sectionSpace markupVerbatimNestedObject)*
+  isEndOfTextVerbatim
   "="
 }
 
 TextCode {
   "~"
   markupCodeNestedObject (sectionSpace markupCodeNestedObject)*
+  isEndOfTextCode
   "~"
 }
 
 TextStrikeThrough {
   "+"
   markupStrikeThroughNestedObject (sectionSpace markupStrikeThroughNestedObject)*
+  isEndOfTextStrikeThrough
   "+"
 }
 
@@ -191,6 +197,14 @@ markupStrikeThroughNestedObject {
   isStartOfTextStrikeThrough
 }
 
+@external tokens isEndOfTextMarkup_lookaround from "./external-tokens" {
+  isEndOfTextBold,
+  isEndOfTextItalic,
+  isEndOfTextUnderline,
+  isEndOfTextVerbatim,
+  isEndOfTextCode,
+  isEndOfTextStrikeThrough
+}
 
 // https://orgmode.org/worg/org-syntax.html#Planning
 Planning { planningStart endofline }
