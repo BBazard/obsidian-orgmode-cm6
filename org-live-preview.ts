@@ -44,12 +44,14 @@ class LinkWidget extends WidgetType {
   linkHandler: LinkHandler
   navigateToFile: (filePath: string) => void
   navigateToOrgId: (orgCustomId: string) => void
+  classes: string[]
   constructor(
     linkPath: string,
     displayText: string,
     linkHandler: LinkHandler,
     navigateToFile: (filePath: string) => void,
     navigateToOrgId: (orgCustomId: string) => void,
+    classes: string[]
   ) {
     super()
     this.linkPath = linkPath
@@ -57,14 +59,21 @@ class LinkWidget extends WidgetType {
     this.linkHandler = linkHandler
     this.navigateToFile = navigateToFile
     this.navigateToOrgId = navigateToOrgId
+    this.classes = classes
   }
   eq(other: LinkWidget) {
-    return this.linkPath == other.linkPath && this.displayText == other.displayText
+    return (
+      this.linkPath == other.linkPath &&
+      this.displayText == other.displayText &&
+      this.linkHandler == other.linkHandler &&
+      JSON.stringify(this.classes.sort()) == JSON.stringify(other.classes.sort())
+    )
   }
   toDOM(view: EditorView): HTMLElement {
     const link = document.createElement("a");
     link.innerText = this.displayText
     link.href = "#"
+    link.addClasses(this.classes)
     link.addEventListener("click", () => {
       if (this.linkHandler === "external") {
         window.open(this.linkPath)
@@ -118,11 +127,29 @@ function loadDecorations(
             ])
           }
         } else if (!isCursorInsideDecoration) {
+          let link_css_classes = ["org-link"]
+          if (node.node.parent.type.id === TOKEN.TextBold) {
+            link_css_classes.push("org-text-bold")
+          } else if (node.node.parent.type.id === TOKEN.TextItalic) {
+            link_css_classes.push("org-text-italic")
+          } else if (node.node.parent.type.id === TOKEN.TextUnderline) {
+            link_css_classes.push("org-text-underline")
+          } else if (node.node.parent.type.id === TOKEN.TextVerbatim) {
+            link_css_classes.push("org-text-verbatim")
+          } else if (node.node.parent.type.id === TOKEN.TextCode) {
+            link_css_classes.push("org-text-code")
+          } else if (node.node.parent.type.id === TOKEN.TextStrikeThrough) {
+            link_css_classes.push("org-text-strikethrough")
+          }
           builderBuffer.push([
             node.from,
             node.to,
             Decoration.replace({
-              widget: new LinkWidget(linkPath, displayText, linkHandler, obsidianUtils.navigateToFile, obsidianUtils.navigateToOrgId),
+              widget: new LinkWidget(
+                linkPath, displayText, linkHandler,
+                obsidianUtils.navigateToFile, obsidianUtils.navigateToOrgId,
+                link_css_classes,
+              ),
             })
           ])
         }
