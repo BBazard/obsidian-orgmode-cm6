@@ -614,7 +614,7 @@ test("emacs weird case", () => {
   testTree(tree, spec)
 })
 
-test.skip("links with surrounding spaces are not links", () => {
+test("links with surrounding spaces are links", () => {
   const content = [
     "[[ link ]]",
     "[[link ]]",
@@ -625,6 +625,8 @@ test.skip("links with surrounding spaces are not links", () => {
     "Program(",
     "    ZerothSection(",
     "        RegularLink,",  // [[ link ]]
+    "        RegularLink,",  // [[link ]]
+    "        RegularLink,",  // [[ link]]
     "    ),",
     ")",
   ].join("\n")
