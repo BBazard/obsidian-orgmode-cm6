@@ -1167,10 +1167,29 @@ export const dedentHeading_lookaround = new ExternalTokenizer((input: InputStrea
 })
 
 function checkPlainLink(input: InputStream, stack: Stack, orgLinkParameters: string[], lookaround: boolean) {
-  const pathPlainRegex = /(?:[^ \t\n\[\]<>()]|\((?:[^ \t\n\[\]<>()]|\([^ \t\n\[\]<>()]*\))*\))+(?:[^[:punct:] \t\n]|\/|\((?:[^ \t\n\[\]<>()]|\([^ \t\n\[\]<>()]*\))*\))/
+  const L_PAREN = '('.charCodeAt(0)
+  const R_PAREN = ')'.charCodeAt(0)
+  function checkPlainLinkPRE(codeUnit: number) {
+    return (isEndOfLine(codeUnit) || isWhiteSpace(codeUnit) ||
+      String.fromCharCode(codeUnit) === '-' ||
+      String.fromCharCode(codeUnit) === '(' ||
+      String.fromCharCode(codeUnit) === '{' ||
+      String.fromCharCode(codeUnit) === "'" ||
+      String.fromCharCode(codeUnit) === '"' ||
+      String.fromCharCode(codeUnit) === ':'
+    )
+  }
+  const isForbiddenChar = (codeUnit: number) => {
+    return (isEndOfLine(codeUnit) || isWhiteSpace(codeUnit) ||
+      String.fromCharCode(codeUnit) === '[' ||
+      String.fromCharCode(codeUnit) === ']' ||
+      String.fromCharCode(codeUnit) === '<' ||
+      String.fromCharCode(codeUnit) === '>'
+    )
+  }
   log(`-- START plainLink ${inputStreamBeginString(input)}`)
   const previous = input.peek(-1)
-  if (!checkMarkupPRE(previous) && !isEndOfLine(previous) && !isWhiteSpace(previous)) {
+  if (!checkPlainLinkPRE(previous) && !isEndOfLine(previous) && !isWhiteSpace(previous)) {
     log(`XX REFUSE plainLink, previous not PRE, eof, whitespace ${inputStreamEndString(input, stack)}`)
     return
   }
@@ -1186,14 +1205,42 @@ function checkPlainLink(input: InputStream, stack: Stack, orgLinkParameters: str
     return
   }
   let s = String.fromCharCode(c)
-  while (!isWhiteSpace(c) && !isEndOfLine(c)) {
+  while (!isForbiddenChar(c)) {
     peek_distance += 1
     c = input.peek(peek_distance)
     s += String.fromCharCode(c)
     log(stringifyCodeLogString(c))
+    if (c === R_PAREN) {
+      break
+    } else if (c === L_PAREN) {
+      let depth = 1
+      let beforeParen_peek_distance = peek_distance
+      while (depth > 0) {
+        peek_distance += 1
+        c = input.peek(peek_distance)
+        s += String.fromCharCode(c)
+        log(stringifyCodeLogString(c))
+        if (isForbiddenChar(c)) {
+          peek_distance = beforeParen_peek_distance
+          break
+        } else if (c === L_PAREN) {
+          depth += 1
+          if (depth > 2) {
+            log(`XX REFUSE plainLink, too many '(' ${inputStreamEndString(input, stack)}`)
+            return
+          }
+        } else if (c === R_PAREN) {
+          depth -= 1
+          if (depth < 0) {
+            log(`XX REFUSE plainLink, too many ')' ${inputStreamEndString(input, stack)}`)
+            return
+          }
+        }
+      }
+    }
   }
   const POSTcandidate = input.peek(peek_distance - 1)
-  if (checkMarkupPOST(POSTcandidate)) {
+  if (checkMarkupPOST(POSTcandidate) && POSTcandidate !== R_PAREN) {
     peek_distance -= 1
     s = s.slice(0, s.length-1)
   }
@@ -1204,8 +1251,8 @@ function checkPlainLink(input: InputStream, stack: Stack, orgLinkParameters: str
     log(`XX REFUSE plainLink, not correct linkType ${inputStreamEndString(input, stack)}`)
     return
   }
-  if (!pathPlainRegex.test(pathPlain) && linkType != 'id') {
-    log(`XX REFUSE plainLink, not correct pathPlain ${inputStreamEndString(input, stack)}`)
+  if (pathPlain.length <= 1) {
+    log(`XX REFUSE plainLink, one char ${inputStreamEndString(input, stack)}`)
     return
   }
   if (!lookaround) {

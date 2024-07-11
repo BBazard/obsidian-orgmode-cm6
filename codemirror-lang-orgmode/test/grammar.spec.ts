@@ -417,6 +417,56 @@ test("links", () => {
   testTree(tree, spec)
 })
 
+test("pathplain", () => {
+  const content = [
+    "id:)",
+    "id:(",
+    "id:normal",
+    "id:with(paren)",
+    "id:unfinished(paren",
+    "id:early)finish",
+    "id:twin(paren)(paren)",
+    "id:several(paren)in(a)row",
+    "id:nested(paren(x))",
+  ].join("\n")
+  const tree = parser.parse(content)
+  const spec = [
+    "Program(",
+    "    ZerothSection(",
+    "        PlainLink,",  // id:normal
+    "        PlainLink,",  // id:with(paren)
+    "        PlainLink,",  // id:unfinished
+    "        PlainLink,",  // id:early
+    "        PlainLink,",  // id:twin(paren)(paren)
+    "        PlainLink,",  // id:several(paren)in(a)row
+    "        PlainLink,",  // id:nested(paren(x))
+    "    ),",
+    ")",
+  ].join("\n")
+  console.log(printTree(tree, content))
+  parser.configure({strict: true}).parse(content)
+  testTree(tree, spec)
+})
+
+test("inline pathplain", () => {
+  const content = [
+    "xxx:id:yyy",
+    "(id:hoo)",
+  ].join("\n")
+  const tree = parser.parse(content)
+  const spec = [
+    "Program(",
+    "    ZerothSection(",
+    "        PlainLink,",  // id:yyy
+    "        PlainLink,",  // id:hoo
+    "    ),",
+    ")",
+  ].join("\n")
+  console.log(printTree(tree, content))
+  parser.configure({strict: true}).parse(content)
+  testTree(tree, spec)
+})
+
 test("title with links", () => {
   const content = [
     "* heading with [[link]] inside",
@@ -556,24 +606,6 @@ test("emacs weird case", () => {
     "    ZerothSection(",
     "        TextBold,",  // *y*
     "        RegularLink,",  // [[x]]
-    "    ),",
-    ")",
-  ].join("\n")
-  console.log(printTree(tree, content))
-  parser.configure({strict: true}).parse(content)
-  testTree(tree, spec)
-})
-
-test.skip("plain links should not include brackets", () => {
-  const content = [
-    "(id:custom-id)(id:custom-id2)",
-  ].join("\n")
-  const tree = parser.parse(content)
-  const spec = [
-    "Program(",
-    "    ZerothSection(",
-    "        PlainLink,",  // id:custom-id
-    "        PlainLink,",  // id:custom-id2
     "    ),",
     ")",
   ].join("\n")
