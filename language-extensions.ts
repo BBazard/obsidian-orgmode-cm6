@@ -1,6 +1,6 @@
 import { HighlightStyle, foldService, syntaxTree } from "@codemirror/language"
 import { EditorState } from "@codemirror/state";
-import { SyntaxNode } from "@lezer/common"
+import { SyntaxNodeRef, SyntaxNode } from "@lezer/common"
 import { tags } from "@lezer/highlight"
 import { LRParser } from "@lezer/lr";
 
@@ -40,6 +40,56 @@ export const myHighlightStyle = HighlightStyle.define([
   // Link
   { tag: tags.link, class: "org-link org-section" },
 ]);
+
+export const markupNodeTypeIds = [
+  TOKEN.TextBold,
+  TOKEN.TextItalic,
+  TOKEN.TextUnderline,
+  TOKEN.TextVerbatim,
+  TOKEN.TextCode,
+  TOKEN.TextStrikeThrough,
+]
+
+export function markupClass(node_type_id: number): string {
+  if (node_type_id === TOKEN.TextBold) {
+    return "org-text-bold"
+  } else if (node_type_id === TOKEN.TextItalic) {
+    return "org-text-italic"
+  } else if (node_type_id === TOKEN.TextUnderline) {
+    return "org-text-underline"
+  } else if (node_type_id === TOKEN.TextVerbatim) {
+    return "org-text-verbatim"
+  } else if (node_type_id === TOKEN.TextCode) {
+    return "org-text-code"
+  } else if (node_type_id === TOKEN.TextStrikeThrough) {
+    return "org-text-strikethrough"
+  }
+  throw Error("Not a markup node")
+}
+
+export function injectMarkupInLinktext(linkNode: SyntaxNodeRef, displayText: string, state: EditorState, displayTextFromOffset: number) {
+  const nodesToReplace: [number, number, string, string][] = []
+  let child = linkNode.node.firstChild
+  while (child && markupNodeTypeIds.includes(child.type.id)) {
+    const childText = state.doc.sliceString(child.from+1, child.to-1)
+    const markup_class = markupClass(child.node.type.id)
+    nodesToReplace.push([child.from, child.to, childText, markup_class])
+    child = child.nextSibling
+  }
+  const displayTextStart = linkNode.from + displayTextFromOffset
+  let idx = 0
+  let displayTextHtml = ""
+  for (let i = 0; i < nodesToReplace.length; i++) {
+    const [child_from, child_to, child_text, markup_class] = nodesToReplace[i]
+    displayTextHtml += (
+      displayText.slice(idx, child_from - displayTextStart) +
+      `<span class=${markup_class}>` + child_text + "</span>"
+    )
+    idx = child_to - displayTextStart
+  }
+  displayTextHtml += displayText.slice(idx)
+  return displayTextHtml
+}
 
 export const OrgFoldCompute = (state: EditorState, from: number, to: number) => {
   let currentLineNode = syntaxTree(state).topNode.resolve(from, 1).node
@@ -109,14 +159,17 @@ function parseLinkText(linkText: string): [string, LinkHandler] {
   return [linkPath, linkHandler]
 }
 
-export const extractLinkFromNode = (node: number, linkText: string): [string, string, LinkHandler] => {
+export const extractLinkFromNode = (node: number, linkText: string): [string, string, LinkHandler, number] => {
   let linkHandler: LinkHandler = null
   let linkPath = null
   let displayText = null
   let hasLinkDescription = false
+  let displayTextFromOffset = null
+  let displayTextToOffset = null
   if (node === TOKEN.PlainLink) {
     linkPath = linkText
-    displayText = linkText
+    displayTextFromOffset = 0
+    displayTextToOffset = 0
     linkHandler = "external"
     let [linkPathDetected, linkHandlerDetected] = parseLinkText(linkText)
     if (linkHandlerDetected == "internal-id") {
@@ -126,23 +179,31 @@ export const extractLinkFromNode = (node: number, linkText: string): [string, st
   } else if (node === TOKEN.RegularLink) {
     let innerLinkText
     if (/\]\[/.test(linkText)) {
-      innerLinkText = linkText.split("][")[0].slice(2)
-      displayText = linkText.split("][")[1].slice(0, -2)
+      const idx = linkText.search(/\]\[/)
+      innerLinkText = linkText.slice(2, idx)
+      displayTextFromOffset = idx + 2
+      displayTextToOffset = -2
       hasLinkDescription = true
     } else {
       innerLinkText = linkText.slice(2, -2)
-      displayText = innerLinkText
+      displayTextFromOffset = 2
+      displayTextToOffset = -2
     }
     [linkPath, linkHandler] = parseLinkText(innerLinkText)
   } else if (node === TOKEN.AngleLink) {
     [linkPath, linkHandler] = parseLinkText(linkText.slice(1, -1))
-    displayText = linkText.slice(1, -1)
+    displayTextFromOffset = 1
+    displayTextToOffset = -1
   }
   if (linkHandler === "internal-file" && linkIsImage(linkPath) && !hasLinkDescription) {
     linkHandler = "internal-inline-image"
-    displayText = null
+    displayTextFromOffset = null
+    displayTextToOffset = null
   }
-  return [linkPath, displayText, linkHandler]
+  if (displayTextFromOffset !== null) {
+    displayText = linkText.slice(displayTextFromOffset, linkText.length+displayTextToOffset)
+  }
+  return [linkPath, displayText, linkHandler, displayTextFromOffset]
 }
 
 function* iterateHeadings(node: SyntaxNode): Iterable<SyntaxNode> {

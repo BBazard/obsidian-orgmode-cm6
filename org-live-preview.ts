@@ -13,7 +13,7 @@ import {
 } from "@codemirror/view";
 import { syntaxTree } from "@codemirror/language";
 import { TOKEN } from 'codemirror-lang-orgmode';
-import { LinkHandler, extractLinkFromNode } from 'language-extensions';
+import { LinkHandler, extractLinkFromNode, injectMarkupInLinktext, markupClass, markupNodeTypeIds } from 'language-extensions';
 
 class ImageWidget extends WidgetType {
   path: string
@@ -40,14 +40,14 @@ class ImageWidget extends WidgetType {
 
 class LinkWidget extends WidgetType {
   linkPath: string
-  displayText: string
+  displayHtml: string
   linkHandler: LinkHandler
   navigateToFile: (filePath: string) => void
   navigateToOrgId: (orgCustomId: string) => void
   classes: string[]
   constructor(
     linkPath: string,
-    displayText: string,
+    displayHtml: string,
     linkHandler: LinkHandler,
     navigateToFile: (filePath: string) => void,
     navigateToOrgId: (orgCustomId: string) => void,
@@ -55,7 +55,7 @@ class LinkWidget extends WidgetType {
   ) {
     super()
     this.linkPath = linkPath
-    this.displayText = displayText
+    this.displayHtml = displayHtml
     this.linkHandler = linkHandler
     this.navigateToFile = navigateToFile
     this.navigateToOrgId = navigateToOrgId
@@ -64,14 +64,14 @@ class LinkWidget extends WidgetType {
   eq(other: LinkWidget) {
     return (
       this.linkPath == other.linkPath &&
-      this.displayText == other.displayText &&
+      this.displayHtml == other.displayHtml &&
       this.linkHandler == other.linkHandler &&
       JSON.stringify(this.classes.sort()) == JSON.stringify(other.classes.sort())
     )
   }
   toDOM(view: EditorView): HTMLElement {
     const link = document.createElement("a");
-    link.innerText = this.displayText
+    link.innerHTML = this.displayHtml
     link.href = "#"
     link.addClasses(this.classes)
     link.addEventListener("click", () => {
@@ -106,7 +106,7 @@ function loadDecorations(
         node.type.id === TOKEN.AngleLink
       ) {
         const linkText = state.doc.sliceString(node.from, node.to)
-        const [linkPath, displayText, linkHandler] = extractLinkFromNode(node.type.id, linkText)
+        const [linkPath, displayText, linkHandler, displayTextFromOffset] = extractLinkFromNode(node.type.id, linkText)
         if (linkHandler === "internal-inline-image") {
           if (isCursorInsideDecoration) {
             builderBuffer.push([
@@ -128,25 +128,21 @@ function loadDecorations(
           }
         } else if (!isCursorInsideDecoration) {
           let link_css_classes = ["org-link"]
-          if (node.node.parent.type.id === TOKEN.TextBold) {
-            link_css_classes.push("org-text-bold")
-          } else if (node.node.parent.type.id === TOKEN.TextItalic) {
-            link_css_classes.push("org-text-italic")
-          } else if (node.node.parent.type.id === TOKEN.TextUnderline) {
-            link_css_classes.push("org-text-underline")
-          } else if (node.node.parent.type.id === TOKEN.TextVerbatim) {
-            link_css_classes.push("org-text-verbatim")
-          } else if (node.node.parent.type.id === TOKEN.TextCode) {
-            link_css_classes.push("org-text-code")
-          } else if (node.node.parent.type.id === TOKEN.TextStrikeThrough) {
-            link_css_classes.push("org-text-strikethrough")
+          let parent_is_markup = false
+          if (markupNodeTypeIds.includes(node.node.parent.type.id)) {
+            link_css_classes.push(markupClass(node.node.parent.type.id))
+            parent_is_markup = true
+          }
+          let displayHtml = displayText
+          if (!parent_is_markup) {
+            displayHtml = injectMarkupInLinktext(node, displayText, state, displayTextFromOffset)
           }
           builderBuffer.push([
             node.from,
             node.to,
             Decoration.replace({
               widget: new LinkWidget(
-                linkPath, displayText, linkHandler,
+                linkPath, displayHtml, linkHandler,
                 obsidianUtils.navigateToFile, obsidianUtils.navigateToOrgId,
                 link_css_classes,
               ),
@@ -161,11 +157,23 @@ function loadDecorations(
         node.type.id === TOKEN.TextCode ||
         node.type.id === TOKEN.TextStrikeThrough
       ) {
-        if (isCursorInsideDecoration) {
-          return
+        if (!isCursorInsideDecoration) {
+          builderBuffer.push([node.from, node.from+1, Decoration.replace({})])
+          builderBuffer.push([node.to-1, node.to, Decoration.replace({})])
+          if (
+            node.node.parent.type.id === TOKEN.RegularLink ||
+            node.node.parent.type.id === TOKEN.AngleLink
+          ) {
+            builderBuffer.push([node.from+1, node.to-1, Decoration.mark({class: 'org-link'})])
+          }
+        } else {
+          if (
+            node.node.parent.type.id === TOKEN.RegularLink ||
+            node.node.parent.type.id === TOKEN.AngleLink
+          ) {
+            builderBuffer.push([node.from, node.to, Decoration.mark({class: 'org-link'})])
+          }
         }
-        builderBuffer.push([node.from, node.from+1, Decoration.replace({})])
-        builderBuffer.push([node.to-1, node.to, Decoration.replace({})])
       }
     },
   })

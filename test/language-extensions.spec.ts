@@ -1,12 +1,12 @@
 import { expect, test } from 'vitest'
 import { LRParser } from '@lezer/lr'
 import { EditorState } from "@codemirror/state";
-import { LanguageSupport } from "@codemirror/language"
+import { LanguageSupport, syntaxTree } from "@codemirror/language"
 
 import { OrgmodeLanguage, OrgmodeParser, TOKEN } from 'codemirror-lang-orgmode';
 
 import { OrgmodePluginSettings } from 'settings'
-import { OrgFoldCompute, iterateOrgIds, makeHeadingsFoldable } from 'language-extensions'
+import { OrgFoldCompute, injectMarkupInLinktext, iterateOrgIds, makeHeadingsFoldable } from 'language-extensions'
 import { extractLinkFromNode } from 'language-extensions';
 
 const settings: OrgmodePluginSettings = {
@@ -96,74 +96,74 @@ test("link handling", async () => {
   expect(
     extractLinkFromNode(TOKEN.PlainLink, "https://example.com")
   ).toStrictEqual(
-    ["https://example.com", "https://example.com", "external"]
+    ["https://example.com", "https://example.com", "external", 0]
   )
   expect(
     extractLinkFromNode(TOKEN.PlainLink, "file:///file.org")
   ).toStrictEqual(
-    ["file:///file.org", "file:///file.org", "external"]
+    ["file:///file.org", "file:///file.org", "external", 0]
   )
   expect(
     extractLinkFromNode(TOKEN.PlainLink, "file:///file.png")
   ).toStrictEqual(
-    ["file:///file.png", "file:///file.png", "external"]
+    ["file:///file.png", "file:///file.png", "external", 0]
   )
   expect(
     extractLinkFromNode(TOKEN.PlainLink, "id:custom-id")
   ).toStrictEqual(
-    ["custom-id", "id:custom-id", "internal-id"]
+    ["custom-id", "id:custom-id", "internal-id", 0]
   )
 
   expect(
     extractLinkFromNode(TOKEN.AngleLink, "<file:file.org>")
   ).toStrictEqual(
-    ["file.org", "file:file.org", "internal-file"]
+    ["file.org", "file:file.org", "internal-file", 1]
   )
   expect(
     extractLinkFromNode(TOKEN.AngleLink, "<file:///my file.org>")
   ).toStrictEqual(
-    ["file:///my file.org", "file:///my file.org", "external"]
+    ["file:///my file.org", "file:///my file.org", "external", 1]
   )
   expect(
     extractLinkFromNode(TOKEN.AngleLink, "<https://example.com>")
   ).toStrictEqual(
-    ["https://example.com", "https://example.com", "external"]
+    ["https://example.com", "https://example.com", "external", 1]
   )
   expect(
     extractLinkFromNode(TOKEN.AngleLink, "<file:my file.png>")
   ).toStrictEqual(
-    ["my file.png", null, "internal-inline-image"]
+    ["my file.png", null, "internal-inline-image", null]
   )
 
   expect(
     extractLinkFromNode(TOKEN.RegularLink, "[[https://example.com][desc]]")
   ).toStrictEqual(
-    ["https://example.com", "desc", "external"]
+    ["https://example.com", "desc", "external", 23]
   )
   expect(
     extractLinkFromNode(TOKEN.RegularLink, "[[https://example.com]]")
   ).toStrictEqual(
-    ["https://example.com", "https://example.com", "external"]
+    ["https://example.com", "https://example.com", "external", 2]
   )
   expect(
     extractLinkFromNode(TOKEN.RegularLink, "[[file:///my file.png]]")
   ).toStrictEqual(
-    ["file:///my file.png", "file:///my file.png", "external"]
+    ["file:///my file.png", "file:///my file.png", "external", 2]
   )
   expect(
     extractLinkFromNode(TOKEN.RegularLink, "[[my file.org]]")
   ).toStrictEqual(
-    ["my file.org", "my file.org", "internal-file"]
+    ["my file.org", "my file.org", "internal-file", 2]
   )
   expect(
     extractLinkFromNode(TOKEN.RegularLink, "[[my file.png]]")
   ).toStrictEqual(
-    ["my file.png", null, "internal-inline-image"]
+    ["my file.png", null, "internal-inline-image", null]
   )
   expect(
     extractLinkFromNode(TOKEN.RegularLink, "[[my file.png][desc]]")
   ).toStrictEqual(
-    ["my file.png", "desc", "internal-file"]
+    ["my file.png", "desc", "internal-file", 15]
   )
 })
 
@@ -224,4 +224,23 @@ test("iterating org IDs", async () => {
     { orgId: "idheading", start: 31 },
     { orgId: "idsubheading", start: 75 },
   ])
+})
+
+test("injectMarkupInLinktext", async () => {
+  const content = "[[link][there is +strike+ and /italic/ words]]"
+  const state = EditorState.create({
+    doc: content,
+    extensions: [
+      makeHeadingsFoldable,
+      new LanguageSupport(OrgmodeLanguage(orgmodeParser))
+    ],
+  })
+
+  const linkNode = syntaxTree(state).topNode.firstChild.getChild(TOKEN.RegularLink)
+  const linkText = state.doc.sliceString(linkNode.from, linkNode.to)
+  const [, displayText,, displayTextFromOffset] = extractLinkFromNode(linkNode.type.id, linkText)
+  const displayTextHTML = injectMarkupInLinktext(linkNode, displayText, state, displayTextFromOffset)
+  expect(displayTextHTML).toStrictEqual(
+    "there is <span class=org-text-strikethrough>strike</span> and <span class=org-text-italic>italic</span> words"
+  )
 })

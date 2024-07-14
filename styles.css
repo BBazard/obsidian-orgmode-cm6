@@ -158,6 +158,7 @@
   user-select: none;
 }
 
-.orgmode-view .org-link {
+.orgmode-view .org-link,
+.orgmode-view .org-link .org-section {
   color: var(--link-color);
 }
