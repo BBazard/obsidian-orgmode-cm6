@@ -452,6 +452,8 @@ test("inline pathplain", () => {
   const content = [
     "xxx:id:yyy",
     "(id:hoo)",
+    "*id:boldlink*",
+    "/https://italic_url/",
   ].join("\n")
   const tree = parser.parse(content)
   const spec = [
@@ -459,6 +461,12 @@ test("inline pathplain", () => {
     "    ZerothSection(",
     "        PlainLink,",  // id:yyy
     "        PlainLink,",  // id:hoo
+    "        TextBold(",
+    "            PlainLink,",  // id:boldlink
+    "        ),",
+    "        TextItalic(",
+    "            PlainLink,",  // https://italic_url
+    "        ),",
     "    ),",
     ")",
   ].join("\n")

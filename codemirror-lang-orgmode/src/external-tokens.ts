@@ -780,7 +780,8 @@ function sectionWordMarkup(input: InputStream, stack: Stack, marker: number, ter
       !isEndOfLine(c) &&
       c !== MARKER &&
       !checkAngleLink(input, stack, orgLinkParameters) &&
-      !checkRegularLink(input, stack, orgLinkParameters)
+      !checkRegularLink(input, stack, orgLinkParameters) &&
+      !checkPlainLink(input, stack, orgLinkParameters, true)
     ) {
       c = input.advance()
       log(stringifyCodeLogString(c))
@@ -806,7 +807,8 @@ function sectionWordMarkup(input: InputStream, stack: Stack, marker: number, ter
       log(stringifyCodeLogString(c))
     } else if (
       checkAngleLink(input, stack, orgLinkParameters) ||
-      checkRegularLink(input, stack, orgLinkParameters)
+      checkRegularLink(input, stack, orgLinkParameters) ||
+      checkPlainLink(input, stack, orgLinkParameters, true)
     ) {
       log(`== ACCEPT sectionWordMarkup ${stringifyCodeLogString(marker)} before link ${inputStreamAccept(input, stack)}`)
       input.acceptToken(term)
@@ -1187,10 +1189,16 @@ function checkPlainLink(input: InputStream, stack: Stack, orgLinkParameters: str
       String.fromCharCode(codeUnit) === '>'
     )
   }
+  const linkMarkupMarkers = ['*', '/', '_', '=', '~', '+']
   log(`-- START plainLink ${inputStreamBeginString(input)}`)
   const previous = input.peek(-1)
-  if (!checkPlainLinkPRE(previous) && !isEndOfLine(previous) && !isWhiteSpace(previous)) {
-    log(`XX REFUSE plainLink, previous not PRE, eof, whitespace ${inputStreamEndString(input, stack)}`)
+  if (
+    !checkPlainLinkPRE(previous) &&
+    !isEndOfLine(previous) &&
+    !isWhiteSpace(previous) &&
+    !linkMarkupMarkers.includes(String.fromCharCode(previous))
+  ) {
+    log(`XX REFUSE plainLink, previous not PRE, eof, whitespace, markup marker ${inputStreamEndString(input, stack)}`)
     return
   }
   let peek_distance = 0
@@ -1240,7 +1248,10 @@ function checkPlainLink(input: InputStream, stack: Stack, orgLinkParameters: str
     }
   }
   const POSTcandidate = input.peek(peek_distance - 1)
-  if (checkMarkupPOST(POSTcandidate) && POSTcandidate !== R_PAREN) {
+  if (
+     linkMarkupMarkers.includes(String.fromCharCode(POSTcandidate)) ||
+    (checkMarkupPOST(POSTcandidate) && POSTcandidate !== R_PAREN)
+  ) {
     peek_distance -= 1
     s = s.slice(0, s.length-1)
   }
