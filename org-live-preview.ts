@@ -88,6 +88,30 @@ class LinkWidget extends WidgetType {
   }
 }
 
+class BlockHeaderWidget extends WidgetType {
+  blockHeaderText: string
+  constructor(blockHeaderText: string) {
+    super()
+    this.blockHeaderText = blockHeaderText
+  }
+  eq(other: BlockHeaderWidget) {
+    return this.blockHeaderText == other.blockHeaderText
+  }
+  toDOM(view: EditorView): HTMLElement {
+    const span = document.createElement("span");
+    span.innerText = this.blockHeaderText
+    span.setCssStyles({
+      "fontSize": "var(--font-ui-smaller)",
+      "color": "var(--text-muted)",
+      "fontFamily": "var(--font-interface)",
+      "padding": "var(--size-4-1) var(--size-4-2)",
+      "position": "relative",
+      "top": "-0.2em",
+    });
+    return span
+  }
+}
+
 function loadDecorations(
   state: EditorState,
   obsidianUtils: {
@@ -107,8 +131,17 @@ function loadDecorations(
           const line = state.doc.line(i)
           builderBuffer.push([line.from, line.from, Decoration.line({class: 'org-block'})])
         }
-        builderBuffer.push([firstLine.from, firstLine.from, Decoration.line({class: 'org-block-begin'})])
-        builderBuffer.push([lastLine.from, lastLine.from, Decoration.line({class: 'org-block-end'})])
+        const isCursorInsideFirstLine = (cursorPos >= firstLine.from && cursorPos <= firstLine.to)
+        if (!isCursorInsideFirstLine) {
+          const blockHeaderText = state.doc.sliceString(firstLine.from, firstLine.to).slice("#+BEGIN_".length)
+          builderBuffer.push([firstLine.from, firstLine.to, Decoration.replace({
+            widget: new BlockHeaderWidget(blockHeaderText),
+          })])
+        }
+        const isCursorInsideLastLine = (cursorPos >= lastLine.from && cursorPos <= lastLine.to)
+        if (!isCursorInsideLastLine) {
+          builderBuffer.push([lastLine.from, lastLine.to, Decoration.replace({})])
+        }
       } else if (
         node.type.id === TOKEN.PlainLink ||
         node.type.id === TOKEN.RegularLink ||

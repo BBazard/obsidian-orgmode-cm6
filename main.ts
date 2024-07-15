@@ -188,6 +188,7 @@ class OrgView extends TextFileView {
             foldIcon_svg.setAttributeNS(null, "class", "svg-icon");
             foldIcon_svg_path.setAttribute("d", "M3 8L12 17L21 8");
             foldIcon_svg.appendChild(foldIcon_svg_path);
+            foldIcon_svg.setCssStyles({ "height": "100%" });
             if (open) {
               foldIcon.addClass("open-fold-icon");
             } else {
@@ -195,6 +196,7 @@ class OrgView extends TextFileView {
               foldIcon_svg.setCssStyles({ "transform": "rotate(-90deg)", "color": "var(--text-accent)" });
             }
             foldIcon.appendChild(foldIcon_svg);
+            foldIcon.setCssStyles({ "height": "100%" });
             return foldIcon
           }
         }),

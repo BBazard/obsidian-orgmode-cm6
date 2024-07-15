@@ -116,6 +116,16 @@ export const OrgFoldCompute = (state: EditorState, from: number, to: number) => 
       block_to = block_to - 1
     }
     return { from: to, to: block_to };
+  } else if (currentLineNode.type.id === TOKEN.Block) {
+    if (!onFirstLine) {
+      return null
+    }
+    const blockNode = currentLineNode
+    let block_to = blockNode.to
+    if (state.doc.sliceString(block_to-1, block_to) === '\n') {
+      block_to = block_to - 1
+    }
+    return { from: to, to: block_to };
   }
   return null
 }
