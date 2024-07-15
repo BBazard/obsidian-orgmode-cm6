@@ -67,7 +67,7 @@ test("nested heading", () => {
   testTree(tree, spec)
 })
 
-test("zeroth section not in a block", () => {
+test("zeroth section not in a heading", () => {
   const content = [
     "some text",
     "* TODO item 1",
@@ -291,6 +291,33 @@ test("no priority outside headings", () => {
   const spec = [
     "Program(",
     "    Heading(Priority, Title, Section),",
+    ")",
+  ].join("\n")
+  console.log(printTree(tree, content))
+  parser.configure({strict: true}).parse(content)
+  testTree(tree, spec)
+})
+
+test("block", () => {
+  const content = [
+    "#+BEGIN_COMMENT",
+    "several lines",
+    "with [[links]]",
+    "and *markup* that",
+    "are not tokenized",
+    "#+END_COMMENT",
+    "#+BEGIN_SRC",
+    "mismatched block",
+    "#+END_EXPORT",
+  ].join("\n")
+  const tree = parser.parse(content)
+  const spec = [
+    "Program(",
+    "    ZerothSection(",
+    "        Block,",
+    "        CommentLine,",  // #+BEGIN_SRC\n
+    "        CommentLine,",  // #+END_EXPORT
+    "    ),",
     ")",
   ].join("\n")
   console.log(printTree(tree, content))

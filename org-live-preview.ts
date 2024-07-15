@@ -100,7 +100,16 @@ function loadDecorations(
   syntaxTree(state).iterate({
     enter(node) {
       const isCursorInsideDecoration = (cursorPos >= node.from && cursorPos <= node.to)
-      if (
+      if (node.type.id === TOKEN.Block) {
+        const firstLine = state.doc.lineAt(node.from)
+        const lastLine = state.doc.lineAt(node.to-1)
+        for (let i = firstLine.number; i <= lastLine.number; ++i) {
+          const line = state.doc.line(i)
+          builderBuffer.push([line.from, line.from, Decoration.line({class: 'org-block'})])
+        }
+        builderBuffer.push([firstLine.from, firstLine.from, Decoration.line({class: 'org-block-begin'})])
+        builderBuffer.push([lastLine.from, lastLine.from, Decoration.line({class: 'org-block-end'})])
+      } else if (
         node.type.id === TOKEN.PlainLink ||
         node.type.id === TOKEN.RegularLink ||
         node.type.id === TOKEN.AngleLink

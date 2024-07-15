@@ -1,6 +1,9 @@
 import { ExternalTokenizer, InputStream, Stack, ContextTracker } from '@lezer/lr';
 import {
   stars, TodoKeyword, Priority, Title, endofline,
+  Block,
+  notStartOfABlock,
+  startOfComment,
   PropertyDrawer,
   notStartOfPlanning, notStartOfPropertyDrawer,
   notStartOfHeading, notStartOfComment,
@@ -250,6 +253,183 @@ function checkTags(input: InputStream, advanceInput: boolean) {
   }
 }
 
+type BlockType = "COMMENT" | "EXAMPLE" | "EXPORT" | "SRC" | "VERSE"
+const getBlockType = (s: string): BlockType => {
+  if (
+    s === "COMMENT" || s=== "EXAMPLE" || s === "EXPORT" || s === "SRC" || s === "VERSE"
+  ) {
+    return s
+  }
+  return null
+}
+
+function checkBlockStart(input: InputStream, stack: Stack, lookaround: boolean): BlockType {
+  log(`start checkBlockStart ${inputStreamBeginString(input)}`)
+  let previous = input.peek(-1)
+  if (!isEndOfLine(previous)) {
+    log(`XX REFUSE checkBlockStart, previous not sof or newline ${inputStreamAccept(input, stack)}`)
+    return null
+  }
+  let peek_distance = 0
+  let c = input.peek(peek_distance)
+  let s = String.fromCharCode(c)
+  for (let i = 0; i < "#+BEGIN_".length-1; ++i) {
+    peek_distance += 1
+    c = input.peek(peek_distance)
+    s += String.fromCharCode(c)
+  }
+  if (s.toUpperCase() !== "#+BEGIN_") {
+    log(`XX REFUSE checkBlockStart, line not starting with #+BEGIN_ ${inputStreamEndString(input, stack)}`)
+    return null
+  }
+  peek_distance += 1
+  c = input.peek(peek_distance)
+  s = String.fromCharCode(c)
+  while (!isEndOfLine(c) && s.length < 7) {
+    peek_distance += 1
+    c = input.peek(peek_distance)
+    s += String.fromCharCode(c)
+    if (
+      s.toUpperCase() === "COMMENT" ||
+      s.toUpperCase() === "EXAMPLE" ||
+      s.toUpperCase() === "EXPORT" ||
+      s.toUpperCase() === "SRC" ||
+      s.toUpperCase() === "VERSE"
+    ) {
+      if (!lookaround) {
+        input.advance(peek_distance)
+        while (!isEndOfLine(c)) {
+          c = input.advance()
+        }
+      }
+      return getBlockType(s.toUpperCase())
+    }
+  }
+  log(`XX REFUSE checkBlockStart, reached endofline or 7 chars ${inputStreamEndString(input, stack)}`)
+  return null
+}
+
+function checkBlockEnd(input: InputStream, stack: Stack, lookaround: boolean, blockType: BlockType, start_peek_distance: number = 0): boolean {
+  log(`start checkBlockEnd ${inputStreamBeginString(input)} + ${start_peek_distance}`)
+  let peek_distance = start_peek_distance
+  let previous = input.peek(peek_distance - 1)
+  if (!isEndOfLine(previous)) {
+    log(`XX REFUSE checkBlockEnd, previous not sof or newline ${inputStreamAccept(input, stack)}`)
+    return false
+  }
+  let c = input.peek(peek_distance)
+  let s = String.fromCharCode(c)
+  for (let i = 0; i < "#+END_".length-1; ++i) {
+    peek_distance += 1
+    c = input.peek(peek_distance)
+    s += String.fromCharCode(c)
+  }
+  if (s.toUpperCase() !== "#+END_") {
+    log(`XX REFUSE checkBlockEnd, line not starting with #+END_ ${inputStreamEndString(input, stack)}`)
+    return false
+  }
+  peek_distance += 1
+  c = input.peek(peek_distance)
+  s = String.fromCharCode(c)
+  while (!isEndOfLine(c) && s.length < 7) {
+    peek_distance += 1
+    c = input.peek(peek_distance)
+    s += String.fromCharCode(c)
+    if (s.toUpperCase() === blockType) {
+      if (!lookaround) {
+        input.advance(peek_distance)
+        while (!isEndOfLine(c)) {
+          c = input.advance()
+        }
+      }
+      return true
+    }
+  }
+  log(`XX REFUSE checkBlockEnd, reaching endofline or char 7 ${inputStreamEndString(input, stack)}`)
+  return false
+}
+
+function checkBlock(input: InputStream, stack: Stack, lookaround: boolean, peek_distance: number = 0): boolean {
+  const blockType = checkBlockStart(input, stack, lookaround)
+  if (!blockType) {
+    log(`XX REFUSE checkBlock, checkBlockStart failed ${inputStreamEndString(input, stack)}`)
+    return false
+  }
+  let c = input.peek(peek_distance)
+  if (c === EOF) {
+    log(`XX REFUSE checkBlock, reached EOF ${inputStreamEndString(input, stack)}`)
+    return false
+  }
+  while (true) {
+    peek_distance += 1
+    c = input.peek(peek_distance)
+    if (checkBlockEnd(input, stack, lookaround, blockType, peek_distance)) {
+      peek_distance = 0
+      return true
+    }
+    while (!isEndOfLine(c)) {
+      peek_distance += 1
+      c = input.peek(peek_distance)
+    }
+    if (c === EOF) {
+      log(`XX REFUSE checkBlock, reached EOF ${inputStreamEndString(input, stack)}`)
+      return false
+    }
+  }
+}
+
+export const block_tokenizer = new ExternalTokenizer((input, stack) => {
+  log(`-- START Block ${inputStreamBeginString(input)}`)
+  if (checkBlock(input, stack, false)) {
+    if (input.peek(0) !== EOF) {
+      input.advance()
+    }
+    log(`== ACCEPT Block ${inputStreamAccept(input, stack)}`)
+    input.acceptToken(Block)
+    return
+  }
+  log(`XX REFUSE Block ${inputStreamEndString(input, stack)}`)
+  return
+})
+
+export const notStartOfABlock_lookaround = new ExternalTokenizer((input, stack) => {
+  log(`-- START notStartOfABlock ${inputStreamBeginString(input)}`)
+  let previous = input.peek(-1)
+  if (!isEndOfLine(previous)) {
+    log(`XX REFUSE notStartOfABlock, not start of a line ${inputStreamEndString(input, stack)}`)
+    return
+  }
+  if (checkBlock(input, stack, true)) {
+    log(`XX REFUSE notStartOfABlock ${inputStreamEndString(input, stack)}`)
+    return
+  }
+  log(`== ACCEPT notStartOfABlock ${inputStreamAccept(input, stack)}`)
+  input.acceptToken(notStartOfABlock)
+  return
+})
+
+export const startOfComment_lookaround = new ExternalTokenizer((input, stack) => {
+  log(`-- START startOfComment_lookaround ${inputStreamBeginString(input)}`)
+  let peek_distance = 0
+  let previous = input.peek(peek_distance - 1)
+  if (!isEndOfLine(previous)) {
+    log(`XX REFUSE startOfComment_lookaround, not at the start of a line ${inputStreamEndString(input, stack)} + ${peek_distance}`)
+    return
+  }
+  let c = input.peek(peek_distance)
+  if (c !== HASH) {
+    log(`XX REFUSE startOfComment_lookaround, not starting with # ${inputStreamEndString(input, stack)} + ${peek_distance}`)
+    return
+  }
+  if (checkBlock(input, stack, true)) {
+    log(`XX REFUSE startOfComment_lookaround, is a block ${inputStreamEndString(input, stack)} + ${peek_distance}`)
+    return
+  }
+  log(`== ACCEPT startOfComment_lookaround ${inputStreamAccept(input, stack)}`)
+  input.acceptToken(startOfComment)
+  return
+})
+
 export const title_tokenizer = (words: string[]) => { return new ExternalTokenizer((input: InputStream, stack: Stack) => {
   // match everything until tags or NEWLINE or EOF
   log(`-- START Title ${inputStreamBeginString(input)}`)
@@ -423,7 +603,7 @@ export const notStartOfPlanning_lookaround = new ExternalTokenizer((input, stack
       return
   } else if (c === COLON) {
     planning_word = ''
-  } else if (c === HASH) {
+  } else if (c === HASH && !checkBlock(input, stack, true)) {
     log(`XX REFUSE notStartOfPlanning, start of comment ${inputStreamEndString(input, stack)}`)
     return
   } else if (c === STAR) {
@@ -439,7 +619,7 @@ export const notStartOfPlanning_lookaround = new ExternalTokenizer((input, stack
       return // start of HEADING
     }
   }
-  if (c === HASH) {
+  if (c === HASH && !checkBlock(input, stack, true)) {
     log(`XX REFUSE notStartOfPlanning, start of comment ${inputStreamEndString(input, stack)}`)
     return
   }
@@ -499,7 +679,7 @@ export const notStartOfPropertyDrawer_lookaround = new ExternalTokenizer((input,
   } else if (c === COLON) {
     could_be_property_drawer = true
     planning_word = ''
-  } else if (c === HASH) {
+  } else if (c === HASH && !checkBlock(input, stack, true)) {
     log(`XX REFUSE notStartOfPropertyDrawer, start of comment ${inputStreamEndString(input, stack)}`)
     return
   } else if (c === STAR) {
@@ -515,7 +695,7 @@ export const notStartOfPropertyDrawer_lookaround = new ExternalTokenizer((input,
       return // start of HEADING
     }
   }
-  if (c === HASH) {
+  if (c === HASH && !checkBlock(input, stack, true)) {
     log(`XX REFUSE notStartOfPropertyDrawer, start of comment ${inputStreamEndString(input, stack)}`)
     return
   }
@@ -686,8 +866,8 @@ export const notStartOfComment_lookaround = new ExternalTokenizer((input, stack)
   }
   let c = input.peek(0)
   log(stringifyCodeLogString(c))
-  if (c === HASH) {
-    log(`XX REFUSE notStartOfComment_lookaround, start of comment ${inputStreamEndString(input, stack)}`)
+  if (c === HASH && !checkBlock(input, stack, true)) {
+    log(`XX REFUSE notStartOfComment_lookaround, start of block ${inputStreamEndString(input, stack)}`)
     return
   }
   log(`== ACCEPT notStartOfComment_lookaround ${inputStreamAccept(input, stack)}`)

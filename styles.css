@@ -162,3 +162,11 @@
 .orgmode-view .org-link .org-section {
   color: var(--link-color);
 }
+
+.theme-dark .orgmode-view .org-block {
+  background-color: #1a1a20;
+}
+
+.theme-light .orgmode-view .org-block {
+  background-color: #d2d2ed;
+}

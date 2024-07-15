@@ -13,13 +13,13 @@ Heading {
 
 ZerothSection {
   notStartOfHeading
-  CommentLine*
+  (startOfComment CommentLine)*
   PropertyDrawer?
   (
     notStartOfPropertyDrawer
     (
       notStartOfHeading
-      (paragraph)
+      lesserElement
     )+
   )?
 }
@@ -35,19 +35,23 @@ Title {
 
 Section {
   notStartOfHeading
-  (CommentLine | Planning)*
+  ((startOfComment CommentLine) | Planning)*
   PropertyDrawer?
   (
     notStartOfPlanning notStartOfPropertyDrawer
     (
       notStartOfHeading
-      (paragraph) // or GreaterBlock, etc...
+      lesserElement
     )+
   )?
 }
 
+lesserElement {  // excluding Planning and Comment
+  (notStartOfABlock paragraph) | Block
+}
+
 paragraph {
-  CommentLine
+  (startOfComment CommentLine)
   |
   notStartOfComment (
     sectionSpace? (object sectionSpace?)* sectionEnd
@@ -173,6 +177,10 @@ markupStrikeThroughNestedObject {
 }
 
 @context context_tracker from "./external-tokens"
+
+@external tokens block_tokenizer from "./external-tokens" { Block }
+@external tokens notStartOfABlock_lookaround from "./external-tokens" { notStartOfABlock }
+@external tokens startOfComment_lookaround from "./external-tokens" { startOfComment }
 
 @external tokens isStartOfRegularLink_lookaround from "./external-tokens" { isStartOfRegularLink }
 @external tokens isStartOfAngleLink_lookaround from "./external-tokens" { isStartOfAngleLink }
