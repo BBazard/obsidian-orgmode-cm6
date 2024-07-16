@@ -315,8 +315,8 @@ test("block", () => {
     "Program(",
     "    ZerothSection(",
     "        Block,",
-    "        CommentLine,",  // #+BEGIN_SRC\n
-    "        CommentLine,",  // #+END_EXPORT
+    "        KeywordComment,",
+    "        KeywordComment,",
     "    ),",
     ")",
   ].join("\n")

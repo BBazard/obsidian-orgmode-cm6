@@ -4,6 +4,7 @@ import {
   Block,
   notStartOfABlock,
   startOfComment,
+  startOfKeywordComment,
   PropertyDrawer,
   notStartOfPlanning, notStartOfPropertyDrawer,
   notStartOfHeading, notStartOfComment,
@@ -410,23 +411,45 @@ export const notStartOfABlock_lookaround = new ExternalTokenizer((input, stack) 
 
 export const startOfComment_lookaround = new ExternalTokenizer((input, stack) => {
   log(`-- START startOfComment_lookaround ${inputStreamBeginString(input)}`)
-  let peek_distance = 0
-  let previous = input.peek(peek_distance - 1)
+  let previous = input.peek(-1)
   if (!isEndOfLine(previous)) {
-    log(`XX REFUSE startOfComment_lookaround, not at the start of a line ${inputStreamEndString(input, stack)} + ${peek_distance}`)
+    log(`XX REFUSE startOfComment_lookaround, not at the start of a line ${inputStreamEndString(input, stack)}`)
     return
   }
-  let c = input.peek(peek_distance)
-  if (c !== HASH) {
-    log(`XX REFUSE startOfComment_lookaround, not starting with # ${inputStreamEndString(input, stack)} + ${peek_distance}`)
+  let first = input.peek(0)
+  if (first !== HASH) {
+    log(`XX REFUSE startOfComment_lookaround, not starting with # ${inputStreamEndString(input, stack)}`)
     return
   }
-  if (checkBlock(input, stack, true)) {
-    log(`XX REFUSE startOfComment_lookaround, is a block ${inputStreamEndString(input, stack)} + ${peek_distance}`)
+  let second = input.peek(1)
+  if (isEndOfLine(second) || second === SPACE) {
+    log(`== ACCEPT startOfComment_lookaround ${inputStreamAccept(input, stack)}`)
+    input.acceptToken(startOfComment)
     return
   }
-  log(`== ACCEPT startOfComment_lookaround ${inputStreamAccept(input, stack)}`)
-  input.acceptToken(startOfComment)
+  log(`XX REFUSE startOfComment_lookaround, second char is not space nor endofline ${inputStreamEndString(input, stack)}`)
+  return
+})
+
+export const startOfKeywordComment_lookaround = new ExternalTokenizer((input, stack) => {
+  log(`-- START startOfKeywordComment_lookaround ${inputStreamBeginString(input)}`)
+  let previous = input.peek(-1)
+  if (!isEndOfLine(previous)) {
+    log(`XX REFUSE startOfKeywordComment_lookaround, not at the start of a line ${inputStreamEndString(input, stack)}`)
+    return
+  }
+  let first = input.peek(0)
+  if (first !== HASH) {
+    log(`XX REFUSE startOfKeywordComment_lookaround, not starting with # ${inputStreamEndString(input, stack)}`)
+    return
+  }
+  let second = input.peek(1)
+  if (second !== "+".charCodeAt(0)) {
+    log(`XX REFUSE startOfKeywordComment_lookaround, not starting with #+ ${inputStreamEndString(input, stack)}`)
+    return
+  }
+  log(`== ACCEPT startOfKeywordComment_lookaround ${inputStreamAccept(input, stack)}`)
+  input.acceptToken(startOfKeywordComment)
   return
 })
 
@@ -864,10 +887,19 @@ export const notStartOfComment_lookaround = new ExternalTokenizer((input, stack)
     log(`XX REFUSE notStartOfComment_lookaround, previous not endofline ${inputStreamEndString(input, stack)}`)
     return
   }
-  let c = input.peek(0)
-  log(stringifyCodeLogString(c))
-  if (c === HASH && !checkBlock(input, stack, true)) {
-    log(`XX REFUSE notStartOfComment_lookaround, start of block ${inputStreamEndString(input, stack)}`)
+  let first = input.peek(0)
+  if (first !== HASH) {
+    log(`== ACCEPT notStartOfComment_lookaround ${inputStreamAccept(input, stack)}`)
+    input.acceptToken(notStartOfComment)
+    return
+  }
+  let second = input.peek(1)
+  if (second === SPACE || isEndOfLine(second)) {
+    log(`XX REFUSE notStartOfComment_lookaround, start of comment ${inputStreamEndString(input, stack)}`)
+    return
+  }
+  if (second === "+".charCodeAt(0)) {
+    log(`XX REFUSE notStartOfComment_lookaround, start of keyword comment ${inputStreamEndString(input, stack)}`)
     return
   }
   log(`== ACCEPT notStartOfComment_lookaround ${inputStreamAccept(input, stack)}`)

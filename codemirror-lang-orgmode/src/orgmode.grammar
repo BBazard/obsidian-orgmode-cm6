@@ -51,10 +51,15 @@ lesserElement {  // excluding Planning and Comment
 }
 
 paragraph {
-  (startOfComment CommentLine)
-  |
-  notStartOfComment (
+  (
+    startOfComment
+    CommentLine
+  ) | (
+    notStartOfComment
     sectionSpace? (object sectionSpace?)* sectionEnd
+  ) | (
+    startOfKeywordComment
+    KeywordComment
   )
 }
 
@@ -181,6 +186,7 @@ markupStrikeThroughNestedObject {
 @external tokens block_tokenizer from "./external-tokens" { Block }
 @external tokens notStartOfABlock_lookaround from "./external-tokens" { notStartOfABlock }
 @external tokens startOfComment_lookaround from "./external-tokens" { startOfComment }
+@external tokens startOfKeywordComment_lookaround from "./external-tokens" { startOfKeywordComment }
 
 @external tokens isStartOfRegularLink_lookaround from "./external-tokens" { isStartOfRegularLink }
 @external tokens isStartOfAngleLink_lookaround from "./external-tokens" { isStartOfAngleLink }
@@ -239,7 +245,8 @@ Planning { planningStart endofline }
 @external tokens stars_tokenizer from "./external-tokens" { stars }
 
 @tokens {
-  CommentLine { "#" ![\n]* ("\n" | @eof) }
+  CommentLine { "#" ("\n" | @eof | (" " ![\n]* ("\n" | @eof))) }
+  KeywordComment { "#+" ![\n]* ("\n" | @eof) }
   planningStart { ("DEADLINE:"|"SCHEDULED:"|"CLOSED:") }
 }
 

@@ -89,6 +89,7 @@ export const OrgmodeLanguage = (parser: LRParser) => {
           "ZerothSection": tags.content,
           "Section": tags.content,
           "CommentLine": tags.lineComment,
+          "KeywordComment": tags.lineComment,
           "TodoKeyword": tags.keyword,
           "Title": tags.contentSeparator,
           "Priority": tags.unit,
