@@ -444,6 +444,126 @@ test("links", () => {
   testTree(tree, spec)
 })
 
+test("link/markup double nesting", () => {
+  const content = [
+    "section [[start link *start markup end link]] end markup* x",
+    "",
+    "section *start markup [[start link end markup* end link]] x",
+    "",
+    "section *start markup [[start link end markup* end link]] end markup* x",
+    "",
+    "section *start markup [[start link *markup* end link]] end markup* x",
+    "",
+    "section [[start link *start markup [[link]] end markup* end link]] x",
+    "",
+    "* header [[start link *start markup end link]] end markup* x",
+    "",
+    "* header *start markup [[start link end markup* end link]] x",
+    "",
+    "* header *start markup [[start link *markup* end link]] end markup* x",
+    "",
+    "* header [[start link *start markup [[link]] end markup* end link]] x",
+    "",
+    "section <https://start link *start markup end link> end markup* x",
+    "",
+    "section *start markup <https://start link end markup* end link> x",
+    "",
+    "section *start markup <https://start link *markup* end link> end markup* x",
+    "",
+    "section <https://start link *start markup <https://link> end markup* end link> x",
+    "",
+    "* header <https://start link *start markup end link> end markup* x",
+    "",
+    "* header *start markup <https://start link end markup* end link> x",
+    "",
+    "* header *start markup <https://start link *markup* end link> end markup* x",
+    "",
+    "* header <https://start link *start markup <https://link> end markup* end link> x",
+    "",
+  ].join("\n")
+  const tree = parser.parse(content)
+  const spec = [
+    "Program(",
+    "    ZerothSection(",
+    "        RegularLink,",  // [[start link *start markup end link]]
+    "        RegularLink,",  // [[start link end markup* end link]]
+    "        TextBold(",  // *start markup [[start link end markup* end link]] end markup*
+    "            RegularLink,",  // [[start link end markup* end link]]
+    "        ),",
+    "        TextBold(",  // *start markup [[start link *markup* end link]] end markup*
+    "            RegularLink,",  // [[start link *markup* end link]]
+    "        ),",
+    "        TextBold(",  // *start markup [[link]] end markup*
+    "            RegularLink,",  // [[link]]
+    "        ),",
+    "    ),",
+    "    Heading(",
+    "        Title(",
+    "            RegularLink,",  // [[start link *start markup end link]]
+    "        ),",
+    "        Section,",  // \n
+    "    ),",
+    "    Heading(",
+    "        Title(",
+    "            RegularLink,",  // [[start link end markup* end link]]
+    "        ),",
+    "        Section,",  // \n
+    "    ),",
+    "    Heading(",
+    "        Title(",
+    "            TextBold(",  // *start markup [[start link *markup* end link]] end markup*
+    "                RegularLink,",  // [[start link *markup* end link]]
+    "            ),",
+    "        ),",
+    "        Section,",  // \n
+    "    ),",
+    "    Heading(",
+    "        Title(",
+    "            TextBold(",  // *start markup [[link]] end markup*
+    "                RegularLink,",  // [[link]]
+    "            ),",
+    "        ),",
+    "        Section(",
+    "            AngleLink,",  // <https://start link *start markup end link>
+    "            AngleLink,",  // <https://start link end markup* end link>
+    "            TextBold(",  // *start markup <https://start link *markup* end link> end markup*
+    "                AngleLink,",  // <https://start link *markup* end link>
+    "            ),",
+    "            AngleLink,",  // <https://start link *start markup <https://link>
+    "        ),",
+    "    ),",
+    "    Heading(",
+    "        Title(",
+    "            AngleLink,",  // <https://start link *start markup end link>
+    "        ),",
+    "        Section,",  // \n
+    "    ),",
+    "    Heading(",
+    "        Title(",
+    "            AngleLink,",  // <https://start link end markup* end link>
+    "        ),",
+    "        Section,",  // \n
+    "    ),",
+    "    Heading(",
+    "        Title(",
+    "            TextBold(",  // *start markup <https://start link *markup* end link> end markup*
+    "                AngleLink,",  // <https://start link *markup* end link>
+    "            ),",
+    "        ),",
+    "        Section,",  // \n
+    "    ),",
+    "    Heading(",
+    "        Title(",
+    "            AngleLink,",  // <https://start link *start markup <https://link>
+    "        )",
+    "    )",
+    ")",
+  ].join("\n")
+  console.log(printTree(tree, content))
+  parser.configure({strict: true}).parse(content)
+  testTree(tree, spec)
+})
+
 test("pathplain", () => {
   const content = [
     "id:)",
@@ -633,14 +753,18 @@ test("link inside markup", () => {
 
 test("emacs weird case", () => {
   const content = [
-    "*y*[[x]]*",  // should be TextBold(RegularLink) like *y*x*
+    "*b*[[l]]*",
+    "*[[l]]*b*",
   ].join("\n")
   const tree = parser.parse(content)
   const spec = [
     "Program(",
     "    ZerothSection(",
-    "        TextBold,",  // *y*
-    "        RegularLink,",  // [[x]]
+    "        TextBold,",  // *b*
+    "        RegularLink,",  // [[l]]
+    "        TextBold(",  // *[[l]]*b*
+    "            RegularLink,",  // [[l]]
+    "        ),",
     "    ),",
     ")",
   ].join("\n")

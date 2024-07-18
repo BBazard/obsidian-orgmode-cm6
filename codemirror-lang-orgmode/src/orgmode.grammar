@@ -81,12 +81,14 @@ RegularLink {
   "[["
   sectionSpace? regularLinkNestedObject (sectionSpace regularLinkNestedObject)*
   "]]"
+  exitRegularLink
 }
 
 AngleLink {
   "<"
-  angleLinkNestedObject (sectionSpace angleLinkNestedObject)*
+  sectionSpace? angleLinkNestedObject (sectionSpace angleLinkNestedObject)*
   ">"
+  exitAngleLink
 }
 
 regularLinkNestedObject {
@@ -183,6 +185,20 @@ markupStrikeThroughNestedObject {
 
 @context context_tracker from "./external-tokens"
 
+// Exit tokens are always true so they must be the
+// first ones to be tested so that other tokens are not accepted before them
+@external tokens exitRegularLink_lookaround from "./external-tokens" { exitRegularLink }
+@external tokens exitAngleLink_lookaround from "./external-tokens" { exitAngleLink }
+
+@external tokens isEndOfTextMarkup_lookaround from "./external-tokens" {
+  isEndOfTextBold,
+  isEndOfTextItalic,
+  isEndOfTextUnderline,
+  isEndOfTextVerbatim,
+  isEndOfTextCode,
+  isEndOfTextStrikeThrough
+}
+
 @external tokens block_tokenizer from "./external-tokens" { Block }
 @external tokens notStartOfABlock_lookaround from "./external-tokens" { notStartOfABlock }
 @external tokens startOfComment_lookaround from "./external-tokens" { startOfComment }
@@ -211,14 +227,6 @@ markupStrikeThroughNestedObject {
   isStartOfTextStrikeThrough
 }
 
-@external tokens isEndOfTextMarkup_lookaround from "./external-tokens" {
-  isEndOfTextBold,
-  isEndOfTextItalic,
-  isEndOfTextUnderline,
-  isEndOfTextVerbatim,
-  isEndOfTextCode,
-  isEndOfTextStrikeThrough
-}
 
 // https://orgmode.org/worg/org-syntax.html#Planning
 Planning { planningStart endofline }
@@ -268,6 +276,7 @@ Planning { planningStart endofline }
 @external tokens sectionWordVerbatim_tokenizer from "./external-tokens" { sectionwordVerbatim }
 @external tokens sectionWordCode_tokenizer from "./external-tokens" { sectionwordCode }
 @external tokens sectionWordStrikeThrough_tokenizer from "./external-tokens" { sectionwordStrikeThrough }
+
 
 @external tokens sectionWordAngleLink_tokenizer from "./external-tokens" { sectionWordAngleLink }
 @external tokens sectionWordRegularLink_tokenizer from "./external-tokens" { sectionWordRegularLink }

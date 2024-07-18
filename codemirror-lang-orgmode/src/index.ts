@@ -5,6 +5,7 @@ import { LRParser } from "@lezer/lr";
 import {
   title_tokenizer, todokeyword_tokenizer, plainLink_tokenizer,
   isStartOfRegularLink_lookaround, isStartOfAngleLink_lookaround,
+  isStartOfTextMarkup_lookaround, isStartOfTitleTextMarkup_lookaround,
   sectionWord_tokenizer, titleWord_tokenizer,
   sectionWordBold_tokenizer, sectionWordItalic_tokenizer, sectionWordUnderline_tokenizer,
   sectionWordVerbatim_tokenizer, sectionWordCode_tokenizer, sectionWordStrikeThrough_tokenizer,
@@ -66,6 +67,13 @@ const configurableExternalTokenizer = (words: string[]) => {
     if (name == 'sectionWordStrikeThrough_tokenizer') {
       return sectionWordStrikeThrough_tokenizer(orgLinkParameters)
     }
+    if (name == 'isStartOfTitleTextMarkup_lookaround') {
+      return isStartOfTitleTextMarkup_lookaround(orgLinkParameters)
+    }
+    if (name == 'isStartOfTextMarkup_lookaround') {
+      return isStartOfTextMarkup_lookaround(orgLinkParameters)
+    }
+
     return ExtToken[name as keyof typeof ExtToken]
   }
 }
