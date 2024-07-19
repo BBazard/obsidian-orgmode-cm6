@@ -101,11 +101,14 @@ test("zeroth PropertyDrawer possible", () => {
   testTree(tree, spec)
 })
 
-test("deadline and scheduled", () => {
+test("planning", () => {
   const content = [
     "* TODO heading1",
-    "DEADLINE: deadline",
+    "DEADLINE: deadline ",
     "SCHEDULED: scheduled",
+    "SCHEDULED: scheduled1 SCHEDULED: scheduled2",
+    "SCHEDULED: <2020-10-29 Thu 10:0>SCHEDULED: <2020-10-29 Thu 10:00>",
+    "SCHEDULED:",
     ":PROPERTIES:",
     "some properties",
     ":END:",
@@ -116,7 +119,17 @@ test("deadline and scheduled", () => {
   const tree = parser.parse(content)
   const spec = [
     "Program(",
-    "    Heading(TodoKeyword, Title, Section(Planning, Planning, PropertyDrawer)),",
+    "    Heading(TodoKeyword, Title,",
+    "        Section(",
+    "            PlanningDeadline, PlanningValue",
+    "            PlanningScheduled, PlanningValue",
+    "            PlanningScheduled, PlanningValue",
+    "            PlanningScheduled, PlanningValue",
+    "            PlanningScheduled, PlanningValue",
+    "            PlanningScheduled, PlanningValue",
+    "            PropertyDrawer",
+    "            )",
+    "        ),",
     "    Heading(TodoKeyword, Title),",
     ")",
   ].join("\n")

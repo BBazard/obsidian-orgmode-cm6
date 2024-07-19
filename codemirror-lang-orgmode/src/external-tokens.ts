@@ -6,7 +6,6 @@ import {
   startOfComment,
   startOfKeywordComment,
   PropertyDrawer,
-  planningStart,
   notStartOfPlanning, notStartOfPropertyDrawer,
   notStartOfHeading, notStartOfComment,
   sectionword,
@@ -49,6 +48,11 @@ import {
   sectionWordRegularLink,
   exitRegularLink,
   exitAngleLink,
+  PlanningDeadline,
+  PlanningScheduled,
+  PlanningClosed,
+  PlanningValue,
+  isStartOfPlanningLine,
 } from './parser.terms';
 
 const NEW_LINE = '\n'.charCodeAt(0);
@@ -673,23 +677,6 @@ export const notStartOfPlanning_lookaround = new ExternalTokenizer((input, stack
   }
   log(`== ACCEPT notStartOfPlanning by default ${inputStreamAccept(input, stack)}`)
   input.acceptToken(notStartOfPlanning)
-  return
-})
-
-export const planningStart_tokenizer = new ExternalTokenizer((input, stack) => {
-  log(`-- START planningStart_tokenizer ${inputStreamBeginString(input)}`)
-  let previous = input.peek(-1)
-  if (!isEndOfLine(previous)) {
-    log(`XX REFUSE planningStart_tokenizer, not start of a line ${inputStreamEndString(input, stack)}`)
-    return
-  }
-  const wordMatched = matchWords(input, ["DEADLINE:", "SCHEDULED:", "CLOSED:"])
-  if (wordMatched) {
-    log(`== ACCEPT planningStart_tokenizer ${inputStreamAccept(input, stack)}`)
-    input.acceptToken(planningStart, wordMatched.length)
-    return
-  }
-  log(`XX REFUSE planningStart_tokenizer ${inputStreamEndString(input, stack)}`)
   return
 })
 
@@ -1746,6 +1733,116 @@ function matchWords(input: InputStream, words: string[], peek_distance: number =
   }
   return
 }
+
+export const isStartOfPlanningLine_lookaround = new ExternalTokenizer((input, stack) => {
+  log(`-- START isStartOfPlanningLine_lookaround ${inputStreamBeginString(input)}`)
+  const previous = input.peek(-1)
+  if (!isEndOfLine(previous)) {
+    log(`XX REFUSE isStartOfPlanningLine_lookaround, not start of line ${inputStreamEndString(input, stack)}`)
+    return
+  }
+  let peek_distance = 0
+  let c = input.peek(peek_distance)
+  while (c === SPACE && !isEndOfLine(c)) {
+    peek_distance += 1
+    c = input.peek(peek_distance)
+  }
+  if (isEndOfLine(c)) {
+    log(`XX REFUSE isStartOfPlanningLine_lookaround, reached eol ${inputStreamEndString(input, stack)}`)
+    return
+  }
+  const expectedPlanningWords = ["SCHEDULED:", "DEADLINE:", "CLOSED:"]
+  let hasMatched = false
+  while (c !== SPACE && !isEndOfLine(c)) {
+    const matchedWord = matchWords(input, expectedPlanningWords, peek_distance)
+    if (matchedWord && (input.peek(peek_distance-1) === SPACE || isEndOfLine(input.peek(peek_distance-1)))) {
+      hasMatched = true
+      peek_distance += matchedWord.length
+      c = input.peek(peek_distance)
+      break
+    }
+    peek_distance += 1
+    c = input.peek(peek_distance)
+  }
+  if (hasMatched) {
+    log(`== ACCEPT isStartOfPlanningLine_lookaround ${inputStreamAccept(input, stack)}`)
+    input.acceptToken(isStartOfPlanningLine)
+    return
+  }
+  log(`XX REFUSE isStartOfPlanningLine_lookaround ${inputStreamEndString(input, stack)}`)
+  return
+})
+
+export const planningKeyword_tokenizer = new ExternalTokenizer((input, stack) => {
+  log(`-- START planningKeyword_tokenizer ${inputStreamBeginString(input)}`)
+  let peek_distance = 0
+  let c = input.peek(peek_distance)
+  while (c === SPACE && !isEndOfLine(c)) {
+    peek_distance += 1
+    c = input.peek(peek_distance)
+  }
+  if (isEndOfLine(c)) {
+    log(`XX REFUSE planningKeyword_tokenizer, reached eol ${inputStreamEndString(input, stack)}`)
+    return
+  }
+  const expectedPlanningWords = ["SCHEDULED:", "DEADLINE:", "CLOSED:"]
+  let hasMatched = false
+  let matchedWord = null
+  while (c !== SPACE && !isEndOfLine(c)) {
+    matchedWord = matchWords(input, expectedPlanningWords, peek_distance)
+    if (matchedWord && (input.peek(peek_distance-1) === SPACE || isEndOfLine(input.peek(peek_distance-1)))) {
+      hasMatched = true
+      peek_distance += matchedWord.length
+      c = input.peek(peek_distance)
+      break
+    }
+    peek_distance += 1
+    c = input.peek(peek_distance)
+  }
+  if (!hasMatched) {
+    log(`XX REFUSE planningKeyword_tokenizer, found word that was not a planning part ${inputStreamEndString(input, stack)}`)
+    return
+  }
+  while (c === SPACE && !isEndOfLine(c)) {
+    peek_distance += 1
+    c = input.peek(peek_distance)
+  }
+  input.advance(peek_distance)
+  if (matchedWord === "DEADLINE:") {
+    log(`== ACCEPT planningKeyword_tokenizer, deadline ${inputStreamAccept(input, stack)}`)
+    input.acceptToken(PlanningDeadline)
+  } else if (matchedWord === "SCHEDULED:") {
+    log(`== ACCEPT planningKeyword_tokenizer, scheduled ${inputStreamAccept(input, stack)}`)
+    input.acceptToken(PlanningScheduled)
+  } else if (matchedWord === "CLOSED:") {
+    log(`== ACCEPT planningKeyword_tokenizer, closed ${inputStreamAccept(input, stack)}`)
+    input.acceptToken(PlanningClosed)
+  }
+  log(`XX REFUSE planningKeyword_tokenizer ${inputStreamEndString(input, stack)}`)
+  return
+})
+
+export const planningValue_tokenizer = new ExternalTokenizer((input, stack) => {
+  log(`-- START planningValue_tokenizer ${inputStreamBeginString(input)}`)
+  let peek_distance = 0
+  let c = input.peek(peek_distance)
+  const expectedPlanningWords = ["SCHEDULED:", "DEADLINE:", "CLOSED:"]
+  while (!isEndOfLine(c)) {
+    const matchedNextWord = matchWords(input, expectedPlanningWords, peek_distance)
+    if (matchedNextWord && (input.peek(peek_distance-1) === SPACE || isEndOfLine(input.peek(peek_distance-1)))) {
+      break
+    }
+    peek_distance += 1
+    c = input.peek(peek_distance)
+  }
+  input.advance(peek_distance)
+  if (isEndOfLine(c)) {
+    input.advance()
+  }
+  log(`== ACCEPT PlanningValue ${inputStreamAccept(input, stack)}`)
+  input.acceptToken(PlanningValue)
+  return
+})
 
 class OrgContext {
   headingLevelStack: number[]

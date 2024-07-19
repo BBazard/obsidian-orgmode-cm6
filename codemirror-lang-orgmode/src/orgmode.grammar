@@ -31,7 +31,7 @@ Title {
 
 Section {
   notStartOfHeading
-  ((startOfComment CommentLine) | Planning)*
+  ((startOfComment CommentLine) | (isStartOfPlanningLine planningLine))*
   PropertyDrawer?
   (
     notStartOfPlanning notStartOfPropertyDrawer
@@ -60,7 +60,9 @@ lesserElement {  // excluding Planning and Comment
 }
 
 // https://orgmode.org/worg/org-syntax.html#Planning
-Planning { planningStart endofline }
+planningLine {
+  ((PlanningDeadline | PlanningScheduled | PlanningClosed) PlanningValue)+
+}
 
 titleObject {
   link | titleTextMarkup | titleWord
@@ -235,7 +237,7 @@ markupStrikeThroughNestedObject {
 @external tokens priority_tokenizer from "./external-tokens" { Priority }
 
 
-@external tokens planningStart_tokenizer from "./external-tokens" { planningStart }
+@external tokens isStartOfPlanningLine_lookaround from "./external-tokens" { isStartOfPlanningLine }
 @external tokens notStartOfPlanning_lookaround from "./external-tokens" { notStartOfPlanning }
 @external tokens notStartOfPropertyDrawer_lookaround from "./external-tokens" { notStartOfPropertyDrawer }
 
@@ -252,6 +254,14 @@ markupStrikeThroughNestedObject {
   CommentLine { "#" ("\n" | @eof | (" " ![\n]* ("\n" | @eof))) }
   KeywordComment { "#+" ![\n]* ("\n" | @eof) }
 }
+
+
+@external tokens planningKeyword_tokenizer from "./external-tokens" {
+  PlanningDeadline
+  PlanningScheduled
+  PlanningClosed
+}
+@external tokens planningValue_tokenizer from "./external-tokens" { PlanningValue }
 
 
 @external tokens sectionEnd_tokenizer from "./external-tokens" { sectionEnd }

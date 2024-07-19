@@ -92,7 +92,9 @@ export const OrgmodeLanguage = (parser: LRParser) => {
       props: [
         styleTags({
           "Heading": tags.heading,
-          "Planning": tags.annotation,
+          "PlanningDeadline": tags.annotation,
+          "PlanningClosed": tags.annotation,
+          "PlanningScheduled": tags.annotation,
           "PropertyDrawer": tags.meta,
           "ZerothSection": tags.content,
           "Section": tags.content,
