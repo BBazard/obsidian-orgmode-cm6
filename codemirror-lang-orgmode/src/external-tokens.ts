@@ -6,6 +6,7 @@ import {
   startOfComment,
   startOfKeywordComment,
   PropertyDrawer,
+  planningStart,
   notStartOfPlanning, notStartOfPropertyDrawer,
   notStartOfHeading, notStartOfComment,
   sectionword,
@@ -382,7 +383,12 @@ function checkBlock(input: InputStream, stack: Stack, lookaround: boolean, peek_
 }
 
 export const block_tokenizer = new ExternalTokenizer((input, stack) => {
-  log(`-- START Block ${inputStreamBeginString(input)}`)
+  log(`-- START block_tokenizer ${inputStreamBeginString(input)}`)
+  let previous = input.peek(-1)
+  if (!isEndOfLine(previous)) {
+    log(`XX REFUSE block_tokenizer, not start of a line ${inputStreamEndString(input, stack)}`)
+    return
+  }
   if (checkBlock(input, stack, false)) {
     if (input.peek(0) !== EOF) {
       input.advance()
@@ -391,23 +397,8 @@ export const block_tokenizer = new ExternalTokenizer((input, stack) => {
     input.acceptToken(Block)
     return
   }
-  log(`XX REFUSE Block ${inputStreamEndString(input, stack)}`)
-  return
-})
-
-export const notStartOfABlock_lookaround = new ExternalTokenizer((input, stack) => {
-  log(`-- START notStartOfABlock ${inputStreamBeginString(input)}`)
-  let previous = input.peek(-1)
-  if (!isEndOfLine(previous)) {
-    log(`XX REFUSE notStartOfABlock, not start of a line ${inputStreamEndString(input, stack)}`)
-    return
-  }
-  if (checkBlock(input, stack, true)) {
-    log(`XX REFUSE notStartOfABlock ${inputStreamEndString(input, stack)}`)
-    return
-  }
   log(`== ACCEPT notStartOfABlock ${inputStreamAccept(input, stack)}`)
-  input.acceptToken(notStartOfABlock)
+  input.acceptToken(notStartOfABlock, -(input.pos-stack.pos))
   return
 })
 
@@ -685,6 +676,23 @@ export const notStartOfPlanning_lookaround = new ExternalTokenizer((input, stack
   return
 })
 
+export const planningStart_tokenizer = new ExternalTokenizer((input, stack) => {
+  log(`-- START planningStart_tokenizer ${inputStreamBeginString(input)}`)
+  let previous = input.peek(-1)
+  if (!isEndOfLine(previous)) {
+    log(`XX REFUSE planningStart_tokenizer, not start of a line ${inputStreamEndString(input, stack)}`)
+    return
+  }
+  const wordMatched = matchWords(input, ["DEADLINE:", "SCHEDULED:", "CLOSED:"])
+  if (wordMatched) {
+    log(`== ACCEPT planningStart_tokenizer ${inputStreamAccept(input, stack)}`)
+    input.acceptToken(planningStart, wordMatched.length)
+    return
+  }
+  log(`XX REFUSE planningStart_tokenizer ${inputStreamEndString(input, stack)}`)
+  return
+})
+
 export const notStartOfPropertyDrawer_lookaround = new ExternalTokenizer((input, stack) => {
   log(`-- START notStartOfPropertyDrawer ${inputStreamBeginString(input)}`)
   // sectionLineStart { ( ("*"+ ![ \t*]) | ![#*] ) }
@@ -837,49 +845,6 @@ export const propertydrawer_tokenizer = new ExternalTokenizer((input, stack) => 
   log(`== ACCEPT PropertyDrawer EOF reached without :END: ${inputStreamAccept(input, stack)}`)
   return
 });
-
-function checkStartOfHeading(input: InputStream) {
-  const previous = input.peek(-1)
-  log(`previous ${stringifyCodeLogString(previous)}`)
-  if (!isEndOfLine(previous)) {
-    return
-  }
-  let c = input.peek(0)
-  log(stringifyCodeLogString(c))
-  let headingLevel = null
-  if (c === STAR) {
-    // only start of heading if it matches the stars token { "*"+ $[ \t]+ }
-    headingLevel = 1
-    let peek_c = input.peek(headingLevel)
-    while (peek_c == STAR) {
-      headingLevel += 1
-      peek_c = input.peek(headingLevel)
-    }
-    if (isWhiteSpace(peek_c)) {
-      return headingLevel
-    }
-  }
-  return null
-}
-
-export const notStartOfHeading_lookaround = new ExternalTokenizer((input, stack) => {
-  log(`-- START notStartOfHeading_lookaround ${inputStreamBeginString(input)}`)
-  if (!isEndOfLine(input.peek(-1))) {
-    log(`XX REFUSE notStartOfHeading_lookaround, previous not endofline ${inputStreamEndString(input, stack)}`)
-    return
-  }
-  if (input.peek(0) === EOF) {
-    log(`XX REFUSE notStartOfHeading_lookaround, EOF ${inputStreamEndString(input, stack)}`)
-    return
-  }
-  if (!checkStartOfHeading(input)) {
-    log(`== ACCEPT notStartOfHeading_lookaround ${inputStreamAccept(input, stack)}`)
-    input.acceptToken(notStartOfHeading)
-    return
-  }
-  log(`XX REFUSE notStartOfHeading_lookaround`)
-  return
-})
 
 export const notStartOfComment_lookaround = new ExternalTokenizer((input, stack) => {
   log(`-- START notStartOfComment_lookaround ${inputStreamBeginString(input)}`)
@@ -1363,28 +1328,69 @@ export const stars_tokenizer = new ExternalTokenizer((input, stack) => {
   return
 })
 
-export const shouldIndentHeading_lookaround = new ExternalTokenizer((input, stack) => {
+function checkStartOfHeading(input: InputStream) {
+  const previous = input.peek(-1)
+  log(`previous ${stringifyCodeLogString(previous)}`)
+  if (!isEndOfLine(previous)) {
+    return
+  }
+  let c = input.peek(0)
+  log(stringifyCodeLogString(c))
+  let headingLevel = null
+  if (c === STAR) {
+    // only start of heading if it matches the stars token { "*"+ $[ \t]+ }
+    headingLevel = 1
+    let peek_c = input.peek(headingLevel)
+    while (peek_c == STAR) {
+      headingLevel += 1
+      peek_c = input.peek(headingLevel)
+    }
+    if (isWhiteSpace(peek_c)) {
+      return headingLevel
+    }
+  }
+  return null
+}
+
+export const startOfHeading_lookaround = new ExternalTokenizer((input, stack) => {
   const context: OrgContext = stack.context
-  log(`-- START shouldIndentHeading ${inputStreamBeginString(input)}`)
+  log(`-- START startOfHeading_lookaround ${inputStreamBeginString(input)}`)
+  if (input.peek(0) === EOF) {
+    if (Array.isArray(context.headingLevelStack) && context.headingLevelStack.length > 0) {
+      log(`== ACCEPT shouldDedentHeading before EOF ${inputStreamAccept(input, stack)}`)
+      input.acceptToken(shouldDedentHeading)
+      return
+    }
+    log(`XX REFUSE startOfHeading_lookaround, EOF ${inputStreamEndString(input, stack)}`)
+    return
+  }
+  if (!isEndOfLine(input.peek(-1))) {
+    log(`XX REFUSE startOfHeading_lookaround, previous not endofline ${inputStreamEndString(input, stack)}`)
+    return
+  }
   let nextHeadingLevel = checkStartOfHeading(input)
   if (!nextHeadingLevel) {
-    log(`XX REFUSE shouldIndentHeading, not heading ${inputStreamEndString(input, stack)}`)
+    log(`== ACCEPT notStartOfHeading ${inputStreamAccept(input, stack)}`)
+    input.acceptToken(notStartOfHeading)
     return
   }
   if (context.headingLevelStack.length === 0) {
-    log(`== ACCEPT shouldIndentHeading A ${inputStreamAccept(input, stack)}`)
+    log(`== ACCEPT shouldIndentHeading top level ${inputStreamAccept(input, stack)}`)
     input.acceptToken(shouldIndentHeading)
     return
   }
   const currentHeadingLevel = context.headingLevelStack[context.headingLevelStack.length-1]
   if (nextHeadingLevel > currentHeadingLevel) {
-    log(`== ACCEPT shouldIndentHeading B ${inputStreamAccept(input, stack)}`)
+    log(`== ACCEPT shouldIndentHeading ${inputStreamAccept(input, stack)}`)
     input.acceptToken(shouldIndentHeading)
     return
+  } else {
+    log(`== ACCEPT shouldDedentHeading before next heading ${inputStreamAccept(input, stack)}`)
+    input.acceptToken(shouldDedentHeading)
+    return
   }
-  log(`XX REFUSE shouldIndentHeading ${inputStreamEndString(input, stack)}`)
-  return
 })
+
 export const indentHeading_lookaround = new ExternalTokenizer((input, stack) => {
   const context: OrgContext = stack.context
   let nextHeadingLevel = checkStartOfHeading(input)
@@ -1396,32 +1402,6 @@ export const indentHeading_lookaround = new ExternalTokenizer((input, stack) => 
   return
 })
 
-export const shouldDedentHeading_lookaround = new ExternalTokenizer((input, stack) => {
-  const context: OrgContext = stack.context
-  log(`-- START shouldDedentHeading ${inputStreamBeginString(input)}`)
-  if (input.peek(0) === EOF) {
-    log(`== ACCEPT shouldDedentHeading F ${inputStreamAccept(input, stack)}`)
-    input.acceptToken(shouldDedentHeading)
-    return
-  }
-  let nextHeadingLevel = checkStartOfHeading(input)
-  if (!nextHeadingLevel) {
-    log(`XX REFUSE shouldDedentHeading G ${inputStreamEndString(input, stack)}`)
-    return
-  }
-  if (context.headingLevelStack.length == 0) {
-    log(`XX REFUSE shouldDedentHeading A ${inputStreamEndString(input, stack)}`)
-    return
-  }
-  const currentHeadingLevel = context.headingLevelStack[context.headingLevelStack.length-1]
-  if (nextHeadingLevel <= currentHeadingLevel) {
-    log(`== ACCEPT shouldDedentHeading Z ${inputStreamAccept(input, stack)}`)
-    input.acceptToken(shouldDedentHeading)
-    return
-  }
-  log(`XX REFUSE shouldDedentHeading B ${inputStreamEndString(input, stack)}`)
-  return
-})
 
 export const dedentHeading_lookaround = new ExternalTokenizer((input: InputStream, stack: Stack) => {
   input.acceptToken(dedentHeading)
