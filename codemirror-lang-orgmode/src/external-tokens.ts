@@ -862,6 +862,21 @@ export const notStartOfComment_lookaround = new ExternalTokenizer((input, stack)
 });
 
 export const sectionWord_tokenizer = (orgLinkParameters: string[]) => { return new ExternalTokenizer((input, stack) => {
+    log(`-- START sectionWord ${inputStreamBeginString(input)}`)
+    const context: OrgContext = stack.context
+    if (
+      context.parentObjects.includes(ParentObject.TextBold) ||
+      context.parentObjects.includes(ParentObject.TextItalic) ||
+      context.parentObjects.includes(ParentObject.TextUnderline) ||
+      context.parentObjects.includes(ParentObject.TextVerbatim) ||
+      context.parentObjects.includes(ParentObject.TextCode) ||
+      context.parentObjects.includes(ParentObject.TextStrikeThrough) ||
+      context.parentObjects.includes(ParentObject.RegularLink) ||
+      context.parentObjects.includes(ParentObject.AngleLink)
+    ) {
+      log(`XX REFUSE sectionWord, inside markup or link ${inputStreamEndString(input, stack)}`)
+      return
+    }
     const termsByMarker = new Map([
       [STAR, isStartOfTextBold],
       ['/'.charCodeAt(0), isStartOfTextItalic],
@@ -870,7 +885,6 @@ export const sectionWord_tokenizer = (orgLinkParameters: string[]) => { return n
       ['~'.charCodeAt(0), isStartOfTextCode],
       ['+'.charCodeAt(0), isStartOfTextStrikeThrough],
     ])
-    log(`-- START sectionWord ${inputStreamBeginString(input)}`)
     let c = input.peek(0)
     if (c === EOF) {
       log(`XX REFUSE sectionWord, only EOF left ${inputStreamEndString(input, stack)}`)
@@ -927,7 +941,7 @@ export const sectionEnd_tokenizer = new ExternalTokenizer((input, stack) => {
     input.acceptToken(sectionEnd)
     return
   }
-  log(`XX REFUSE sectionSpace, ${inputStreamEndString(input, stack)}`)
+  log(`XX REFUSE sectionEnd, ${inputStreamEndString(input, stack)}`)
   return
 });
 
@@ -949,17 +963,17 @@ function sectionWordMarkup(input: InputStream, stack: Stack, marker: number, ter
       !checkAngleLink(input, stack, orgLinkParameters) &&
       !checkRegularLink(input, stack, orgLinkParameters) &&
       !checkPlainLink(input, stack, orgLinkParameters, true) &&
-      !(context.isInsideRegularLink && matchWords(input, ["]]"])) &&
-      !(context.isInsideAngleLink && matchWords(input, [">"]))
+      !(context.parentObjects.includes(ParentObject.RegularLink) && matchWords(input, ["]]"])) &&
+      !(context.parentObjects.includes(ParentObject.AngleLink) && matchWords(input, [">"]))
     ) {
       c = input.advance()
       log(stringifyCodeLogString(c))
     }
-    if (context.isInsideRegularLink && matchWords(input, ["]]"])) {
+    if (context.parentObjects.includes(ParentObject.RegularLink) && matchWords(input, ["]]"])) {
       log(`== ACCEPT sectionWordMarkup ${stringifyCodeLogString(marker)} inside link before ]] ${inputStreamAccept(input, stack)}`)
       input.acceptToken(term)
       return
-    } else if (context.isInsideAngleLink && matchWords(input, [">"])) {
+    } else if (context.parentObjects.includes(ParentObject.AngleLink) && matchWords(input, [">"])) {
       log(`== ACCEPT sectionWordMarkup ${stringifyCodeLogString(marker)} inside link before > ${inputStreamAccept(input, stack)}`)
       input.acceptToken(term)
       return
@@ -1051,7 +1065,14 @@ function checkEndOfTextMarkup(input: InputStream, stack: Stack, marker: number, 
 
 export const isStartOfTextMarkup_lookaround = (orgLinkParameters: string[]) => { return new ExternalTokenizer((input, stack) => {
   const context: OrgContext = stack.context
-  if (context.markupContext) {
+  if (
+      context.parentObjects.includes(ParentObject.TextBold) ||
+      context.parentObjects.includes(ParentObject.TextItalic) ||
+      context.parentObjects.includes(ParentObject.TextUnderline) ||
+      context.parentObjects.includes(ParentObject.TextVerbatim) ||
+      context.parentObjects.includes(ParentObject.TextCode) ||
+      context.parentObjects.includes(ParentObject.TextStrikeThrough)
+    ) {
     log(`XX REFUSE isStartOfTextMarkup, already inside markup ${inputStreamEndString(input, stack)}`)
     return
   }
@@ -1090,7 +1111,14 @@ export const isEndOfTextMarkup_lookaround = new ExternalTokenizer((input, stack)
 
 export const isStartOfTitleTextMarkup_lookaround = (orgLinkParameters: string[]) => { return new ExternalTokenizer((input, stack) => {
   const context: OrgContext = stack.context
-  if (context.markupContext) {
+  if (
+      context.parentObjects.includes(ParentObject.TextBold) ||
+      context.parentObjects.includes(ParentObject.TextItalic) ||
+      context.parentObjects.includes(ParentObject.TextUnderline) ||
+      context.parentObjects.includes(ParentObject.TextVerbatim) ||
+      context.parentObjects.includes(ParentObject.TextCode) ||
+      context.parentObjects.includes(ParentObject.TextStrikeThrough)
+    ) {
     log(`XX REFUSE isStartOfTitleTextMarkup_lookaround, already inside markup ${inputStreamEndString(input, stack)}`)
     return
   }
@@ -1156,26 +1184,26 @@ function isStartOfTextMarkup(input: InputStream, stack: Stack, termsByMarker: Ma
     while (
       c !== MARKER &&
       !isEndOfLine(c) &&
-      !(context.isInsideRegularLink && matchWords(input, ["]]"], peek_distance)) &&
-      !(!context.isInsideRegularLink && checkRegularLink(input, stack, orgLinkParameters, peek_distance)) &&
-      !(context.isInsideAngleLink && matchWords(input, [">"], peek_distance)) &&
-      !(!context.isInsideAngleLink && checkAngleLink(input, stack, orgLinkParameters, peek_distance))
+      !(context.parentObjects.includes(ParentObject.RegularLink) && matchWords(input, ["]]"], peek_distance)) &&
+      !(!context.parentObjects.includes(ParentObject.RegularLink) && checkRegularLink(input, stack, orgLinkParameters, peek_distance)) &&
+      !(context.parentObjects.includes(ParentObject.AngleLink) && matchWords(input, [">"], peek_distance)) &&
+      !(!context.parentObjects.includes(ParentObject.AngleLink) && checkAngleLink(input, stack, orgLinkParameters, peek_distance))
     ) {
       peek_distance += 1
       c = input.peek(peek_distance)
     }
-    if (context.isInsideRegularLink && matchWords(input, ["]]"], peek_distance)) {
+    if (context.parentObjects.includes(ParentObject.RegularLink) && matchWords(input, ["]]"], peek_distance)) {
       log(`== REFUSE isStartOfTextMarkup unfinished markup before end of link ]] ${inputStreamEndString(input, stack)}`)
       return
-    } else if (!context.isInsideRegularLink && checkRegularLink(input, stack, orgLinkParameters, peek_distance)) {
+    } else if (!context.parentObjects.includes(ParentObject.RegularLink) && checkRegularLink(input, stack, orgLinkParameters, peek_distance)) {
       log(`skipping regularLink inside markup`)
       const end_of_link_peek_distance = checkRegularLink(input, stack, orgLinkParameters, peek_distance)
       peek_distance = end_of_link_peek_distance-1
       c = input.peek(peek_distance)
-    } else if (context.isInsideAngleLink && matchWords(input, [">"], peek_distance)) {
+    } else if (context.parentObjects.includes(ParentObject.AngleLink) && matchWords(input, [">"], peek_distance)) {
       log(`== REFUSE isStartOfTextMarkup unfinished markup before end of link > ${inputStreamEndString(input, stack)}`)
       return
-    } else if (!context.isInsideAngleLink && checkAngleLink(input, stack, orgLinkParameters, peek_distance)) {
+    } else if (!context.parentObjects.includes(ParentObject.AngleLink) && checkAngleLink(input, stack, orgLinkParameters, peek_distance)) {
       log(`skipping angleLink inside markup ${inputStreamEndString(input, stack)} + ${peek_distance}`)
       const end_of_link_peek_distance = checkAngleLink(input, stack, orgLinkParameters, peek_distance)
       peek_distance = end_of_link_peek_distance-1
@@ -1500,6 +1528,12 @@ function checkPlainLink(input: InputStream, stack: Stack, orgLinkParameters: str
 }
 
 export const plainLink_tokenizer = (orgLinkParameters: string[]) => { return new ExternalTokenizer((input, stack) => {
+  const context: OrgContext = stack.context
+  const isInsideLink = context.parentObjects.includes(ParentObject.RegularLink) || context.parentObjects.includes(ParentObject.AngleLink)
+  if (isInsideLink) {
+    log(`XX REFUSE plainLink_tokenizer, already inside link ${inputStreamEndString(input, stack)}`)
+    return
+  }
     if (checkPlainLink(input, stack, orgLinkParameters, false)) {
       log(`== ACCEPT plainLink ${inputStreamAccept(input, stack)}`)
       input.acceptToken(PlainLink)
@@ -1567,7 +1601,7 @@ function checkRegularLink(input: InputStream, stack: Stack, orgLinkParameters: s
 
 export const isStartOfRegularLink_lookaround = (orgLinkParameters: string[]) => { return new ExternalTokenizer((input, stack) => {
   const context: OrgContext = stack.context
-  const isInsideLink = context.isInsideRegularLink || context.isInsideAngleLink
+  const isInsideLink = context.parentObjects.includes(ParentObject.RegularLink) || context.parentObjects.includes(ParentObject.AngleLink)
   if (isInsideLink) {
     log(`XX REFUSE isStartOfRegularLink_lookaround, already inside link ${inputStreamEndString(input, stack)}`)
     return
@@ -1631,7 +1665,7 @@ function checkAngleLink(input: InputStream, stack: Stack, orgLinkParameters: str
 
 export const isStartOfAngleLink_lookaround = (orgLinkParameters: string[]) => { return new ExternalTokenizer((input, stack) => {
     const context: OrgContext = stack.context
-    const isInsideLink = context.isInsideRegularLink || context.isInsideAngleLink
+    const isInsideLink = context.parentObjects.includes(ParentObject.RegularLink) || context.parentObjects.includes(ParentObject.AngleLink)
     if (isInsideLink) {
       log(`XX REFUSE isStartOfAngleLink, already inside link ${inputStreamEndString(input, stack)}`)
       return
@@ -1701,7 +1735,7 @@ export const sectionWordAngleLink_tokenizer = new ExternalTokenizer((input, stac
 
 export const exitRegularLink_lookaround = new ExternalTokenizer((input: InputStream, stack: Stack) => {
   const context: OrgContext = stack.context
-  const isInsideLink = context.isInsideAngleLink || context.isInsideRegularLink
+  const isInsideLink = context.parentObjects.includes(ParentObject.RegularLink) || context.parentObjects.includes(ParentObject.AngleLink)
   if (isInsideLink) {
     input.acceptToken(exitRegularLink)
     return
@@ -1710,7 +1744,7 @@ export const exitRegularLink_lookaround = new ExternalTokenizer((input: InputStr
 
 export const exitAngleLink_lookaround = new ExternalTokenizer((input: InputStream, stack: Stack) => {
   const context: OrgContext = stack.context
-  const isInsideLink = context.isInsideAngleLink || context.isInsideRegularLink
+  const isInsideLink = context.parentObjects.includes(ParentObject.RegularLink) || context.parentObjects.includes(ParentObject.AngleLink)
   if (isInsideLink) {
     input.acceptToken(exitAngleLink)
     return
@@ -1844,25 +1878,31 @@ export const planningValue_tokenizer = new ExternalTokenizer((input, stack) => {
   return
 })
 
+enum ParentObject {
+  Title,  // TODO
+  TextBold,
+  TextItalic,
+  TextUnderline,
+  TextVerbatim,
+  TextCode,
+  TextStrikeThrough,
+  RegularLink,
+  AngleLink,
+}
+
 class OrgContext {
   headingLevelStack: number[]
   hash: number
   levelHeadingToPush: number
-  isInsideRegularLink: boolean
-  isInsideAngleLink: boolean
-  markupContext: boolean
+  parentObjects: ParentObject[]
   constructor(
     headingLevelStack: number[],
     levelHeadingToPush: number,
-    isInsideRegularLink: boolean,
-    isInsideAngleLink: boolean,
-    markupContext: boolean
+    parentObjects: ParentObject[],
   ) {
     this.headingLevelStack = headingLevelStack
     this.levelHeadingToPush = levelHeadingToPush
-    this.isInsideRegularLink = isInsideRegularLink
-    this.isInsideAngleLink = isInsideAngleLink
-    this.markupContext = markupContext
+    this.parentObjects = parentObjects
     this.hash = this.hashCompute()
   }
   hashCompute() {
@@ -1872,27 +1912,43 @@ class OrgContext {
       hash += headingLevel << (bitmask=bitmask+10)
     }
     hash += this.levelHeadingToPush << (bitmask=bitmask+10)
-    if (this.markupContext) {
-      hash += 1 << (bitmask=bitmask+10)
+    if (this.parentObjects.includes(ParentObject.Title)) {
+      hash += 1 << (bitmask=bitmask+3)
     }
-    if (this.isInsideRegularLink) {
-      hash += 1 << (bitmask=bitmask+10)
+    if (this.parentObjects.includes(ParentObject.TextBold)) {
+      hash += 1 << (bitmask=bitmask+3)
     }
-    if (this.isInsideAngleLink) {
-      hash += 1 << (bitmask=bitmask+10)
+    if (this.parentObjects.includes(ParentObject.TextItalic)) {
+      hash += 1 << (bitmask=bitmask+3)
+    }
+    if (this.parentObjects.includes(ParentObject.TextUnderline)) {
+      hash += 1 << (bitmask=bitmask+3)
+    }
+    if (this.parentObjects.includes(ParentObject.TextVerbatim)) {
+      hash += 1 << (bitmask=bitmask+3)
+    }
+    if (this.parentObjects.includes(ParentObject.TextCode)) {
+      hash += 1 << (bitmask=bitmask+3)
+    }
+    if (this.parentObjects.includes(ParentObject.TextStrikeThrough)) {
+      hash += 1 << (bitmask=bitmask+3)
+    }
+    if (this.parentObjects.includes(ParentObject.RegularLink)) {
+      hash += 1 << (bitmask=bitmask+3)
+    }
+    if (this.parentObjects.includes(ParentObject.AngleLink)) {
+      hash += 1 << (bitmask=bitmask+3)
     }
     return hash
   }
 }
 
 export const context_tracker = new ContextTracker({
-  start: new OrgContext([], null, false, false, false),
+  start: new OrgContext([], null, []),
   shift(context: OrgContext, term: number, stack: Stack, input: InputStream) {
     let headingLevelStack = [...context.headingLevelStack]
     let levelHeadingToPush = context.levelHeadingToPush
-    let isInsideRegularLink = context.isInsideRegularLink
-    let isInsideAngleLink = context.isInsideAngleLink
-    let markupContext = context.markupContext
+    let parentObjects = context.parentObjects
     if (term === indentHeading) {
       const toPush = levelHeadingToPush
       levelHeadingToPush = null
@@ -1904,19 +1960,39 @@ export const context_tracker = new ContextTracker({
     }
     if (
       term === isStartOfTextBold ||
+      term === isStartOfTitleTextBold
+    ) {
+      parentObjects.push(ParentObject.TextBold)
+    }
+    if (
       term === isStartOfTextItalic ||
+      term === isStartOfTitleTextItalic
+    ) {
+      parentObjects.push(ParentObject.TextItalic)
+    }
+    if (
       term === isStartOfTextUnderline ||
+      term === isStartOfTitleTextUnderline
+    ) {
+      parentObjects.push(ParentObject.TextUnderline)
+    }
+    if (
       term === isStartOfTextVerbatim ||
+      term === isStartOfTitleTextVerbatim
+    ) {
+      parentObjects.push(ParentObject.TextVerbatim)
+    }
+    if (
       term === isStartOfTextCode ||
+      term === isStartOfTitleTextCode
+    ) {
+      parentObjects.push(ParentObject.TextCode)
+    }
+    if (
       term === isStartOfTextStrikeThrough ||
-      term === isStartOfTitleTextBold ||
-      term === isStartOfTitleTextItalic ||
-      term === isStartOfTitleTextUnderline ||
-      term === isStartOfTitleTextVerbatim ||
-      term === isStartOfTitleTextCode ||
       term === isStartOfTitleTextStrikeThrough
     ) {
-      markupContext = true
+      parentObjects.push(ParentObject.TextStrikeThrough)
     }
     if (
       term === isEndOfTextBold ||
@@ -1927,21 +2003,21 @@ export const context_tracker = new ContextTracker({
       term === isEndOfTextStrikeThrough
 
     ) {
-      markupContext = false
+      parentObjects.pop()
     }
     if (term === isStartOfRegularLink) {
-      isInsideRegularLink = true
+      parentObjects.push(ParentObject.RegularLink)
     }
     if (term === exitRegularLink) {
-      isInsideRegularLink = false
+      parentObjects.pop()
     }
     if (term === isStartOfAngleLink) {
-      isInsideAngleLink = true
+      parentObjects.push(ParentObject.AngleLink)
     }
     if (term === exitAngleLink) {
-      isInsideAngleLink = false
+      parentObjects.pop()
     }
-    return new OrgContext(headingLevelStack, levelHeadingToPush, isInsideRegularLink, isInsideAngleLink, markupContext)
+    return new OrgContext(headingLevelStack, levelHeadingToPush, parentObjects)
   },
   hash: context => context.hash
 })
