@@ -50,7 +50,7 @@ lesserElement {  // excluding Planning and Comment
       (startOfComment CommentLine) |
       (
         notStartOfComment
-        paragraph { sectionSpace? (object sectionSpace?)* sectionEnd }
+        paragraph { object+ }
       ) | (
         startOfKeywordComment
         KeywordComment
@@ -69,35 +69,25 @@ titleObject {
 }
 
 object {
-  link | textMarkup | sectionword
+  link | textMarkup | objectToken
 }
 
 link {
-  (isStartOfRegularLink RegularLink) |
-  (isStartOfAngleLink AngleLink) |
-  PlainLink
+  RegularLink | AngleLink | PlainLink
 }
 
 RegularLink {
+  isStartOfRegularLink
   "[["
-  sectionSpace? regularLinkNestedObject (sectionSpace regularLinkNestedObject)*
-  "]]"
+  object+
   exitRegularLink
 }
 
 AngleLink {
+  isStartOfAngleLink
   "<"
-  sectionSpace? angleLinkNestedObject (sectionSpace angleLinkNestedObject)*
-  ">"
+  object+
   exitAngleLink
-}
-
-regularLinkNestedObject {
-  textMarkup | sectionWordRegularLink
-}
-
-angleLinkNestedObject {
-  textMarkup | sectionWordAngleLink
 }
 
 titleTextMarkup {
@@ -120,68 +110,38 @@ textMarkup {
 
 TextBold {
   "*"
-  markupBoldNestedObject (sectionSpace markupBoldNestedObject)*
+  object+
   isEndOfTextBold
-  "*"
 }
 
 TextItalic {
   "/"
-  markupItalicNestedObject (sectionSpace markupItalicNestedObject)*
+  object+
   isEndOfTextItalic
-  "/"
 }
 
 TextUnderline {
   "_"
-  markupUnderlineNestedObject (sectionSpace markupUnderlineNestedObject)*
+  object+
   isEndOfTextUnderline
-  "_"
 }
 
 TextVerbatim {
   "="
-  markupVerbatimNestedObject (sectionSpace markupVerbatimNestedObject)*
+  object+
   isEndOfTextVerbatim
-  "="
 }
 
 TextCode {
   "~"
-  markupCodeNestedObject (sectionSpace markupCodeNestedObject)*
+  object+
   isEndOfTextCode
-  "~"
 }
 
 TextStrikeThrough {
   "+"
-  markupStrikeThroughNestedObject (sectionSpace markupStrikeThroughNestedObject)*
+  object+
   isEndOfTextStrikeThrough
-  "+"
-}
-
-markupBoldNestedObject {
-  (sectionwordBold | link)+
-}
-
-markupItalicNestedObject {
-  (sectionwordItalic | link)+
-}
-
-markupUnderlineNestedObject {
-  (sectionwordUnderline | link)+
-}
-
-markupVerbatimNestedObject {
-  (sectionwordVerbatim | link)+
-}
-
-markupCodeNestedObject {
-  (sectionwordCode | link)+
-}
-
-markupStrikeThroughNestedObject {
-  (sectionwordStrikeThrough | link)+
 }
 
 @context context_tracker from "./external-tokens"
@@ -264,25 +224,10 @@ markupStrikeThroughNestedObject {
 @external tokens planningValue_tokenizer from "./external-tokens" { PlanningValue }
 
 
-@external tokens sectionEnd_tokenizer from "./external-tokens" { sectionEnd }
 @external tokens sectionSpace_tokenizer from "./external-tokens" { sectionSpace }
 @external tokens titleWord_tokenizer from "./external-tokens" { titleWord }
 @external tokens tags_tokenizer from "./external-tokens" { Tags }
 
-// need to be last to not override something else
 @external tokens endofline_tokenizer from "./external-tokens" { endofline }
 
-// https://orgmode.org/worg/org-syntax.html#Sections
-@external tokens sectionWord_tokenizer from "./external-tokens" { sectionword }
-
-@external tokens sectionWordBold_tokenizer from "./external-tokens" { sectionwordBold }
-@external tokens sectionWordItalic_tokenizer from "./external-tokens" { sectionwordItalic }
-@external tokens sectionWordUnderline_tokenizer from "./external-tokens" { sectionwordUnderline }
-@external tokens sectionWordVerbatim_tokenizer from "./external-tokens" { sectionwordVerbatim }
-@external tokens sectionWordCode_tokenizer from "./external-tokens" { sectionwordCode }
-@external tokens sectionWordStrikeThrough_tokenizer from "./external-tokens" { sectionwordStrikeThrough }
-
-
-@external tokens sectionWordAngleLink_tokenizer from "./external-tokens" { sectionWordAngleLink }
-@external tokens sectionWordRegularLink_tokenizer from "./external-tokens" { sectionWordRegularLink }
-
+@external tokens object_tokenizer from "./external-tokens" { objectToken }

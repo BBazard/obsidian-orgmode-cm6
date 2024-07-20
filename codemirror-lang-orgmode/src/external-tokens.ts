@@ -8,15 +8,7 @@ import {
   PropertyDrawer,
   notStartOfPlanning, notStartOfPropertyDrawer,
   notStartOfHeading, notStartOfComment,
-  sectionword,
   sectionSpace,
-  sectionEnd,
-  sectionwordBold,
-  sectionwordItalic,
-  sectionwordUnderline,
-  sectionwordVerbatim,
-  sectionwordCode,
-  sectionwordStrikeThrough,
   isStartOfTextBold,
   isStartOfTextItalic,
   isStartOfTextUnderline,
@@ -44,8 +36,6 @@ import {
   PlainLink,
   isStartOfRegularLink,
   isStartOfAngleLink,
-  sectionWordAngleLink,
-  sectionWordRegularLink,
   exitRegularLink,
   exitAngleLink,
   PlanningDeadline,
@@ -53,6 +43,7 @@ import {
   PlanningClosed,
   PlanningValue,
   isStartOfPlanningLine,
+  objectToken,
 } from './parser.terms';
 
 const NEW_LINE = '\n'.charCodeAt(0);
@@ -83,10 +74,6 @@ function stringifyCodeLogString(charCode: number) {
     char = '<EOF/SOF>'
   }
   return char
-}
-
-function stringifyCodesLogString(charCodes: number[]) {
-  return charCodes.map(x=>stringifyCodeLogString(x)).join("")
 }
 
 function inputStreamBeginString(input: InputStream): string {
@@ -406,47 +393,64 @@ export const block_tokenizer = new ExternalTokenizer((input, stack) => {
   return
 })
 
-export const startOfComment_lookaround = new ExternalTokenizer((input, stack) => {
-  log(`-- START startOfComment_lookaround ${inputStreamBeginString(input)}`)
+function checkComment(input: InputStream, stack: Stack) {
   let previous = input.peek(-1)
   if (!isEndOfLine(previous)) {
-    log(`XX REFUSE startOfComment_lookaround, not at the start of a line ${inputStreamEndString(input, stack)}`)
+    log(`XX REFUSE checkComment, not at the start of a line ${inputStreamEndString(input, stack)}`)
     return
   }
   let first = input.peek(0)
   if (first !== HASH) {
-    log(`XX REFUSE startOfComment_lookaround, not starting with # ${inputStreamEndString(input, stack)}`)
+    log(`XX REFUSE checkComment, not starting with # ${inputStreamEndString(input, stack)}`)
     return
   }
   let second = input.peek(1)
   if (isEndOfLine(second) || second === SPACE) {
+    return true
+  }
+  log(`XX REFUSE checkComment, second char is not space nor endofline ${inputStreamEndString(input, stack)}`)
+  return
+}
+
+export const startOfComment_lookaround = new ExternalTokenizer((input, stack) => {
+  log(`-- START startOfComment_lookaround ${inputStreamBeginString(input)}`)
+  if (checkComment(input, stack)) {
     log(`== ACCEPT startOfComment_lookaround ${inputStreamAccept(input, stack)}`)
     input.acceptToken(startOfComment)
     return
   }
-  log(`XX REFUSE startOfComment_lookaround, second char is not space nor endofline ${inputStreamEndString(input, stack)}`)
+  log(`XX REFUSE startOfComment_lookaround ${inputStreamEndString(input, stack)}`)
   return
 })
 
-export const startOfKeywordComment_lookaround = new ExternalTokenizer((input, stack) => {
-  log(`-- START startOfKeywordComment_lookaround ${inputStreamBeginString(input)}`)
+function checkKeywordComment(input: InputStream, stack: Stack) {
+  log(`-- START checkKeywordComment ${inputStreamBeginString(input)}`)
   let previous = input.peek(-1)
   if (!isEndOfLine(previous)) {
-    log(`XX REFUSE startOfKeywordComment_lookaround, not at the start of a line ${inputStreamEndString(input, stack)}`)
+    log(`XX REFUSE checkKeywordComment, not at the start of a line ${inputStreamEndString(input, stack)}`)
     return
   }
   let first = input.peek(0)
   if (first !== HASH) {
-    log(`XX REFUSE startOfKeywordComment_lookaround, not starting with # ${inputStreamEndString(input, stack)}`)
+    log(`XX REFUSE checkKeywordComment, not starting with # ${inputStreamEndString(input, stack)}`)
     return
   }
   let second = input.peek(1)
   if (second !== "+".charCodeAt(0)) {
-    log(`XX REFUSE startOfKeywordComment_lookaround, not starting with #+ ${inputStreamEndString(input, stack)}`)
+    log(`XX REFUSE checkKeywordComment, not starting with #+ ${inputStreamEndString(input, stack)}`)
     return
   }
-  log(`== ACCEPT startOfKeywordComment_lookaround ${inputStreamAccept(input, stack)}`)
-  input.acceptToken(startOfKeywordComment)
+  return true
+}
+
+export const startOfKeywordComment_lookaround = new ExternalTokenizer((input, stack) => {
+  log(`-- START startOfKeywordComment_lookaround ${inputStreamBeginString(input)}`)
+  if (checkKeywordComment(input, stack)) {
+    log(`== ACCEPT startOfKeywordComment_lookaround ${inputStreamAccept(input, stack)}`)
+    input.acceptToken(startOfKeywordComment)
+    return
+  }
+  log(`XX REFUSE startOfKeywordComment_lookaround ${inputStreamEndString(input, stack)}`)
   return
 })
 
@@ -680,158 +684,85 @@ export const notStartOfPlanning_lookaround = new ExternalTokenizer((input, stack
   return
 })
 
+function checkPropertyDrawer(input: InputStream, stack: Stack, peek_distance: number = 0) {
+  log(`-- START checkPropertyDrawer ${inputStreamBeginString(input)}`)
+  const previous = input.peek(-1)
+  log(`previous ${stringifyCodeLogString(previous)}`)
+  if (!isEndOfLine(previous)) {
+    log(`XX REFUSE checkPropertyDrawer, previous not endofline ${inputStreamEndString(input, stack)}`)
+    return
+  }
+  let c = input.peek(peek_distance)
+  log(stringifyCodeLogString(c))
+  const matchedPropertiesStart = matchWords(input, [":PROPERTIES:"])
+  if (!matchedPropertiesStart) {
+    log(`XX REFUSE checkPropertyDrawer, not starting with :PROPERTIES: ${inputStreamEndString(input, stack)}`)
+    return
+  }
+  peek_distance += matchedPropertiesStart.length
+  c = input.peek(peek_distance)
+  while (c !== NEW_LINE) {
+    peek_distance += 1
+    c = input.peek(peek_distance)
+    log(stringifyCodeLogString(c))
+  }
+  peek_distance += 1
+  c = input.peek(peek_distance)
+  log(stringifyCodeLogString(c))
+  while (c !== EOF) {
+    while (!isEndOfLine(c)) {
+      peek_distance += 1
+      c = input.peek(peek_distance)
+      log(stringifyCodeLogString(c))
+    }
+    peek_distance += 1
+    c = input.peek(peek_distance)
+    const matchedPropertiesEnd = matchWords(input, [":END:"], peek_distance)
+    if (matchedPropertiesEnd) {
+      peek_distance += matchedPropertiesEnd.length
+      c = input.peek(peek_distance)
+      while (!isEndOfLine(c)) {
+        peek_distance += matchedPropertiesEnd.length
+        c = input.peek(peek_distance)
+      }
+      peek_distance += 1
+      log(`== ACCEPT checkPropertyDrawer by default ${inputStreamAccept(input, stack)}`)
+      return peek_distance
+    }
+  }
+  log(`XX REFUSE checkPropertyDrawer, reached eof ${inputStreamEndString(input, stack)}`)
+  return
+}
+
 export const notStartOfPropertyDrawer_lookaround = new ExternalTokenizer((input, stack) => {
   log(`-- START notStartOfPropertyDrawer ${inputStreamBeginString(input)}`)
-  // sectionLineStart { ( ("*"+ ![ \t*]) | ![#*] ) }
   const previous = input.peek(-1)
   log(`previous ${stringifyCodeLogString(previous)}`)
   if (!isEndOfLine(previous)) {
     log(`XX REFUSE notStartOfPropertyDrawer, previous not endofline ${inputStreamEndString(input, stack)}`)
     return
   }
-  let c = input.peek(0)
-  let planning_word = String.fromCharCode(c)
-  let could_be_property_drawer = false
-  log(stringifyCodeLogString(c))
-  if (c === EOF) {
-      log(`XX REFUSE notStartOfPropertyDrawer, only EOF left ${inputStreamEndString(input, stack)}`)
-      return
-  } else if (c === COLON) {
-    could_be_property_drawer = true
-    planning_word = ''
-  } else if (c === HASH && !checkBlock(input, stack, true)) {
-    log(`XX REFUSE notStartOfPropertyDrawer, start of comment ${inputStreamEndString(input, stack)}`)
-    return
-  } else if (c === STAR) {
-    // only start of heading if it matches the stars token { "*"+ $[ \t]+ }
-    let peek_distance = 1
-    let peek_c = input.peek(peek_distance)
-    while (peek_c == STAR) {
-      peek_distance += 1
-      peek_c = input.peek(peek_distance)
-    }
-    if (isWhiteSpace(peek_c)) {
-      log(`XX REFUSE notStartOfPropertyDrawer, start of heading ${inputStreamEndString(input, stack)}`)
-      return // start of HEADING
-    }
-  }
-  if (c === HASH && !checkBlock(input, stack, true)) {
-    log(`XX REFUSE notStartOfPropertyDrawer, start of comment ${inputStreamEndString(input, stack)}`)
+  if (checkPropertyDrawer(input, stack)) {
+    log(`XX REFUSE notStartOfPropertyDrawer, start of PropertyDrawer ${inputStreamEndString(input, stack)}`)
     return
   }
-  let primary_peek_distance = 0
-  while (!isEndOfLine(c)) {
-    primary_peek_distance += 1
-    c = input.peek(primary_peek_distance)
-    log(stringifyCodeLogString(c))
-    if (c === COLON) {
-      if (could_be_property_drawer && planning_word.toUpperCase() === 'PROPERTIES') {
-        log(`XX REFUSE notStartOfPropertyDrawer, start of PropertyDrawer ${inputStreamEndString(input, stack)}`)
-        return
-      }
-    }
-    planning_word += String.fromCharCode(c)
-    log(`word [${planning_word}]`)
-  }
-  if (c === EOF) {
-    log(`== ACCEPT notStartOfPropertyDrawer before eof ${inputStreamAccept(input, stack)}`)
-    input.acceptToken(notStartOfPropertyDrawer)
-    return
-  } else if (c === NEW_LINE && input.peek(primary_peek_distance + 1) === EOF) {
-    primary_peek_distance += 1
-    input.acceptToken(notStartOfPropertyDrawer)
-    log(`== ACCEPT last notStartOfPropertyDrawer before EOF with a trailing newline ${inputStreamAccept(input, stack)}`)
-    return
-  } else if (c === NEW_LINE) {
-    primary_peek_distance += 1
-    log(`== ACCEPT notStartOfPropertyDrawer before newline ${inputStreamAccept(input, stack)}`)
-    input.acceptToken(notStartOfPropertyDrawer)
-    return
-  }
-  log(`== ACCEPT notStartOfPropertyDrawer by default ${inputStreamAccept(input, stack)}`)
+  log(`== ACCEPT notStartOfPropertyDrawer ${inputStreamAccept(input, stack)}`)
   input.acceptToken(notStartOfPropertyDrawer)
   return
 })
 
 export const propertydrawer_tokenizer = new ExternalTokenizer((input, stack) => {
-  // PropertyDrawer { ":PROPERTIES:" ![:]+ ":END:" } // with newline before and after
   log(`-- START PropertyDrawer ${inputStreamBeginString(input)}`)
-  const previous = input.peek(-1)
-  log(`previous ${stringifyCodeLogString(previous)}`)
-  if (!isEndOfLine(previous)) {
-    log(`XX REFUSE PropertyDrawer, previous not endofline ${inputStreamEndString(input, stack)}`)
+  let peek_distance = checkPropertyDrawer(input, stack)
+  if (peek_distance) {
+    input.advance(peek_distance)
+    log(`== ACCEPT PropertyDrawer ${inputStreamAccept(input, stack)}`)
+    input.acceptToken(PropertyDrawer)
     return
   }
-  let c = input.peek(0)
-  log(stringifyCodeLogString(c))
-  if (c !== COLON) {
-    log(`XX REFUSE PropertyDrawer, first not colon ${inputStreamEndString(input, stack)}`)
-    return
-  }
-  c = input.advance()
-  let first_line = true
-  let properties_word = String.fromCharCode(c)
-  let properties_found_on_first_line = false
-  let try_matching_end = false
-  let end_word = ''
-  while (c !== EOF) {
-    while (!isEndOfLine(c)) {
-      c = input.advance()
-      log(stringifyCodeLogString(c))
-      if (first_line) {
-        log('first_line')
-        if (c === COLON) {
-          log('C === COLON')
-          if (properties_word.toUpperCase() === 'PROPERTIES') {
-            log(':PROPERTIES: found')
-            properties_found_on_first_line = true
-          }
-        } else {
-          properties_word += String.fromCharCode(c)
-          log(`properties word ${properties_word}`)
-        }
-      }
-      if (try_matching_end) {
-        log('try_matching_end')
-        if (c === COLON) {
-          log('C === COLON')
-          if (end_word.toUpperCase() === 'END') {
-            log(':END: found')
-            c = input.advance()
-            log(stringifyCodeLogString(c))
-            while (!isEndOfLine(c)) {
-              c = input.advance()
-              log(stringifyCodeLogString(c))
-            }
-            input.advance()
-            log(`== ACCEPT PropertyDrawer ${inputStreamAccept(input, stack)}`)
-            input.acceptToken(PropertyDrawer)
-            return
-          } else {
-            log(`false positive end word: ${end_word}`)
-            try_matching_end = false
-          }
-        }
-        end_word += String.fromCharCode(c)
-        log(`end word ${end_word}`)
-      }
-    }
-    first_line = false
-    if (!properties_found_on_first_line) {
-      log(`XX REFUSE PropertyDrawer, no :PROPERTIES: on first line ${inputStreamEndString(input, stack)}`)
-      return
-    }
-    log(`next start? ${stringifyCodeLogString(input.peek(1))}`)
-    if (input.peek(1) === COLON) {
-      try_matching_end = true
-      end_word = ''
-      log('start matching end')
-    }
-    c = input.advance()
-  }
-  log(`== ACCEPT PropertyDrawer EOF reached without :END: ${inputStreamAccept(input, stack)}`)
+  log(`XX REFUSE PropertyDrawer ${inputStreamEndString(input, stack)}`)
   return
-});
+})
 
 export const notStartOfComment_lookaround = new ExternalTokenizer((input, stack) => {
   log(`-- START notStartOfComment_lookaround ${inputStreamBeginString(input)}`)
@@ -859,57 +790,7 @@ export const notStartOfComment_lookaround = new ExternalTokenizer((input, stack)
   log(`== ACCEPT notStartOfComment_lookaround ${inputStreamAccept(input, stack)}`)
   input.acceptToken(notStartOfComment)
   return
-});
-
-export const sectionWord_tokenizer = (orgLinkParameters: string[]) => { return new ExternalTokenizer((input, stack) => {
-    log(`-- START sectionWord ${inputStreamBeginString(input)}`)
-    const context: OrgContext = stack.context
-    if (
-      context.parentObjects.includes(ParentObject.TextBold) ||
-      context.parentObjects.includes(ParentObject.TextItalic) ||
-      context.parentObjects.includes(ParentObject.TextUnderline) ||
-      context.parentObjects.includes(ParentObject.TextVerbatim) ||
-      context.parentObjects.includes(ParentObject.TextCode) ||
-      context.parentObjects.includes(ParentObject.TextStrikeThrough) ||
-      context.parentObjects.includes(ParentObject.RegularLink) ||
-      context.parentObjects.includes(ParentObject.AngleLink)
-    ) {
-      log(`XX REFUSE sectionWord, inside markup or link ${inputStreamEndString(input, stack)}`)
-      return
-    }
-    const termsByMarker = new Map([
-      [STAR, isStartOfTextBold],
-      ['/'.charCodeAt(0), isStartOfTextItalic],
-      ['_'.charCodeAt(0), isStartOfTextUnderline],
-      ['='.charCodeAt(0), isStartOfTextVerbatim],
-      ['~'.charCodeAt(0), isStartOfTextCode],
-      ['+'.charCodeAt(0), isStartOfTextStrikeThrough],
-    ])
-    let c = input.peek(0)
-    if (c === EOF) {
-      log(`XX REFUSE sectionWord, only EOF left ${inputStreamEndString(input, stack)}`)
-      return
-    }
-    log(stringifyCodeLogString(c))
-    if (isWhiteSpace(c) || isEndOfLine(c)) {
-      log(`XX REFUSE sectionWord, whitespace ${inputStreamEndString(input, stack)}`)
-      return
-    }
-    while (
-      !isWhiteSpace(c) && !isEndOfLine(c) &&
-      !(isStartOfTextMarkup(input, stack, termsByMarker, false, orgLinkParameters)) &&
-      !(checkPlainLink(input, stack, orgLinkParameters, true)) &&
-      !(checkRegularLink(input, stack, orgLinkParameters)) &&
-      !(checkAngleLink(input, stack, orgLinkParameters))
-    ) {
-      c = input.advance()
-      log(stringifyCodeLogString(c))
-    }
-    log(`== ACCEPT sectionWord ${inputStreamAccept(input, stack)}`)
-    input.acceptToken(sectionword)
-    return
-  });
-}
+})
 
 export const sectionSpace_tokenizer = new ExternalTokenizer((input, stack) => {
   log(`-- START sectionSpace ${inputStreamBeginString(input)}`)
@@ -930,116 +811,7 @@ export const sectionSpace_tokenizer = new ExternalTokenizer((input, stack) => {
   log(`== ACCEPT sectionSpace ${inputStreamAccept(input, stack)}`)
   input.acceptToken(sectionSpace)
   return
-});
-
-export const sectionEnd_tokenizer = new ExternalTokenizer((input, stack) => {
-  log(`-- START sectionEnd ${inputStreamBeginString(input)}`)
-  let c = input.peek(0)
-  if (isEndOfLine(c)) {
-    input.advance()
-    log(`== ACCEPT sectionEnd ${inputStreamAccept(input, stack)}`)
-    input.acceptToken(sectionEnd)
-    return
-  }
-  log(`XX REFUSE sectionEnd, ${inputStreamEndString(input, stack)}`)
-  return
-});
-
-function sectionWordMarkup(input: InputStream, stack: Stack, marker: number, term: number, orgLinkParameters: string[]) {
-  const context: OrgContext = stack.context
-  const MARKER = marker
-  log(`-- START sectionWordMarkup ${stringifyCodeLogString(marker)} ${inputStreamBeginString(input)}`)
-  let c = input.peek(0)
-  log(stringifyCodeLogString(c))
-  if (isWhiteSpace(c)) {
-    log(`XX REFUSE sectionWordMarkup ${stringifyCodeLogString(marker)}, whitespace or endofline ${inputStreamEndString(input, stack)}`)
-    return
-  }
-  while (true) {
-    while (
-      !isWhiteSpace(c) &&
-      !isEndOfLine(c) &&
-      c !== MARKER &&
-      !checkAngleLink(input, stack, orgLinkParameters) &&
-      !checkRegularLink(input, stack, orgLinkParameters) &&
-      !checkPlainLink(input, stack, orgLinkParameters, true) &&
-      !(context.parentObjects.includes(ParentObject.RegularLink) && matchWords(input, ["]]"])) &&
-      !(context.parentObjects.includes(ParentObject.AngleLink) && matchWords(input, [">"]))
-    ) {
-      c = input.advance()
-      log(stringifyCodeLogString(c))
-    }
-    if (context.parentObjects.includes(ParentObject.RegularLink) && matchWords(input, ["]]"])) {
-      log(`== ACCEPT sectionWordMarkup ${stringifyCodeLogString(marker)} inside link before ]] ${inputStreamAccept(input, stack)}`)
-      input.acceptToken(term)
-      return
-    } else if (context.parentObjects.includes(ParentObject.AngleLink) && matchWords(input, [">"])) {
-      log(`== ACCEPT sectionWordMarkup ${stringifyCodeLogString(marker)} inside link before > ${inputStreamAccept(input, stack)}`)
-      input.acceptToken(term)
-      return
-    } else if (c === EOF) {
-      log(`== ACCEPT sectionWordMarkup ${stringifyCodeLogString(marker)} before eof ${inputStreamAccept(input, stack)}`)
-      input.acceptToken(term)
-      return
-    } else if (c === NEW_LINE) {
-      c = input.advance()
-      log(stringifyCodeLogString(c))
-    } else if (isWhiteSpace(c)) {
-      log(`== ACCEPT sectionWordMarkup ${stringifyCodeLogString(marker)} before whitespace ${inputStreamAccept(input, stack)}`)
-      input.acceptToken(term)
-      return
-    } else if (c === MARKER) {
-      if (checkEndOfTextMarkup(input, stack, MARKER)) {
-        log(`== ACCEPT sectionWordMarkup ${stringifyCodeLogString(marker)} at stuff ${inputStreamAccept(input, stack)}`)
-        input.acceptToken(term)
-        return
-      }
-      c = input.advance()
-      log(stringifyCodeLogString(c))
-    } else if (
-      checkAngleLink(input, stack, orgLinkParameters) ||
-      checkRegularLink(input, stack, orgLinkParameters) ||
-      checkPlainLink(input, stack, orgLinkParameters, true)
-    ) {
-      log(`== ACCEPT sectionWordMarkup ${stringifyCodeLogString(marker)} before link ${inputStreamAccept(input, stack)}`)
-      input.acceptToken(term)
-      return
-    } else {
-      log(`XX REFUSE sectionWordMarkup ${stringifyCodeLogString(marker)}, unreachable code path ${inputStreamEndString(input, stack)}`)
-      return
-    }
-  }
-}
-
-export const sectionWordBold_tokenizer = (orgLinkParameters: string[]) => { return new ExternalTokenizer((input, stack) => {
-    sectionWordMarkup(input, stack, STAR, sectionwordBold, orgLinkParameters)
-  })
-}
-
-export const sectionWordItalic_tokenizer = (orgLinkParameters: string[]) => { return new ExternalTokenizer((input, stack) => {
-    sectionWordMarkup(input, stack, '/'.charCodeAt(0), sectionwordItalic, orgLinkParameters)
-  })
-}
-
-export const sectionWordUnderline_tokenizer = (orgLinkParameters: string[]) => { return new ExternalTokenizer((input, stack) => {
-    sectionWordMarkup(input, stack, '_'.charCodeAt(0), sectionwordUnderline, orgLinkParameters)
-  })
-}
-
-export const sectionWordVerbatim_tokenizer = (orgLinkParameters: string[]) => { return new ExternalTokenizer((input, stack) => {
-    sectionWordMarkup(input, stack, '='.charCodeAt(0), sectionwordVerbatim, orgLinkParameters)
-  })
-}
-
-export const sectionWordCode_tokenizer = (orgLinkParameters: string[]) => { return new ExternalTokenizer((input, stack) => {
-    sectionWordMarkup(input, stack, '~'.charCodeAt(0), sectionwordCode, orgLinkParameters)
-  })
-}
-
-export const sectionWordStrikeThrough_tokenizer = (orgLinkParameters: string[]) => { return new ExternalTokenizer((input, stack) => {
-    sectionWordMarkup(input, stack, '+'.charCodeAt(0), sectionwordStrikeThrough, orgLinkParameters)
-  })
-}
+})
 
 function checkEndOfTextMarkup(input: InputStream, stack: Stack, marker: number, peek_distance: number = 0) {
   const MARKER = marker
@@ -1065,6 +837,7 @@ function checkEndOfTextMarkup(input: InputStream, stack: Stack, marker: number, 
 
 export const isStartOfTextMarkup_lookaround = (orgLinkParameters: string[]) => { return new ExternalTokenizer((input, stack) => {
   const context: OrgContext = stack.context
+  log(`-- START isStartOfTextMarkup_lookaround ${inputStreamBeginString(input)}`)
   if (
       context.parentObjects.includes(ParentObject.TextBold) ||
       context.parentObjects.includes(ParentObject.TextItalic) ||
@@ -1073,7 +846,7 @@ export const isStartOfTextMarkup_lookaround = (orgLinkParameters: string[]) => {
       context.parentObjects.includes(ParentObject.TextCode) ||
       context.parentObjects.includes(ParentObject.TextStrikeThrough)
     ) {
-    log(`XX REFUSE isStartOfTextMarkup, already inside markup ${inputStreamEndString(input, stack)}`)
+    log(`XX REFUSE isStartOfTextMarkup_lookaround, already inside markup ${inputStreamEndString(input, stack)}`)
     return
   }
   const termsByMarker = new Map([
@@ -1086,12 +859,17 @@ export const isStartOfTextMarkup_lookaround = (orgLinkParameters: string[]) => {
   ])
   const term = isStartOfTextMarkup(input, stack, termsByMarker, false, orgLinkParameters)
   if (term) {
+    log(`== ACCEPT isStartOfTextMarkup_lookaround term=${term} ${inputStreamAccept(input, stack)}`)
     input.acceptToken(term, -(input.pos-stack.pos))
+    return
   }
+  log(`XX REFUSE isStartOfTextMarkup_lookaround ${inputStreamEndString(input, stack)}`)
+  return
 })
 }
 
 export const isEndOfTextMarkup_lookaround = new ExternalTokenizer((input, stack) => {
+  log(`-- START isEndOfTextMarkup_lookaround ${inputStreamBeginString(input)}`)
   const termsByMarker = new Map([
     [STAR, isEndOfTextBold],
     ['/'.charCodeAt(0), isEndOfTextItalic],
@@ -1102,15 +880,22 @@ export const isEndOfTextMarkup_lookaround = new ExternalTokenizer((input, stack)
   ])
   const MARKER = input.peek(0)
   if (!termsByMarker.has(MARKER)) {
+    log(`XX REFUSE isEndOfTextMarkup, MARKER=${MARKER} unknown ${inputStreamEndString(input, stack)}`)
     return
   }
   if (checkEndOfTextMarkup(input, stack, MARKER)) {
-    input.acceptToken(termsByMarker.get(MARKER), -(input.pos-stack.pos))
+    input.advance()
+    log(`== ACCEPT isEndOfTextMarkup ${inputStreamAccept(input, stack)}`)
+    input.acceptToken(termsByMarker.get(MARKER))
+    return
   }
+  log(`XX REFUSE isEndOfTextMarkup ${inputStreamEndString(input, stack)}`)
+  return
 })
 
 export const isStartOfTitleTextMarkup_lookaround = (orgLinkParameters: string[]) => { return new ExternalTokenizer((input, stack) => {
   const context: OrgContext = stack.context
+  log(`-- START isStartOfTitleTextMarkup_lookaround ${inputStreamBeginString(input)}`)
   if (
       context.parentObjects.includes(ParentObject.TextBold) ||
       context.parentObjects.includes(ParentObject.TextItalic) ||
@@ -1133,13 +918,16 @@ export const isStartOfTitleTextMarkup_lookaround = (orgLinkParameters: string[])
   const term = isStartOfTextMarkup(input, stack, termsByTitleMarker, true, orgLinkParameters)
   if (term) {
     input.acceptToken(term, -(input.pos-stack.pos))
+    log(`== ACCEPT isStartOfTitleTextMarkup_lookaround ${inputStreamAccept(input, stack)}`)
+    return
   }
+  log(`XX REFUSE isStartOfTitleTextMarkup_lookaround ${inputStreamEndString(input, stack)}`)
+  return
 })
 }
 
 function isStartOfTextMarkup(input: InputStream, stack: Stack, termsByMarker: Map<number, number>, noEndOfLine: boolean, orgLinkParameters: string[]) {
   const context: OrgContext = stack.context
-  log(`-- START isStartOfTextMarkup ${inputStreamBeginString(input)}`)
   const previous = input.peek(-1)
   log(`previous ${stringifyCodeLogString(previous)}`)
   if (!checkMarkupPRE(previous)) {
@@ -1309,7 +1097,6 @@ export const tags_tokenizer = new ExternalTokenizer((input, stack) => {
 })
 
 export const stars_tokenizer = new ExternalTokenizer((input, stack) => {
-  const context: OrgContext = stack.context
   log(`-- START stars ${inputStreamBeginString(input)}`)
   let previous = input.peek(-1)
   log(`previous ${stringifyCodeLogString(previous)}`)
@@ -1408,17 +1195,22 @@ export const startOfHeading_lookaround = new ExternalTokenizer((input, stack) =>
 
 export const indentHeading_lookaround = new ExternalTokenizer((input, stack) => {
   const context: OrgContext = stack.context
+  log(`-- START indentHeading_lookaround ${inputStreamBeginString(input)}`)
   let nextHeadingLevel = checkStartOfHeading(input)
   if (!nextHeadingLevel) {
+    log(`XX REFUSE indentHeading_lookaround ${inputStreamEndString(input, stack)}`)
     return
   }
   context.levelHeadingToPush = nextHeadingLevel
+  log(`== ACCEPT indentHeading_lookaround ${inputStreamAccept(input, stack)}`)
   input.acceptToken(indentHeading)
   return
 })
 
 
 export const dedentHeading_lookaround = new ExternalTokenizer((input: InputStream, stack: Stack) => {
+  log(`-- START dedentHeading_lookaround ${inputStreamBeginString(input)}`)
+  log(`== ACCEPT dedentHeading_lookaround ${inputStreamAccept(input, stack)}`)
   input.acceptToken(dedentHeading)
   return
 })
@@ -1445,7 +1237,6 @@ function checkPlainLink(input: InputStream, stack: Stack, orgLinkParameters: str
     )
   }
   const linkMarkupMarkers = ['*', '/', '_', '=', '~', '+']
-  log(`-- START plainLink ${inputStreamBeginString(input)}`)
   const previous = input.peek(-1)
   if (
     !checkPlainLinkPRE(previous) &&
@@ -1453,18 +1244,18 @@ function checkPlainLink(input: InputStream, stack: Stack, orgLinkParameters: str
     !isWhiteSpace(previous) &&
     !linkMarkupMarkers.includes(String.fromCharCode(previous))
   ) {
-    log(`XX REFUSE plainLink, previous not PRE, eof, whitespace, markup marker ${inputStreamEndString(input, stack)}`)
+    log(`XX REFUSE checkPlainLink, previous not PRE, eof, whitespace, markup marker ${inputStreamEndString(input, stack)}`)
     return
   }
   let peek_distance = 0
   let c = input.peek(peek_distance)
   if (c === EOF) {
-    log(`XX REFUSE plainLink, only EOF left ${inputStreamEndString(input, stack)}`)
+    log(`XX REFUSE checkPlainLink, only EOF left ${inputStreamEndString(input, stack)}`)
     return
   }
   log(stringifyCodeLogString(c))
   if (isWhiteSpace(c) || isEndOfLine(c)) {
-    log(`XX REFUSE plainLink, whitespace ${inputStreamEndString(input, stack)}`)
+    log(`XX REFUSE checkPlainLink, whitespace ${inputStreamEndString(input, stack)}`)
     return
   }
   let s = String.fromCharCode(c)
@@ -1489,13 +1280,13 @@ function checkPlainLink(input: InputStream, stack: Stack, orgLinkParameters: str
         } else if (c === L_PAREN) {
           depth += 1
           if (depth > 2) {
-            log(`XX REFUSE plainLink, too many '(' ${inputStreamEndString(input, stack)}`)
+            log(`XX REFUSE checkPlainLink, too many '(' ${inputStreamEndString(input, stack)}`)
             return
           }
         } else if (c === R_PAREN) {
           depth -= 1
           if (depth < 0) {
-            log(`XX REFUSE plainLink, too many ')' ${inputStreamEndString(input, stack)}`)
+            log(`XX REFUSE checkPlainLink, too many ')' ${inputStreamEndString(input, stack)}`)
             return
           }
         }
@@ -1514,11 +1305,11 @@ function checkPlainLink(input: InputStream, stack: Stack, orgLinkParameters: str
   const [linkType, ...pathPlainSplit] = s.split(":")
   const pathPlain = pathPlainSplit.join(":")
   if (!orgLinkParameters.includes(linkType)) {
-    log(`XX REFUSE plainLink, not correct linkType ${inputStreamEndString(input, stack)}`)
+    log(`XX REFUSE checkPlainLink, not correct linkType ${inputStreamEndString(input, stack)}`)
     return
   }
   if (pathPlain.length <= 1) {
-    log(`XX REFUSE plainLink, one char ${inputStreamEndString(input, stack)}`)
+    log(`XX REFUSE checkPlainLink, one char ${inputStreamEndString(input, stack)}`)
     return
   }
   if (!lookaround) {
@@ -1529,15 +1320,19 @@ function checkPlainLink(input: InputStream, stack: Stack, orgLinkParameters: str
 
 export const plainLink_tokenizer = (orgLinkParameters: string[]) => { return new ExternalTokenizer((input, stack) => {
   const context: OrgContext = stack.context
+  log(`-- START plainLink_tokenizer ${inputStreamBeginString(input)}`)
   const isInsideLink = context.parentObjects.includes(ParentObject.RegularLink) || context.parentObjects.includes(ParentObject.AngleLink)
   if (isInsideLink) {
     log(`XX REFUSE plainLink_tokenizer, already inside link ${inputStreamEndString(input, stack)}`)
     return
   }
-    if (checkPlainLink(input, stack, orgLinkParameters, false)) {
-      log(`== ACCEPT plainLink ${inputStreamAccept(input, stack)}`)
-      input.acceptToken(PlainLink)
-    }
+  if (checkPlainLink(input, stack, orgLinkParameters, false)) {
+    log(`== ACCEPT plainLink ${inputStreamAccept(input, stack)}`)
+    input.acceptToken(PlainLink)
+    return
+  }
+  log(`XX REFUSE plainLink_tokenizer ${inputStreamEndString(input, stack)}`)
+  return
   })
 }
 
@@ -1564,11 +1359,10 @@ const checkInnerRegularLink = (innerBracketText: string): boolean => {
 }
 
 function checkRegularLink(input: InputStream, stack: Stack, orgLinkParameters: string[], peek_distance: number = 0): number {
-  log(`-- START isStartOfRegularLink_lookaround ${inputStreamBeginString(input)}`)
   const L_SQUARE_BRACKET = '['.charCodeAt(0)
   const R_SQUARE_BRACKET = ']'.charCodeAt(0)
   if (input.peek(peek_distance) !== L_SQUARE_BRACKET || input.peek(peek_distance + 1) !== L_SQUARE_BRACKET) {
-    log(`XX REFUSE isStartOfRegularLink_lookaround ${inputStreamEndString(input, stack)}`)
+    log(`XX REFUSE checkRegularLink ${inputStreamEndString(input, stack)}`)
     return
   }
   peek_distance += 1
@@ -1582,7 +1376,7 @@ function checkRegularLink(input: InputStream, stack: Stack, orgLinkParameters: s
       c = input.peek(peek_distance)
     }
     if (isEndOfLine(c)) {
-      log(`XX REFUSE isStartOfRegularLink_lookaround, EOL ${inputStreamEndString(input, stack)}`)
+      log(`XX REFUSE checkRegularLink, EOL ${inputStreamEndString(input, stack)}`)
       return
     } else if (input.peek(peek_distance) === R_SQUARE_BRACKET && input.peek(peek_distance + 1) === R_SQUARE_BRACKET) {
       if (checkInnerRegularLink(s)) {
@@ -1590,7 +1384,7 @@ function checkRegularLink(input: InputStream, stack: Stack, orgLinkParameters: s
         peek_distance += 1
         return peek_distance
       }
-      log(`XX REFUSE isStartOfRegularLink_lookaround ${inputStreamEndString(input, stack)}`)
+      log(`XX REFUSE checkRegularLink ${inputStreamEndString(input, stack)}`)
       return
     }
     s += String.fromCharCode(c)
@@ -1601,6 +1395,7 @@ function checkRegularLink(input: InputStream, stack: Stack, orgLinkParameters: s
 
 export const isStartOfRegularLink_lookaround = (orgLinkParameters: string[]) => { return new ExternalTokenizer((input, stack) => {
   const context: OrgContext = stack.context
+  log(`-- START isStartOfRegularLink_lookaround ${inputStreamBeginString(input)}`)
   const isInsideLink = context.parentObjects.includes(ParentObject.RegularLink) || context.parentObjects.includes(ParentObject.AngleLink)
   if (isInsideLink) {
     log(`XX REFUSE isStartOfRegularLink_lookaround, already inside link ${inputStreamEndString(input, stack)}`)
@@ -1611,6 +1406,8 @@ export const isStartOfRegularLink_lookaround = (orgLinkParameters: string[]) => 
     input.acceptToken(isStartOfRegularLink)
     return
   }
+  log(`XX REFUSE isStartOfRegularLink_lookaround ${inputStreamEndString(input, stack)}`)
+  return
   })
 }
 
@@ -1650,7 +1447,7 @@ function checkAngleLink(input: InputStream, stack: Stack, orgLinkParameters: str
         extra_peek_distance += 1
       }
       if (isEndOfLine(input.peek(peek_distance + extra_peek_distance))) {
-        log(`XX REFUSE isStartOfAngleLink_lookaround unfinished blank line ${inputStreamEndString(input, stack)}`)
+        log(`XX REFUSE checkAngleLink unfinished blank line ${inputStreamEndString(input, stack)}`)
         return
       }
     } else if (c === R_ANGLE_BRACKET) {
@@ -1665,6 +1462,7 @@ function checkAngleLink(input: InputStream, stack: Stack, orgLinkParameters: str
 
 export const isStartOfAngleLink_lookaround = (orgLinkParameters: string[]) => { return new ExternalTokenizer((input, stack) => {
     const context: OrgContext = stack.context
+  log(`-- START isStartOfAngleLink ${inputStreamBeginString(input)}`)
     const isInsideLink = context.parentObjects.includes(ParentObject.RegularLink) || context.parentObjects.includes(ParentObject.AngleLink)
     if (isInsideLink) {
       log(`XX REFUSE isStartOfAngleLink, already inside link ${inputStreamEndString(input, stack)}`)
@@ -1673,82 +1471,40 @@ export const isStartOfAngleLink_lookaround = (orgLinkParameters: string[]) => { 
     if (checkAngleLink(input, stack, orgLinkParameters)) {
       log(`== ACCEPT isStartOfAngleLink ${inputStreamAccept(input, stack)}`)
       input.acceptToken(isStartOfAngleLink)
+      return
     }
+    log(`XX REFUSE isStartOfAngleLink ${inputStreamEndString(input, stack)}`)
+    return
   })
 }
 
-function sectionWordLink(input: InputStream, stack: Stack, end: number[], term: number) {
-  const endFirstChar = end[0]
-  log(`-- START sectionWordLink ${stringifyCodesLogString(end)} ${inputStreamBeginString(input)}`)
-  let c = input.peek(0)
-  log(stringifyCodeLogString(c))
-  if (isWhiteSpace(c)) {
-    log(`XX REFUSE sectionWordLink ${stringifyCodesLogString(end)}, whitespace or endofline ${inputStreamEndString(input, stack)}`)
-    return
-  }
-  while (true) {
-    while (!isWhiteSpace(c) && !isEndOfLine(c) && c !== endFirstChar) {
-      c = input.advance()
-      log(stringifyCodeLogString(c))
-    }
-    if (c === EOF) {
-      log(`== ACCEPT sectionWordLink ${stringifyCodesLogString(end)} before eof ${inputStreamAccept(input, stack)}`)
-      input.acceptToken(term)
-      return
-    } else if (c === NEW_LINE) {
-      c = input.advance()
-      log(stringifyCodeLogString(c))
-    } else if (isWhiteSpace(c)) {
-      log(`== ACCEPT sectionWordLink ${stringifyCodesLogString(end)} before whitespace ${inputStreamAccept(input, stack)}`)
-      input.acceptToken(term)
-      return
-    } else if (c === endFirstChar) {
-      let peek_distance = 1
-      while (end.length > peek_distance) {
-        if (input.peek(peek_distance) !== end[peek_distance]) {
-          break
-        }
-        peek_distance += 1
-      }
-      if (peek_distance === end.length) {
-        log(`== ACCEPT sectionWordLink ${stringifyCodesLogString(end)} ${inputStreamAccept(input, stack)}`)
-        input.acceptToken(term)
-        return
-      } else {
-        c = input.advance()
-        log(stringifyCodeLogString(c))
-      }
-    } else {
-      log(`XX REFUSE sectionWordLink ${stringifyCodesLogString(end)}, unreachable code path ${inputStreamEndString(input, stack)}`)
-      return
-    }
-  }
-}
-
-export const sectionWordRegularLink_tokenizer = new ExternalTokenizer((input, stack) => {
-  sectionWordLink(input, stack, [']'.charCodeAt(0), ']'.charCodeAt(0)], sectionWordRegularLink)
-})
-
-export const sectionWordAngleLink_tokenizer = new ExternalTokenizer((input, stack) => {
-  sectionWordLink(input, stack, ['>'.charCodeAt(0)], sectionWordAngleLink)
-})
-
 export const exitRegularLink_lookaround = new ExternalTokenizer((input: InputStream, stack: Stack) => {
   const context: OrgContext = stack.context
+  log(`-- START exitRegularLink_lookaround ${inputStreamBeginString(input)}`)
   const isInsideLink = context.parentObjects.includes(ParentObject.RegularLink) || context.parentObjects.includes(ParentObject.AngleLink)
-  if (isInsideLink) {
+  if (isInsideLink && matchWords(input, ["]]"])) {
+    input.advance()
+    input.advance()
+    log(`== ACCEPT exitRegularLink_lookaround ${inputStreamAccept(input, stack)}`)
     input.acceptToken(exitRegularLink)
     return
   }
+  log(`XX REFUSE exitRegularLink_lookaround ${inputStreamEndString(input, stack)}`)
+  return
 })
 
 export const exitAngleLink_lookaround = new ExternalTokenizer((input: InputStream, stack: Stack) => {
   const context: OrgContext = stack.context
+  log(`-- START exitAngleLink_lookaround ${inputStreamBeginString(input)}`)
   const isInsideLink = context.parentObjects.includes(ParentObject.RegularLink) || context.parentObjects.includes(ParentObject.AngleLink)
-  if (isInsideLink) {
+  if (isInsideLink && matchWords(input, [">"])) {
+    input.advance()
+    log(`== ACCEPT exitAngleLink_lookaround ${inputStreamAccept(input, stack)}`)
     input.acceptToken(exitAngleLink)
     return
   }
+  log(`XX REFUSE exitAngleLink_lookaround ${inputStreamEndString(input, stack)}`)
+  return
 })
 
 function matchWords(input: InputStream, words: string[], peek_distance: number = 0): string {
@@ -1878,6 +1634,160 @@ export const planningValue_tokenizer = new ExternalTokenizer((input, stack) => {
   return
 })
 
+export const object_tokenizer = (orgLinkParameters: string[]) => {
+  return new ExternalTokenizer((input, stack) => {
+    const context: OrgContext = stack.context
+    const innerMostParent = context.parentObjects[context.parentObjects.length-1]
+    let MARKER = null
+    if (innerMostParent === ParentObject.TextBold) {
+      MARKER = STAR
+    } else if (innerMostParent === ParentObject.TextItalic) {
+      MARKER = '/'.charCodeAt(0)
+    } else if (innerMostParent === ParentObject.TextUnderline) {
+      MARKER = '_'.charCodeAt(0)
+    } else if (innerMostParent === ParentObject.TextVerbatim) {
+      MARKER = '='.charCodeAt(0)
+    } else if (innerMostParent === ParentObject.TextCode) {
+      MARKER = '~'.charCodeAt(0)
+    } else if (innerMostParent === ParentObject.TextStrikeThrough) {
+      MARKER = '+'.charCodeAt(0)
+    }
+    const termsByMarker = new Map([
+      [STAR, isStartOfTextBold],
+      ['/'.charCodeAt(0), isStartOfTextItalic],
+      ['_'.charCodeAt(0), isStartOfTextUnderline],
+      ['='.charCodeAt(0), isStartOfTextVerbatim],
+      ['~'.charCodeAt(0), isStartOfTextCode],
+      ['+'.charCodeAt(0), isStartOfTextStrikeThrough],
+    ])
+    log(`-- START object_tokenizer innermostParent=${innerMostParent} ${inputStreamBeginString(input)}`)
+    let c = input.peek(0)
+    log(stringifyCodeLogString(c))
+    while (true) {
+      ///// end of file /////
+      if (input.pos === stack.pos) {
+        if (c === EOF) {
+          log(`XX REFUSE object_tokenizer, reached EOF ${inputStreamAccept(input, stack)}`)
+          return
+        } else {
+          // keep going since we don't want 0-length token
+        }
+      } else if (c === EOF) {
+        log(`== ACCEPT object_tokenizer innermostParent=${innerMostParent} before eof ${inputStreamAccept(input, stack)}`)
+        input.acceptToken(objectToken)
+        return
+      ///// start of heading /////
+      } else if (checkStartOfHeading(input)) {
+        log(`== ACCEPT object_tokenizer innermostParent=${innerMostParent} before Heading ${inputStreamAccept(input, stack)}`)
+        input.acceptToken(objectToken)
+        return
+      ///// start of PropertyDrawer /////
+      } else if (checkPropertyDrawer(input, stack)) {
+        log(`== ACCEPT object_tokenizer innermostParent=${innerMostParent} before PropertyDrawer ${inputStreamAccept(input, stack)}`)
+        input.acceptToken(objectToken)
+        return
+      ///// start of block /////
+      } else if (checkBlock(input, stack, true)) {
+        log(`== ACCEPT object_tokenizer innermostParent=${innerMostParent} before Block ${inputStreamAccept(input, stack)}`)
+        input.acceptToken(objectToken)
+        return
+      ///// start of comment /////
+      } else if (checkComment(input, stack)) {
+        log(`== ACCEPT object_tokenizer innermostParent=${innerMostParent} before comment ${inputStreamAccept(input, stack)}`)
+        input.acceptToken(objectToken)
+        return
+      ///// start of keywordComment /////
+      } else if (checkKeywordComment(input, stack)) {
+        log(`== ACCEPT object_tokenizer innermostParent=${innerMostParent} before keywordComment ${inputStreamAccept(input, stack)}`)
+        input.acceptToken(objectToken)
+        return
+      ///// start of link /////
+      } else if (
+        !context.parentObjects.includes(ParentObject.RegularLink) &&
+        !context.parentObjects.includes(ParentObject.AngleLink) &&
+        (
+          checkRegularLink(input, stack, orgLinkParameters) ||
+          checkAngleLink(input, stack, orgLinkParameters) ||
+          checkPlainLink(input, stack, orgLinkParameters, true)
+        )
+      ) {
+        log(`== ACCEPT object_tokenizer innermostParent=${innerMostParent} before start of link ${inputStreamAccept(input, stack)}`)
+        input.acceptToken(objectToken)
+        return
+      ///// end of links /////
+      } else if (context.parentObjects.includes(ParentObject.RegularLink) && matchWords(input, ["]]"])) {
+        log(`== ACCEPT object_tokenizer innermostParent=${innerMostParent} before end of RegularLink ${inputStreamAccept(input, stack)}`)
+        input.acceptToken(objectToken)
+        return
+      } else if (context.parentObjects.includes(ParentObject.AngleLink) && matchWords(input, [">"])) {
+        log(`== ACCEPT object_tokenizer innermostParent=${innerMostParent} before end of AngleLink ${inputStreamAccept(input, stack)}`)
+        input.acceptToken(objectToken)
+        return
+      ///// end of markup /////
+      } else if (
+        MARKER && c === MARKER &&
+        checkEndOfTextMarkup(input, stack, MARKER)
+      ) {
+        log(`== ACCEPT object_tokenizer innermostParent=${innerMostParent} before end of markup ${inputStreamAccept(input, stack)}`)
+        input.acceptToken(objectToken)
+        return
+      ///// start of markup /////
+      } else if (
+        c === STAR &&
+        !context.parentObjects.includes(ParentObject.TextBold) &&
+        isStartOfTextMarkup(input, stack, termsByMarker, false, orgLinkParameters)
+      ) {
+        log(`== ACCEPT object_tokenizer innermostParent=${innerMostParent} before TextBold ${inputStreamAccept(input, stack)}`)
+        input.acceptToken(objectToken)
+        return
+      } else if (
+        c ==='/'.charCodeAt(0) &&
+        !context.parentObjects.includes(ParentObject.TextItalic) &&
+        isStartOfTextMarkup(input, stack, termsByMarker, false, orgLinkParameters)
+      ) {
+        log(`== ACCEPT object_tokenizer innermostParent=${innerMostParent} before TextItalic ${inputStreamAccept(input, stack)}`)
+        input.acceptToken(objectToken)
+        return
+      } else if (
+        c ==='_'.charCodeAt(0) &&
+        !context.parentObjects.includes(ParentObject.TextUnderline) &&
+        isStartOfTextMarkup(input, stack, termsByMarker, false, orgLinkParameters)
+      ) {
+        log(`== ACCEPT object_tokenizer innermostParent=${innerMostParent} before TextUnderline ${inputStreamAccept(input, stack)}`)
+        input.acceptToken(objectToken)
+        return
+      } else if (
+        c ==='='.charCodeAt(0) &&
+        !context.parentObjects.includes(ParentObject.TextVerbatim) &&
+        isStartOfTextMarkup(input, stack, termsByMarker, false, orgLinkParameters)
+      ) {
+        log(`== ACCEPT object_tokenizer innermostParent=${innerMostParent} before TextVerbatim ${inputStreamAccept(input, stack)}`)
+        input.acceptToken(objectToken)
+        return
+      } else if (
+        c ==='~'.charCodeAt(0) &&
+        !context.parentObjects.includes(ParentObject.TextCode) &&
+        isStartOfTextMarkup(input, stack, termsByMarker, false, orgLinkParameters)
+      ) {
+        log(`== ACCEPT object_tokenizer innermostParent=${innerMostParent} before TextCode ${inputStreamAccept(input, stack)}`)
+        input.acceptToken(objectToken)
+        return
+      } else if (
+        c ==='+'.charCodeAt(0) &&
+        !context.parentObjects.includes(ParentObject.TextStrikeThrough) &&
+        isStartOfTextMarkup(input, stack, termsByMarker, false, orgLinkParameters)
+      ) {
+        log(`== ACCEPT object_tokenizer innermostParent=${innerMostParent} before TextStrikeThrough ${inputStreamAccept(input, stack)}`)
+        input.acceptToken(objectToken)
+        return
+      }
+      ///// keep advancing /////
+      c = input.advance()
+      log(stringifyCodeLogString(c))
+    }
+  })
+}
+
 enum ParentObject {
   Title,  // TODO
   TextBold,
@@ -1912,32 +1822,8 @@ class OrgContext {
       hash += headingLevel << (bitmask=bitmask+10)
     }
     hash += this.levelHeadingToPush << (bitmask=bitmask+10)
-    if (this.parentObjects.includes(ParentObject.Title)) {
-      hash += 1 << (bitmask=bitmask+3)
-    }
-    if (this.parentObjects.includes(ParentObject.TextBold)) {
-      hash += 1 << (bitmask=bitmask+3)
-    }
-    if (this.parentObjects.includes(ParentObject.TextItalic)) {
-      hash += 1 << (bitmask=bitmask+3)
-    }
-    if (this.parentObjects.includes(ParentObject.TextUnderline)) {
-      hash += 1 << (bitmask=bitmask+3)
-    }
-    if (this.parentObjects.includes(ParentObject.TextVerbatim)) {
-      hash += 1 << (bitmask=bitmask+3)
-    }
-    if (this.parentObjects.includes(ParentObject.TextCode)) {
-      hash += 1 << (bitmask=bitmask+3)
-    }
-    if (this.parentObjects.includes(ParentObject.TextStrikeThrough)) {
-      hash += 1 << (bitmask=bitmask+3)
-    }
-    if (this.parentObjects.includes(ParentObject.RegularLink)) {
-      hash += 1 << (bitmask=bitmask+3)
-    }
-    if (this.parentObjects.includes(ParentObject.AngleLink)) {
-      hash += 1 << (bitmask=bitmask+3)
+    for (let parent of this.parentObjects) {
+      hash += (parent+1) << (bitmask=bitmask+10)
     }
     return hash
   }
@@ -1948,7 +1834,7 @@ export const context_tracker = new ContextTracker({
   shift(context: OrgContext, term: number, stack: Stack, input: InputStream) {
     let headingLevelStack = [...context.headingLevelStack]
     let levelHeadingToPush = context.levelHeadingToPush
-    let parentObjects = context.parentObjects
+    let parentObjects = [...context.parentObjects]
     if (term === indentHeading) {
       const toPush = levelHeadingToPush
       levelHeadingToPush = null
