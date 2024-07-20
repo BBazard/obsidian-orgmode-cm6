@@ -790,6 +790,7 @@ export const notStartOfComment_lookaround = new ExternalTokenizer((input, stack)
 })
 
 function checkEndOfTextMarkup(input: InputStream, stack: Stack, marker: number, peek_distance: number = 0) {
+  const context: OrgContext = stack.context
   const MARKER = marker
   const previous = input.peek(peek_distance - 1)
   const current = input.peek(peek_distance)
@@ -814,17 +815,6 @@ function checkEndOfTextMarkup(input: InputStream, stack: Stack, marker: number, 
 export const isStartOfTextMarkup_lookaround = (orgLinkParameters: string[]) => { return new ExternalTokenizer((input, stack) => {
   const context: OrgContext = stack.context
   log(`-- START isStartOfTextMarkup_lookaround ${inputStreamBeginString(input)}`)
-  if (
-      context.parentObjects.includes(ParentObject.TextBold) ||
-      context.parentObjects.includes(ParentObject.TextItalic) ||
-      context.parentObjects.includes(ParentObject.TextUnderline) ||
-      context.parentObjects.includes(ParentObject.TextVerbatim) ||
-      context.parentObjects.includes(ParentObject.TextCode) ||
-      context.parentObjects.includes(ParentObject.TextStrikeThrough)
-    ) {
-    log(`XX REFUSE isStartOfTextMarkup_lookaround, already inside markup ${inputStreamEndString(input, stack)}`)
-    return
-  }
   const termsByMarker = new Map([
     [STAR, isStartOfTextBold],
     ['/'.charCodeAt(0), isStartOfTextItalic],
@@ -834,12 +824,23 @@ export const isStartOfTextMarkup_lookaround = (orgLinkParameters: string[]) => {
     ['+'.charCodeAt(0), isStartOfTextStrikeThrough],
   ])
   const term = isStartOfTextMarkup(input, stack, termsByMarker, false, orgLinkParameters)
-  if (term) {
+  if (!term) {
+    log(`XX REFUSE isStartOfTextMarkup_lookaround ${inputStreamEndString(input, stack)}`)
+    return
+  }
+  if (
+    term === isStartOfTextBold && !context.parentObjects.includes(ParentObject.TextBold) ||
+    term === isStartOfTextItalic && !context.parentObjects.includes(ParentObject.TextItalic) ||
+    term === isStartOfTextUnderline && !context.parentObjects.includes(ParentObject.TextUnderline) ||
+    term === isStartOfTextVerbatim && !context.parentObjects.includes(ParentObject.TextVerbatim) ||
+    term === isStartOfTextCode && !context.parentObjects.includes(ParentObject.TextCode) ||
+    term === isStartOfTextStrikeThrough && !context.parentObjects.includes(ParentObject.TextStrikeThrough)
+  ) {
     log(`== ACCEPT isStartOfTextMarkup_lookaround term=${term} ${inputStreamAccept(input, stack)}`)
     input.acceptToken(term, -(input.pos-stack.pos))
     return
   }
-  log(`XX REFUSE isStartOfTextMarkup_lookaround ${inputStreamEndString(input, stack)}`)
+  log(`XX REFUSE isStartOfTextMarkup_lookaround term=${term} already inside this markupu ${inputStreamEndString(input, stack)}`)
   return
 })
 }

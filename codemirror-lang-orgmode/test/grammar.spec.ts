@@ -383,6 +383,25 @@ test("text markup", () => {
   testTree(tree, spec)
 })
 
+test("text markup nested", () => {
+  const content = [
+    "a *bold sentence wih /italic/ inside*",
+  ].join("\n")
+  const tree = parser.parse(content)
+  const spec = [
+    "Program(",
+    "    ZerothSection(",
+    "        TextBold(",  // *bold sentence wih /italic/ inside*
+    "            TextItalic,",  // /italic/
+    "        ),",
+    "    ),",
+    ")",
+  ].join("\n")
+  console.log(printTree(tree, content))
+  parser.configure({strict: true}).parse(content)
+  testTree(tree, spec)
+})
+
 test("title text markup", () => {
   const content = [
     "* normal title",
