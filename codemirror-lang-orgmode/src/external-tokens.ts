@@ -8,7 +8,6 @@ import {
   PropertyDrawer,
   notStartOfPlanning, notStartOfPropertyDrawer,
   notStartOfHeading, notStartOfComment,
-  sectionSpace,
   isStartOfTextBold,
   isStartOfTextItalic,
   isStartOfTextUnderline,
@@ -21,14 +20,7 @@ import {
   isEndOfTextVerbatim,
   isEndOfTextCode,
   isEndOfTextStrikeThrough,
-  titleWord,
   Tags,
-  isStartOfTitleTextBold,
-  isStartOfTitleTextItalic,
-  isStartOfTitleTextUnderline,
-  isStartOfTitleTextVerbatim,
-  isStartOfTitleTextCode,
-  isStartOfTitleTextStrikeThrough,
   shouldIndentHeading,
   indentHeading,
   shouldDedentHeading,
@@ -596,17 +588,22 @@ export const endofline_tokenizer = new ExternalTokenizer((input, stack) => {
   }
   let c = input.peek(0)
   log(stringifyCodeLogString(c))
-  while (!isEndOfLine(c)) {
+  while (true) {
+    if (checkTags(input, false)) {
+      log(`XX REFUSE endofline, found Tags ${inputStreamEndString(input, stack)}`)
+      return
+    } else if (c === EOF) {
+      log(`== ACCEPT endofline EOF ${inputStreamAccept(input, stack)}`)
+      input.acceptToken(endofline)
+      return
+    } else if (c === NEW_LINE) { // NEW_LINE
+      input.advance()
+      log(`== ACCEPT endofline NEWLINE ${inputStreamAccept(input, stack)}`)
+      input.acceptToken(endofline)
+      return
+    }
     c = input.advance()
     log(stringifyCodeLogString(c))
-  }
-  if (c === EOF) {
-    log(`== ACCEPT endofline EOF ${inputStreamAccept(input, stack)}`)
-    input.acceptToken(endofline)
-  } else { // NEW_LINE
-    input.advance()
-    log(`== ACCEPT endofline NEWLINE ${inputStreamAccept(input, stack)}`)
-    input.acceptToken(endofline)
   }
 });
 
@@ -792,27 +789,6 @@ export const notStartOfComment_lookaround = new ExternalTokenizer((input, stack)
   return
 })
 
-export const sectionSpace_tokenizer = new ExternalTokenizer((input, stack) => {
-  log(`-- START sectionSpace ${inputStreamBeginString(input)}`)
-  let c = input.peek(0)
-  if (c === EOF) {
-    log(`XX REFUSE sectionSpace, only EOF left ${inputStreamEndString(input, stack)}`)
-    return
-  }
-  if (!isWhiteSpace(c)) {
-    log(`XX REFUSE sectionSpace, not whitespace ${inputStreamEndString(input, stack)}`)
-    return
-  }
-  log(stringifyCodeLogString(c))
-  while (isWhiteSpace(c)) {
-    c = input.advance()
-    log(stringifyCodeLogString(c))
-  }
-  log(`== ACCEPT sectionSpace ${inputStreamAccept(input, stack)}`)
-  input.acceptToken(sectionSpace)
-  return
-})
-
 function checkEndOfTextMarkup(input: InputStream, stack: Stack, marker: number, peek_distance: number = 0) {
   const MARKER = marker
   const previous = input.peek(peek_distance - 1)
@@ -868,8 +844,8 @@ export const isStartOfTextMarkup_lookaround = (orgLinkParameters: string[]) => {
 })
 }
 
-export const isEndOfTextMarkup_lookaround = new ExternalTokenizer((input, stack) => {
-  log(`-- START isEndOfTextMarkup_lookaround ${inputStreamBeginString(input)}`)
+export const isEndOfTextMarkup_tokenizer = new ExternalTokenizer((input, stack) => {
+  log(`-- START isEndOfTextMarkup_tokenizer ${inputStreamBeginString(input)}`)
   const termsByMarker = new Map([
     [STAR, isEndOfTextBold],
     ['/'.charCodeAt(0), isEndOfTextItalic],
@@ -892,39 +868,6 @@ export const isEndOfTextMarkup_lookaround = new ExternalTokenizer((input, stack)
   log(`XX REFUSE isEndOfTextMarkup ${inputStreamEndString(input, stack)}`)
   return
 })
-
-export const isStartOfTitleTextMarkup_lookaround = (orgLinkParameters: string[]) => { return new ExternalTokenizer((input, stack) => {
-  const context: OrgContext = stack.context
-  log(`-- START isStartOfTitleTextMarkup_lookaround ${inputStreamBeginString(input)}`)
-  if (
-      context.parentObjects.includes(ParentObject.TextBold) ||
-      context.parentObjects.includes(ParentObject.TextItalic) ||
-      context.parentObjects.includes(ParentObject.TextUnderline) ||
-      context.parentObjects.includes(ParentObject.TextVerbatim) ||
-      context.parentObjects.includes(ParentObject.TextCode) ||
-      context.parentObjects.includes(ParentObject.TextStrikeThrough)
-    ) {
-    log(`XX REFUSE isStartOfTitleTextMarkup_lookaround, already inside markup ${inputStreamEndString(input, stack)}`)
-    return
-  }
-  const termsByTitleMarker = new Map([
-    [STAR, isStartOfTitleTextBold],
-    ['/'.charCodeAt(0), isStartOfTitleTextItalic],
-    ['_'.charCodeAt(0), isStartOfTitleTextUnderline],
-    ['='.charCodeAt(0), isStartOfTitleTextVerbatim],
-    ['~'.charCodeAt(0), isStartOfTitleTextCode],
-    ['+'.charCodeAt(0), isStartOfTitleTextStrikeThrough],
-  ])
-  const term = isStartOfTextMarkup(input, stack, termsByTitleMarker, true, orgLinkParameters)
-  if (term) {
-    input.acceptToken(term, -(input.pos-stack.pos))
-    log(`== ACCEPT isStartOfTitleTextMarkup_lookaround ${inputStreamAccept(input, stack)}`)
-    return
-  }
-  log(`XX REFUSE isStartOfTitleTextMarkup_lookaround ${inputStreamEndString(input, stack)}`)
-  return
-})
-}
 
 function isStartOfTextMarkup(input: InputStream, stack: Stack, termsByMarker: Map<number, number>, noEndOfLine: boolean, orgLinkParameters: string[]) {
   const context: OrgContext = stack.context
@@ -1045,44 +988,6 @@ function isStartOfTextMarkup(input: InputStream, stack: Stack, termsByMarker: Ma
     c = input.peek(peek_distance)
     log(stringifyCodeLogString(c))
   }
-}
-
-export const titleWord_tokenizer = (orgLinkParameters: string[]) => { return new ExternalTokenizer((input, stack) => {
-  const termsByTitleMarker = new Map([
-    [STAR, isStartOfTitleTextBold],
-    ['/'.charCodeAt(0), isStartOfTitleTextItalic],
-    ['_'.charCodeAt(0), isStartOfTitleTextUnderline],
-    ['='.charCodeAt(0), isStartOfTitleTextVerbatim],
-    ['~'.charCodeAt(0), isStartOfTitleTextCode],
-    ['+'.charCodeAt(0), isStartOfTitleTextStrikeThrough],
-  ])
-  log(`-- START titleWord ${inputStreamBeginString(input)}`)
-  let c = input.peek(0)
-  if (c === EOF) {
-    log(`XX REFUSE titleWord, only EOF left ${inputStreamEndString(input, stack)}`)
-    return
-  }
-  log(stringifyCodeLogString(c))
-  if (isWhiteSpace(c) || isEndOfLine(c)) {
-    log(`XX REFUSE titleWord, whitespace ${inputStreamEndString(input, stack)}`)
-    return
-  }
-  if (c === COLON && checkTags(input, false)) {
-    log(`XX REFUSE titleWord, Tags ${inputStreamEndString(input, stack)}`)
-    return
-  }
-  while (!isWhiteSpace(c) && !isEndOfLine(c) &&
-      !(isStartOfTextMarkup(input, stack, termsByTitleMarker, true, orgLinkParameters)) &&
-      !(checkPlainLink(input, stack, orgLinkParameters, true)) &&
-      !(checkRegularLink(input, stack, orgLinkParameters)) &&
-      !(checkAngleLink(input, stack, orgLinkParameters))) {
-    c = input.advance()
-    log(stringifyCodeLogString(c))
-  }
-  log(`== ACCEPT titleWord ${inputStreamAccept(input, stack)}`)
-  input.acceptToken(titleWord)
-  return
-})
 }
 
 export const tags_tokenizer = new ExternalTokenizer((input, stack) => {
@@ -1478,32 +1383,32 @@ export const isStartOfAngleLink_lookaround = (orgLinkParameters: string[]) => { 
   })
 }
 
-export const exitRegularLink_lookaround = new ExternalTokenizer((input: InputStream, stack: Stack) => {
+export const exitRegularLink_tokenizer = new ExternalTokenizer((input: InputStream, stack: Stack) => {
   const context: OrgContext = stack.context
-  log(`-- START exitRegularLink_lookaround ${inputStreamBeginString(input)}`)
+  log(`-- START exitRegularLink_tokenizer ${inputStreamBeginString(input)}`)
   const isInsideLink = context.parentObjects.includes(ParentObject.RegularLink) || context.parentObjects.includes(ParentObject.AngleLink)
   if (isInsideLink && matchWords(input, ["]]"])) {
     input.advance()
     input.advance()
-    log(`== ACCEPT exitRegularLink_lookaround ${inputStreamAccept(input, stack)}`)
+    log(`== ACCEPT exitRegularLink_tokenizer ${inputStreamAccept(input, stack)}`)
     input.acceptToken(exitRegularLink)
     return
   }
-  log(`XX REFUSE exitRegularLink_lookaround ${inputStreamEndString(input, stack)}`)
+  log(`XX REFUSE exitRegularLink_tokenizer ${inputStreamEndString(input, stack)}`)
   return
 })
 
-export const exitAngleLink_lookaround = new ExternalTokenizer((input: InputStream, stack: Stack) => {
+export const exitAngleLink_tokenizer = new ExternalTokenizer((input: InputStream, stack: Stack) => {
   const context: OrgContext = stack.context
-  log(`-- START exitAngleLink_lookaround ${inputStreamBeginString(input)}`)
+  log(`-- START exitAngleLink_tokenizer ${inputStreamBeginString(input)}`)
   const isInsideLink = context.parentObjects.includes(ParentObject.RegularLink) || context.parentObjects.includes(ParentObject.AngleLink)
   if (isInsideLink && matchWords(input, [">"])) {
     input.advance()
-    log(`== ACCEPT exitAngleLink_lookaround ${inputStreamAccept(input, stack)}`)
+    log(`== ACCEPT exitAngleLink_tokenizer ${inputStreamAccept(input, stack)}`)
     input.acceptToken(exitAngleLink)
     return
   }
-  log(`XX REFUSE exitAngleLink_lookaround ${inputStreamEndString(input, stack)}`)
+  log(`XX REFUSE exitAngleLink_tokenizer ${inputStreamEndString(input, stack)}`)
   return
 })
 
@@ -1664,14 +1569,26 @@ export const object_tokenizer = (orgLinkParameters: string[]) => {
     let c = input.peek(0)
     log(stringifyCodeLogString(c))
     while (true) {
-      ///// end of file /////
-      if (input.pos === stack.pos) {
-        if (c === EOF) {
-          log(`XX REFUSE object_tokenizer, reached EOF ${inputStreamAccept(input, stack)}`)
-          return
-        } else {
-          // keep going since we don't want 0-length token
-        }
+      ///// no 0-length match at eof to prevent infinite loop /////
+      if (input.pos === stack.pos && c === EOF) {
+        log(`XX REFUSE object_tokenizer, reached EOF ${inputStreamAccept(input, stack)}`)
+        return
+      ///// end of Title /////
+      } else if (
+        context.parentObjects.includes(ParentObject.Title) && isEndOfLine(c)
+      ) {
+        log(`== ACCEPT object_tokenizer innermostParent=${innerMostParent} before endofline in title ${inputStreamAccept(input, stack)}`)
+        input.acceptToken(objectToken)
+        return
+      } else if (
+        context.parentObjects.includes(ParentObject.Title) && checkTags(input, false)
+      ) {
+        log(`== ACCEPT object_tokenizer innermostParent=${innerMostParent} before Tags in title ${inputStreamAccept(input, stack)}`)
+        input.acceptToken(objectToken)
+        return
+      // avoid 0-length tokens (except for Title)
+      } else if (input.pos === stack.pos) {
+        // keep going since we don't want 0-length token
       } else if (c === EOF) {
         log(`== ACCEPT object_tokenizer innermostParent=${innerMostParent} before eof ${inputStreamAccept(input, stack)}`)
         input.acceptToken(objectToken)
@@ -1731,10 +1648,66 @@ export const object_tokenizer = (orgLinkParameters: string[]) => {
         log(`== ACCEPT object_tokenizer innermostParent=${innerMostParent} before end of markup ${inputStreamAccept(input, stack)}`)
         input.acceptToken(objectToken)
         return
+      ///// start of markup inside title /////
+      } else if (
+        c === STAR &&
+        !context.parentObjects.includes(ParentObject.TextBold) &&
+        context.parentObjects.includes(ParentObject.Title) &&
+        isStartOfTextMarkup(input, stack, termsByMarker, true, orgLinkParameters)
+      ) {
+        log(`== ACCEPT object_tokenizer innermostParent=${innerMostParent} before TextBold ${inputStreamAccept(input, stack)}`)
+        input.acceptToken(objectToken)
+        return
+      } else if (
+        c ==='/'.charCodeAt(0) &&
+        !context.parentObjects.includes(ParentObject.TextItalic) &&
+        context.parentObjects.includes(ParentObject.Title) &&
+        isStartOfTextMarkup(input, stack, termsByMarker, true, orgLinkParameters)
+      ) {
+        log(`== ACCEPT object_tokenizer innermostParent=${innerMostParent} before TextItalic ${inputStreamAccept(input, stack)}`)
+        input.acceptToken(objectToken)
+        return
+      } else if (
+        c ==='_'.charCodeAt(0) &&
+        !context.parentObjects.includes(ParentObject.TextUnderline) &&
+        context.parentObjects.includes(ParentObject.Title) &&
+        isStartOfTextMarkup(input, stack, termsByMarker, true, orgLinkParameters)
+      ) {
+        log(`== ACCEPT object_tokenizer innermostParent=${innerMostParent} before TextUnderline ${inputStreamAccept(input, stack)}`)
+        input.acceptToken(objectToken)
+        return
+      } else if (
+        c ==='='.charCodeAt(0) &&
+        !context.parentObjects.includes(ParentObject.TextVerbatim) &&
+        context.parentObjects.includes(ParentObject.Title) &&
+        isStartOfTextMarkup(input, stack, termsByMarker, true, orgLinkParameters)
+      ) {
+        log(`== ACCEPT object_tokenizer innermostParent=${innerMostParent} before TextVerbatim ${inputStreamAccept(input, stack)}`)
+        input.acceptToken(objectToken)
+        return
+      } else if (
+        c ==='~'.charCodeAt(0) &&
+        !context.parentObjects.includes(ParentObject.TextCode) &&
+        context.parentObjects.includes(ParentObject.Title) &&
+        isStartOfTextMarkup(input, stack, termsByMarker, true, orgLinkParameters)
+      ) {
+        log(`== ACCEPT object_tokenizer innermostParent=${innerMostParent} before TextCode ${inputStreamAccept(input, stack)}`)
+        input.acceptToken(objectToken)
+        return
+      } else if (
+        c ==='+'.charCodeAt(0) &&
+        !context.parentObjects.includes(ParentObject.TextStrikeThrough) &&
+        context.parentObjects.includes(ParentObject.Title) &&
+        isStartOfTextMarkup(input, stack, termsByMarker, true, orgLinkParameters)
+      ) {
+        log(`== ACCEPT object_tokenizer innermostParent=${innerMostParent} before TextStrikeThrough ${inputStreamAccept(input, stack)}`)
+        input.acceptToken(objectToken)
+        return
       ///// start of markup /////
       } else if (
         c === STAR &&
         !context.parentObjects.includes(ParentObject.TextBold) &&
+        !context.parentObjects.includes(ParentObject.Title) &&
         isStartOfTextMarkup(input, stack, termsByMarker, false, orgLinkParameters)
       ) {
         log(`== ACCEPT object_tokenizer innermostParent=${innerMostParent} before TextBold ${inputStreamAccept(input, stack)}`)
@@ -1743,6 +1716,7 @@ export const object_tokenizer = (orgLinkParameters: string[]) => {
       } else if (
         c ==='/'.charCodeAt(0) &&
         !context.parentObjects.includes(ParentObject.TextItalic) &&
+        !context.parentObjects.includes(ParentObject.Title) &&
         isStartOfTextMarkup(input, stack, termsByMarker, false, orgLinkParameters)
       ) {
         log(`== ACCEPT object_tokenizer innermostParent=${innerMostParent} before TextItalic ${inputStreamAccept(input, stack)}`)
@@ -1751,6 +1725,7 @@ export const object_tokenizer = (orgLinkParameters: string[]) => {
       } else if (
         c ==='_'.charCodeAt(0) &&
         !context.parentObjects.includes(ParentObject.TextUnderline) &&
+        !context.parentObjects.includes(ParentObject.Title) &&
         isStartOfTextMarkup(input, stack, termsByMarker, false, orgLinkParameters)
       ) {
         log(`== ACCEPT object_tokenizer innermostParent=${innerMostParent} before TextUnderline ${inputStreamAccept(input, stack)}`)
@@ -1759,6 +1734,7 @@ export const object_tokenizer = (orgLinkParameters: string[]) => {
       } else if (
         c ==='='.charCodeAt(0) &&
         !context.parentObjects.includes(ParentObject.TextVerbatim) &&
+        !context.parentObjects.includes(ParentObject.Title) &&
         isStartOfTextMarkup(input, stack, termsByMarker, false, orgLinkParameters)
       ) {
         log(`== ACCEPT object_tokenizer innermostParent=${innerMostParent} before TextVerbatim ${inputStreamAccept(input, stack)}`)
@@ -1767,6 +1743,7 @@ export const object_tokenizer = (orgLinkParameters: string[]) => {
       } else if (
         c ==='~'.charCodeAt(0) &&
         !context.parentObjects.includes(ParentObject.TextCode) &&
+        !context.parentObjects.includes(ParentObject.Title) &&
         isStartOfTextMarkup(input, stack, termsByMarker, false, orgLinkParameters)
       ) {
         log(`== ACCEPT object_tokenizer innermostParent=${innerMostParent} before TextCode ${inputStreamAccept(input, stack)}`)
@@ -1775,6 +1752,7 @@ export const object_tokenizer = (orgLinkParameters: string[]) => {
       } else if (
         c ==='+'.charCodeAt(0) &&
         !context.parentObjects.includes(ParentObject.TextStrikeThrough) &&
+        !context.parentObjects.includes(ParentObject.Title) &&
         isStartOfTextMarkup(input, stack, termsByMarker, false, orgLinkParameters)
       ) {
         log(`== ACCEPT object_tokenizer innermostParent=${innerMostParent} before TextStrikeThrough ${inputStreamAccept(input, stack)}`)
@@ -1789,7 +1767,7 @@ export const object_tokenizer = (orgLinkParameters: string[]) => {
 }
 
 enum ParentObject {
-  Title,  // TODO
+  Title,
   TextBold,
   TextItalic,
   TextUnderline,
@@ -1844,40 +1822,22 @@ export const context_tracker = new ContextTracker({
       const toPop = headingLevelStack[headingLevelStack.length-1]
       headingLevelStack.pop()
     }
-    if (
-      term === isStartOfTextBold ||
-      term === isStartOfTitleTextBold
-    ) {
+    if (term === isStartOfTextBold) {
       parentObjects.push(ParentObject.TextBold)
     }
-    if (
-      term === isStartOfTextItalic ||
-      term === isStartOfTitleTextItalic
-    ) {
+    if (term === isStartOfTextItalic) {
       parentObjects.push(ParentObject.TextItalic)
     }
-    if (
-      term === isStartOfTextUnderline ||
-      term === isStartOfTitleTextUnderline
-    ) {
+    if (term === isStartOfTextUnderline) {
       parentObjects.push(ParentObject.TextUnderline)
     }
-    if (
-      term === isStartOfTextVerbatim ||
-      term === isStartOfTitleTextVerbatim
-    ) {
+    if (term === isStartOfTextVerbatim) {
       parentObjects.push(ParentObject.TextVerbatim)
     }
-    if (
-      term === isStartOfTextCode ||
-      term === isStartOfTitleTextCode
-    ) {
+    if (term === isStartOfTextCode) {
       parentObjects.push(ParentObject.TextCode)
     }
-    if (
-      term === isStartOfTextStrikeThrough ||
-      term === isStartOfTitleTextStrikeThrough
-    ) {
+    if (term === isStartOfTextStrikeThrough) {
       parentObjects.push(ParentObject.TextStrikeThrough)
     }
     if (
@@ -1887,7 +1847,6 @@ export const context_tracker = new ContextTracker({
       term === isEndOfTextVerbatim ||
       term === isEndOfTextCode ||
       term === isEndOfTextStrikeThrough
-
     ) {
       parentObjects.pop()
     }
@@ -1901,6 +1860,12 @@ export const context_tracker = new ContextTracker({
       parentObjects.push(ParentObject.AngleLink)
     }
     if (term === exitAngleLink) {
+      parentObjects.pop()
+    }
+    if (term === stars) {
+      parentObjects.push(ParentObject.Title)
+    }
+    if (term === endofline) {
       parentObjects.pop()
     }
     return new OrgContext(headingLevelStack, levelHeadingToPush, parentObjects)

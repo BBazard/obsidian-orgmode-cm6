@@ -5,8 +5,7 @@ import { LRParser } from "@lezer/lr";
 import {
   title_tokenizer, todokeyword_tokenizer, plainLink_tokenizer,
   isStartOfRegularLink_lookaround, isStartOfAngleLink_lookaround,
-  isStartOfTextMarkup_lookaround, isStartOfTitleTextMarkup_lookaround,
-  titleWord_tokenizer,
+  isStartOfTextMarkup_lookaround,
   object_tokenizer,
   context_tracker } from "./external-tokens"
 import * as ExtToken from "./external-tokens"
@@ -41,12 +40,6 @@ const configurableExternalTokenizer = (words: string[]) => {
     }
     if (name == 'plainLink_tokenizer') {
       return plainLink_tokenizer(orgLinkParameters)
-    }
-    if (name == 'titleWord_tokenizer') {
-      return titleWord_tokenizer(orgLinkParameters)
-    }
-    if (name == 'isStartOfTitleTextMarkup_lookaround') {
-      return isStartOfTitleTextMarkup_lookaround(orgLinkParameters)
     }
     if (name == 'isStartOfTextMarkup_lookaround') {
       return isStartOfTextMarkup_lookaround(orgLinkParameters)

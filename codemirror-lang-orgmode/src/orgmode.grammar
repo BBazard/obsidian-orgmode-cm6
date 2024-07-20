@@ -26,7 +26,7 @@ Heading {
 }
 
 Title {
-  sectionSpace? (titleObject sectionSpace?)*
+  object+
 }
 
 Section {
@@ -64,10 +64,6 @@ planningLine {
   ((PlanningDeadline | PlanningScheduled | PlanningClosed) PlanningValue)+
 }
 
-titleObject {
-  link | titleTextMarkup | titleWord
-}
-
 object {
   link | textMarkup | objectToken
 }
@@ -80,23 +76,14 @@ RegularLink {
   isStartOfRegularLink
   "[["
   object+
-  exitRegularLink
+  exitRegularLink  // ]]
 }
 
 AngleLink {
   isStartOfAngleLink
   "<"
   object+
-  exitAngleLink
-}
-
-titleTextMarkup {
-  (isStartOfTitleTextBold TextBold) |
-  (isStartOfTitleTextItalic TextItalic) |
-  (isStartOfTitleTextUnderline TextUnderline) |
-  (isStartOfTitleTextVerbatim TextVerbatim) |
-  (isStartOfTitleTextCode TextCode) |
-  (isStartOfTitleTextStrikeThrough TextStrikeThrough)
+  exitAngleLink  // >
 }
 
 textMarkup {
@@ -111,47 +98,47 @@ textMarkup {
 TextBold {
   "*"
   object+
-  isEndOfTextBold
+  isEndOfTextBold  // *
 }
 
 TextItalic {
   "/"
   object+
-  isEndOfTextItalic
+  isEndOfTextItalic  // /
 }
 
 TextUnderline {
   "_"
   object+
-  isEndOfTextUnderline
+  isEndOfTextUnderline  // _
 }
 
 TextVerbatim {
   "="
   object+
-  isEndOfTextVerbatim
+  isEndOfTextVerbatim  // =
 }
 
 TextCode {
   "~"
   object+
-  isEndOfTextCode
+  isEndOfTextCode  // ~
 }
 
 TextStrikeThrough {
   "+"
   object+
-  isEndOfTextStrikeThrough
+  isEndOfTextStrikeThrough  // +
 }
 
 @context context_tracker from "./external-tokens"
 
 // Exit tokens are always true so they must be the
 // first ones to be tested so that other tokens are not accepted before them
-@external tokens exitRegularLink_lookaround from "./external-tokens" { exitRegularLink }
-@external tokens exitAngleLink_lookaround from "./external-tokens" { exitAngleLink }
+@external tokens exitRegularLink_tokenizer from "./external-tokens" { exitRegularLink }
+@external tokens exitAngleLink_tokenizer from "./external-tokens" { exitAngleLink }
 
-@external tokens isEndOfTextMarkup_lookaround from "./external-tokens" {
+@external tokens isEndOfTextMarkup_tokenizer from "./external-tokens" {
   isEndOfTextBold,
   isEndOfTextItalic,
   isEndOfTextUnderline,
@@ -170,15 +157,6 @@ TextStrikeThrough {
 @external tokens isStartOfAngleLink_lookaround from "./external-tokens" { isStartOfAngleLink }
 @external tokens plainLink_tokenizer from "./external-tokens" { PlainLink }
 
-@external tokens isStartOfTitleTextMarkup_lookaround from "./external-tokens" {
-  isStartOfTitleTextBold,
-  isStartOfTitleTextItalic,
-  isStartOfTitleTextUnderline,
-  isStartOfTitleTextVerbatim,
-  isStartOfTitleTextCode,
-  isStartOfTitleTextStrikeThrough
-}
-
 @external tokens isStartOfTextMarkup_lookaround from "./external-tokens" {
   isStartOfTextBold,
   isStartOfTextItalic,
@@ -187,8 +165,6 @@ TextStrikeThrough {
   isStartOfTextCode,
   isStartOfTextStrikeThrough
 }
-
-
 
 // https://orgmode.org/worg/org-syntax.html#Property_Drawers
 @external tokens propertydrawer_tokenizer from "./external-tokens" { PropertyDrawer }
@@ -210,10 +186,6 @@ TextStrikeThrough {
 
 @external tokens stars_tokenizer from "./external-tokens" { stars }
 
-@tokens {
-  CommentLine { "#" ("\n" | @eof | (" " ![\n]* ("\n" | @eof))) }
-  KeywordComment { "#+" ![\n]* ("\n" | @eof) }
-}
 
 
 @external tokens planningKeyword_tokenizer from "./external-tokens" {
@@ -223,11 +195,13 @@ TextStrikeThrough {
 }
 @external tokens planningValue_tokenizer from "./external-tokens" { PlanningValue }
 
-
-@external tokens sectionSpace_tokenizer from "./external-tokens" { sectionSpace }
-@external tokens titleWord_tokenizer from "./external-tokens" { titleWord }
 @external tokens tags_tokenizer from "./external-tokens" { Tags }
 
 @external tokens endofline_tokenizer from "./external-tokens" { endofline }
 
 @external tokens object_tokenizer from "./external-tokens" { objectToken }
+
+@tokens {
+  CommentLine { "#" ("\n" | @eof | (" " ![\n]* ("\n" | @eof))) }
+  KeywordComment { "#+" ![\n]* ("\n" | @eof) }
+}
