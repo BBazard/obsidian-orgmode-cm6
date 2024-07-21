@@ -67,30 +67,6 @@ export function markupClass(node_type_id: number): string {
   throw Error("Not a markup node")
 }
 
-export function injectMarkupInLinktext(linkNode: SyntaxNodeRef, displayText: string, state: EditorState, displayTextFromOffset: number) {
-  const nodesToReplace: [number, number, string, string][] = []
-  let child = linkNode.node.firstChild
-  while (child && markupNodeTypeIds.includes(child.type.id)) {
-    const childText = state.doc.sliceString(child.from+1, child.to-1)
-    const markup_class = markupClass(child.node.type.id)
-    nodesToReplace.push([child.from, child.to, childText, markup_class])
-    child = child.nextSibling
-  }
-  const displayTextStart = linkNode.from + displayTextFromOffset
-  let idx = 0
-  let displayTextHtml = ""
-  for (let i = 0; i < nodesToReplace.length; i++) {
-    const [child_from, child_to, child_text, markup_class] = nodesToReplace[i]
-    displayTextHtml += (
-      displayText.slice(idx, child_from - displayTextStart) +
-      `<span class=${markup_class}>` + child_text + "</span>"
-    )
-    idx = child_to - displayTextStart
-  }
-  displayTextHtml += displayText.slice(idx)
-  return displayTextHtml
-}
-
 export const OrgFoldCompute = (state: EditorState, from: number, to: number) => {
   let currentLineNode = syntaxTree(state).topNode.resolve(from, 1).node
   const onFirstLine = (state.doc.lineAt(from).number === state.doc.lineAt(currentLineNode.from).number)

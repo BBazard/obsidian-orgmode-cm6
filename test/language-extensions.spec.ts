@@ -1,12 +1,12 @@
 import { expect, test } from 'vitest'
 import { LRParser } from '@lezer/lr'
 import { EditorState } from "@codemirror/state";
-import { LanguageSupport, syntaxTree } from "@codemirror/language"
+import { LanguageSupport } from "@codemirror/language"
 
 import { OrgmodeLanguage, OrgmodeParser, TOKEN } from 'codemirror-lang-orgmode';
 
 import { OrgmodePluginSettings } from 'settings'
-import { OrgFoldCompute, injectMarkupInLinktext, iterateOrgIds, makeHeadingsFoldable } from 'language-extensions'
+import { OrgFoldCompute, iterateOrgIds, makeHeadingsFoldable } from 'language-extensions'
 import { extractLinkFromNode } from 'language-extensions';
 
 const settings: OrgmodePluginSettings = {
@@ -224,23 +224,4 @@ test("iterating org IDs", async () => {
     { orgId: "idheading", start: 31 },
     { orgId: "idsubheading", start: 75 },
   ])
-})
-
-test("injectMarkupInLinktext", async () => {
-  const content = "[[link][there is +strike+ and /italic/ words]]"
-  const state = EditorState.create({
-    doc: content,
-    extensions: [
-      makeHeadingsFoldable,
-      new LanguageSupport(OrgmodeLanguage(orgmodeParser))
-    ],
-  })
-
-  const linkNode = syntaxTree(state).topNode.firstChild.getChild(TOKEN.RegularLink)
-  const linkText = state.doc.sliceString(linkNode.from, linkNode.to)
-  const [, displayText,, displayTextFromOffset] = extractLinkFromNode(linkNode.type.id, linkText)
-  const displayTextHTML = injectMarkupInLinktext(linkNode, displayText, state, displayTextFromOffset)
-  expect(displayTextHTML).toStrictEqual(
-    "there is <span class=org-text-strikethrough>strike</span> and <span class=org-text-italic>italic</span> words"
-  )
 })

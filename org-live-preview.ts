@@ -3,7 +3,7 @@ import {
   StateField,
   Transaction,
   RangeSetBuilder,
-  EditorState
+  EditorState,
 } from "@codemirror/state";
 import {
   Decoration,
@@ -13,7 +13,7 @@ import {
 } from "@codemirror/view";
 import { syntaxTree } from "@codemirror/language";
 import { TOKEN } from 'codemirror-lang-orgmode';
-import { LinkHandler, extractLinkFromNode, injectMarkupInLinktext, markupClass, markupNodeTypeIds } from 'language-extensions';
+import { LinkHandler, extractLinkFromNode, markupClass, markupNodeTypeIds } from 'language-extensions';
 
 class ImageWidget extends WidgetType {
   path: string
@@ -35,56 +35,6 @@ class ImageWidget extends WidgetType {
       image.src = this.path
     }
     return image
-  }
-}
-
-class LinkWidget extends WidgetType {
-  linkPath: string
-  displayHtml: string
-  linkHandler: LinkHandler
-  navigateToFile: (filePath: string) => void
-  navigateToOrgId: (orgCustomId: string) => void
-  classes: string[]
-  constructor(
-    linkPath: string,
-    displayHtml: string,
-    linkHandler: LinkHandler,
-    navigateToFile: (filePath: string) => void,
-    navigateToOrgId: (orgCustomId: string) => void,
-    classes: string[]
-  ) {
-    super()
-    this.linkPath = linkPath
-    this.displayHtml = displayHtml
-    this.linkHandler = linkHandler
-    this.navigateToFile = navigateToFile
-    this.navigateToOrgId = navigateToOrgId
-    this.classes = classes
-  }
-  eq(other: LinkWidget) {
-    return (
-      this.linkPath == other.linkPath &&
-      this.displayHtml == other.displayHtml &&
-      this.linkHandler == other.linkHandler &&
-      JSON.stringify(this.classes.sort()) == JSON.stringify(other.classes.sort())
-    )
-  }
-  toDOM(view: EditorView): HTMLElement {
-    const link = document.createElement("a");
-    link.innerHTML = this.displayHtml
-    link.href = "#"
-    link.addClasses(this.classes)
-    link.addEventListener("click", () => {
-      if (this.linkHandler === "external") {
-        window.open(this.linkPath)
-      } else if (this.linkHandler === "internal-file") {
-        this.navigateToFile(this.linkPath)
-      } else if (this.linkHandler === "internal-id") {
-        const orgCustomId = this.linkPath
-        this.navigateToOrgId(orgCustomId)
-      }
-    })
-    return link
   }
 }
 
@@ -169,27 +119,28 @@ function loadDecorations(
             ])
           }
         } else if (!isCursorInsideDecoration) {
-          let link_css_classes = ["org-link"]
-          let parent_is_markup = false
-          if (markupNodeTypeIds.includes(node.node.parent.type.id)) {
-            link_css_classes.push(markupClass(node.node.parent.type.id))
-            parent_is_markup = true
+          if (node.type.id === TOKEN.RegularLink && linkPath !== displayText) {
+            builderBuffer.push([node.from, node.from+displayTextFromOffset, Decoration.replace({})])
+            builderBuffer.push([
+              node.from+displayTextFromOffset, node.to-2,
+              Decoration.mark({tagName: "a", attributes: { href: "#" }}),
+            ])
+            builderBuffer.push([node.to-2, node.to, Decoration.replace({})])
+          } else if (node.type.id === TOKEN.RegularLink) {
+            builderBuffer.push([node.from, node.from+2, Decoration.replace({})])
+            builderBuffer.push([
+              node.from+2, node.to-2,
+              Decoration.mark({tagName: "a", attributes: { href: "#" }}),
+            ])
+            builderBuffer.push([node.to-2, node.to, Decoration.replace({})])
+          } else if (node.type.id === TOKEN.AngleLink) {
+            builderBuffer.push([node.from, node.from+1, Decoration.replace({})])
+            builderBuffer.push([
+              node.from+1, node.to-1,
+              Decoration.mark({tagName: "a", attributes: { href: "#" }}),
+            ])
+            builderBuffer.push([node.to-1, node.to, Decoration.replace({})])
           }
-          let displayHtml = displayText
-          if (!parent_is_markup) {
-            displayHtml = injectMarkupInLinktext(node, displayText, state, displayTextFromOffset)
-          }
-          builderBuffer.push([
-            node.from,
-            node.to,
-            Decoration.replace({
-              widget: new LinkWidget(
-                linkPath, displayHtml, linkHandler,
-                obsidianUtils.navigateToFile, obsidianUtils.navigateToOrgId,
-                link_css_classes,
-              ),
-            })
-          ])
         }
       } else if (
         node.type.id === TOKEN.TextBold ||
@@ -227,7 +178,9 @@ function loadDecorations(
   return builder.finish();
 }
 
-export const orgmodeLivePreview = (obsidianUtils: {
+export const orgmodeLivePreview = (
+  codeMirror: EditorView,
+  obsidianUtils: {
     navigateToFile: (filePath: string) => void,
     getImageUri: (linkPath: string) => string,
     navigateToOrgId: (orgCustomId: string) => void,
@@ -240,7 +193,47 @@ export const orgmodeLivePreview = (obsidianUtils: {
       return loadDecorations(transaction.state, obsidianUtils)
     },
     provide(field: StateField<DecorationSet>): Extension {
-      return EditorView.decorations.from(field);
+      return [
+        EditorView.decorations.from(field),
+        EditorView.domEventHandlers({
+          mousedown: (e: MouseEvent) => {
+            const clickPos = codeMirror.posAtCoords(e)
+            const state = codeMirror.state
+            let nodeIterator = syntaxTree(state).resolveStack(clickPos)
+            let linkNode = null
+            while (nodeIterator) {
+              if (
+                nodeIterator.node.type.id === TOKEN.RegularLink ||
+                nodeIterator.node.type.id === TOKEN.AngleLink ||
+                nodeIterator.node.type.id === TOKEN.PlainLink
+              ) {
+                linkNode = nodeIterator.node
+                break
+              }
+              nodeIterator = nodeIterator.next
+            }
+            if (!linkNode) {
+              return
+            }
+            const linkText = state.doc.sliceString(linkNode.from, linkNode.to)
+            const [linkPath, displayText, linkHandler, displayTextFromOffset] = extractLinkFromNode(linkNode.type.id, linkText)
+            const orgmodeDecorationSet = state.field(field)
+            orgmodeDecorationSet.between(clickPos, clickPos, (from, to, deco) => {
+              if (deco.spec.tagName === "a") {
+                if (linkHandler === "external") {
+                  window.open(linkPath)
+                } else if (linkHandler === "internal-file") {
+                  obsidianUtils.navigateToFile(linkPath)
+                } else if (linkHandler === "internal-id") {
+                  const orgCustomId = linkPath
+                  obsidianUtils.navigateToOrgId(orgCustomId)
+                }
+                return false
+              }
+            })
+          }
+        }),
+      ]
     },
   });
 }
