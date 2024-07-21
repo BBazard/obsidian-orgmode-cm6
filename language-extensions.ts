@@ -1,56 +1,11 @@
-import { HighlightStyle, foldService, syntaxTree } from "@codemirror/language"
+import { foldService, syntaxTree } from "@codemirror/language"
 import { EditorState } from "@codemirror/state";
-import { SyntaxNodeRef, SyntaxNode } from "@lezer/common"
-import { tags } from "@lezer/highlight"
+import { SyntaxNode } from "@lezer/common"
 import { LRParser } from "@lezer/lr";
 
 import { TOKEN } from 'codemirror-lang-orgmode';
 
-export const myHighlightStyle = HighlightStyle.define([
-  // Heading
-  { tag: tags.heading, class: "org-heading" },
-  // Title
-  { tag: tags.contentSeparator, class: "org-title org-heading" },
-  // Planning
-  { tag: tags.annotation, class: "org-planning" },
-  // PropertyDrawer
-  { tag: tags.meta, class: "org-propertydrawer" },
-  // Section/ZerothSection
-  { tag: tags.content, class: "org-section" },
-  // CommentLine
-  { tag: tags.lineComment, class: "org-comment" },
-  // TodoKeyword
-  { tag: tags.keyword, class: "org-keyword" },
-  // Priority
-  { tag: tags.unit, class: "org-priority org-heading" },
-  // Tags
-  { tag: tags.tagName, class: "org-tags org-heading" },
-  // TextBold
-  { tag: tags.strong, class: "org-text-bold org-section" },
-  // TextItalic
-  { tag: tags.emphasis, class: "org-text-italic org-section" },
-  // TextUnderline
-  { tag: tags.modifier, class: "org-text-underline org-section" },
-  // TextVerbatim
-  { tag: tags.literal, class: "org-text-verbatim org-section" },
-  // TextCode
-  { tag: tags.monospace, class: "org-text-code org-section" },
-  // TextStrikeThrough
-  { tag: tags.strikethrough, class: "org-text-strikethrough org-section" },
-  // Link
-  { tag: tags.link, class: "org-link org-section" },
-]);
-
-export const markupNodeTypeIds = [
-  TOKEN.TextBold,
-  TOKEN.TextItalic,
-  TOKEN.TextUnderline,
-  TOKEN.TextVerbatim,
-  TOKEN.TextCode,
-  TOKEN.TextStrikeThrough,
-]
-
-export function markupClass(node_type_id: number): string {
+export function nodeTypeClass(node_type_id: number): string {
   if (node_type_id === TOKEN.TextBold) {
     return "org-text-bold"
   } else if (node_type_id === TOKEN.TextItalic) {
@@ -63,6 +18,42 @@ export function markupClass(node_type_id: number): string {
     return "org-text-code"
   } else if (node_type_id === TOKEN.TextStrikeThrough) {
     return "org-text-strikethrough"
+  } else if (node_type_id === TOKEN.Block) {
+    return "org-block"
+  } else if (
+    node_type_id === TOKEN.RegularLink ||
+    node_type_id === TOKEN.AngleLink ||
+    node_type_id === TOKEN.PlainLink
+  ) {
+    return "org-link"
+  } else if (node_type_id === TOKEN.Heading) {
+    return "org-heading"
+  } else if (node_type_id === TOKEN.Title) {
+    return "org-title"
+  } else if (
+    node_type_id === TOKEN.PlanningDeadline ||
+    node_type_id === TOKEN.PlanningScheduled ||
+    node_type_id === TOKEN.PlanningClosed
+  ) {
+    return "org-planning"
+  } else if (node_type_id === TOKEN.PropertyDrawer) {
+    return "org-propertydrawer"
+  } else if (
+    node_type_id === TOKEN.ZerothSection ||
+    node_type_id === TOKEN.Section
+  ) {
+    return "org-section"
+  } else if (
+    node_type_id === TOKEN.CommentLine ||
+    node_type_id === TOKEN.KeywordComment
+  ) {
+    return "org-comment"
+  } else if (node_type_id === TOKEN.TodoKeyword) {
+    return "org-keyword"
+  } else if (node_type_id === TOKEN.Priority) {
+    return "org-priority"
+  } else if (node_type_id === TOKEN.Tags) {
+    return "org-tags"
   }
   throw Error("Not a markup node")
 }

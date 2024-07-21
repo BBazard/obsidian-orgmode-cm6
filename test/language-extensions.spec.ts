@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest'
 import { LRParser } from '@lezer/lr'
 import { EditorState } from "@codemirror/state";
-import { LanguageSupport } from "@codemirror/language"
+import { LanguageSupport, syntaxTree } from "@codemirror/language"
 
 import { OrgmodeLanguage, OrgmodeParser, TOKEN } from 'codemirror-lang-orgmode';
 

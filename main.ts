@@ -1,6 +1,6 @@
 import { EditorView, keymap, drawSelection, DecorationSet } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands"
-import { syntaxHighlighting, foldGutter, LanguageSupport, syntaxTree } from "@codemirror/language"
+import { foldGutter, LanguageSupport } from "@codemirror/language"
 import { EditorState, Extension, Compartment } from "@codemirror/state";
 import { LRParser } from "@lezer/lr";
 import { vim, Vim } from "@replit/codemirror-vim"
@@ -12,7 +12,7 @@ import { OrgmodeLanguage, OrgmodeParser } from 'codemirror-lang-orgmode';
 import { DEFAULT_SETTINGS, OrgmodePluginSettings } from 'settings';
 import { OrgmodeTask, StatusType } from 'org-tasks';
 import { OrgTasksSync } from 'org-tasks-file-sync';
-import { myHighlightStyle, makeHeadingsFoldable, iterateOrgIds, extractLinkFromNode } from 'language-extensions';
+import { makeHeadingsFoldable, iterateOrgIds } from 'language-extensions';
 import { orgmodeLivePreview } from "org-live-preview";
 
 let todoKeywordsReloader = new Compartment
@@ -168,7 +168,6 @@ class OrgView extends TextFileView {
         keymap.of([...defaultKeymap, ...historyKeymap]),
         drawSelection(),
         todoKeywordsReloader.of(new LanguageSupport(OrgmodeLanguage(orgmodeParser))),
-        syntaxHighlighting(myHighlightStyle),
         EditorView.lineWrapping,
         makeHeadingsFoldable,
         foldGutter({

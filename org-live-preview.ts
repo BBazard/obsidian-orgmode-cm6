@@ -13,7 +13,7 @@ import {
 } from "@codemirror/view";
 import { syntaxTree } from "@codemirror/language";
 import { TOKEN } from 'codemirror-lang-orgmode';
-import { LinkHandler, extractLinkFromNode, markupClass, markupNodeTypeIds } from 'language-extensions';
+import { extractLinkFromNode, nodeTypeClass } from 'language-extensions';
 
 class ImageWidget extends WidgetType {
   path: string
@@ -79,7 +79,7 @@ function loadDecorations(
         const lastLine = state.doc.lineAt(node.to-1)
         for (let i = firstLine.number; i <= lastLine.number; ++i) {
           const line = state.doc.line(i)
-          builderBuffer.push([line.from, line.from, Decoration.line({class: 'org-block'})])
+          builderBuffer.push([line.from, line.from, Decoration.line({class: nodeTypeClass(node.type.id)})])
         }
         const isCursorInsideFirstLine = (cursorPos >= firstLine.from && cursorPos <= firstLine.to)
         if (!isCursorInsideFirstLine) {
@@ -101,6 +101,7 @@ function loadDecorations(
         const [linkPath, displayText, linkHandler, displayTextFromOffset] = extractLinkFromNode(node.type.id, linkText)
         if (linkHandler === "internal-inline-image") {
           if (isCursorInsideDecoration) {
+            builderBuffer.push([node.from, node.to, Decoration.mark({class: nodeTypeClass(node.type.id)})])
             builderBuffer.push([
               node.to,
               node.to,
@@ -141,6 +142,8 @@ function loadDecorations(
             ])
             builderBuffer.push([node.to-1, node.to, Decoration.replace({})])
           }
+        } else {
+          builderBuffer.push([node.from, node.to, Decoration.mark({class: nodeTypeClass(node.type.id)})])
         }
       } else if (
         node.type.id === TOKEN.TextBold ||
@@ -152,21 +155,27 @@ function loadDecorations(
       ) {
         if (!isCursorInsideDecoration) {
           builderBuffer.push([node.from, node.from+1, Decoration.replace({})])
-          builderBuffer.push([node.to-1, node.to, Decoration.replace({})])
-          if (
-            node.node.parent.type.id === TOKEN.RegularLink ||
-            node.node.parent.type.id === TOKEN.AngleLink
-          ) {
-            builderBuffer.push([node.from+1, node.to-1, Decoration.mark({class: 'org-link'})])
-          }
-        } else {
-          if (
-            node.node.parent.type.id === TOKEN.RegularLink ||
-            node.node.parent.type.id === TOKEN.AngleLink
-          ) {
-            builderBuffer.push([node.from, node.to, Decoration.mark({class: 'org-link'})])
-          }
         }
+        builderBuffer.push([node.from, node.to, Decoration.mark({class: nodeTypeClass(node.type.id)})])
+        if (!isCursorInsideDecoration) {
+          builderBuffer.push([node.to-1, node.to, Decoration.replace({})])
+        }
+      } else if (
+        node.type.id === TOKEN.Heading ||
+        node.type.id === TOKEN.Title ||
+        node.type.id === TOKEN.PlanningDeadline ||
+        node.type.id === TOKEN.PlanningScheduled ||
+        node.type.id === TOKEN.PlanningClosed ||
+        node.type.id === TOKEN.PropertyDrawer ||
+        node.type.id === TOKEN.ZerothSection ||
+        node.type.id === TOKEN.Section ||
+        node.type.id === TOKEN.CommentLine ||
+        node.type.id === TOKEN.KeywordComment ||
+        node.type.id === TOKEN.TodoKeyword ||
+        node.type.id === TOKEN.Priority ||
+        node.type.id === TOKEN.Tags
+      ) {
+        builderBuffer.push([node.from, node.to, Decoration.mark({class: nodeTypeClass(node.type.id)})])
       }
     },
   })
