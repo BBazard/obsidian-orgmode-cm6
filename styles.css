@@ -117,6 +117,12 @@
 }
 
 
+.orgmode-view .cm-vimMode .cm-line ::selection {
+  background-color: var(--text-selection) !important;
+}
+.orgmode-view .cm-line.cm-line {
+  caret-color: var(--caret-color) !important;
+}
 
 .theme-dark .orgmode-view .cm-fat-cursor {
   background-color: var(--text-accent) !important;

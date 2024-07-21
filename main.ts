@@ -1,4 +1,4 @@
-import { EditorView, keymap, drawSelection, DecorationSet } from "@codemirror/view";
+import { EditorView, keymap } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands"
 import { foldGutter, LanguageSupport } from "@codemirror/language"
 import { EditorState, Extension, Compartment } from "@codemirror/state";
@@ -166,7 +166,6 @@ class OrgView extends TextFileView {
     this.extensions = [
         history(),
         keymap.of([...defaultKeymap, ...historyKeymap]),
-        drawSelection(),
         todoKeywordsReloader.of(new LanguageSupport(OrgmodeLanguage(orgmodeParser))),
         EditorView.lineWrapping,
         makeHeadingsFoldable,
