@@ -16,6 +16,7 @@ import { makeHeadingsFoldable, iterateOrgIds } from 'language-extensions';
 import { orgmodeLivePreview } from "org-live-preview";
 
 let todoKeywordsReloader = new Compartment
+let vimCompartment = new Compartment
 
 function parseKeywordTextArea(value: string): string[] {
   return value.replace(/\n/g, ",").split(',').map(x=>x.trim()).filter(x => x != "");
@@ -165,6 +166,8 @@ class OrgView extends TextFileView {
     })
     this.extensions = [
         history(),
+        // @ts-expect-error, not typed
+        vimCompartment.of((this.app.vault.getConfig("vimMode")) ? vim() : []),
         keymap.of([...defaultKeymap, ...historyKeymap]),
         todoKeywordsReloader.of(new LanguageSupport(OrgmodeLanguage(orgmodeParser))),
         EditorView.lineWrapping,
@@ -219,6 +222,22 @@ class OrgView extends TextFileView {
           if (v.docChanged) {
             this.requestSave()
           }
+          if (v.focusChanged) {
+            const compartmentState = vimCompartment.get(this.codeMirror.state) as Array<any>
+            const loaded = !!(Array.isArray(compartmentState) && compartmentState.length)
+            // @ts-expect-error, not typed
+            const userset = !!this.app.vault.getConfig("vimMode")
+            if (userset && !loaded) {
+              this.codeMirror.dispatch({
+                effects: vimCompartment.reconfigure(vim())
+              })
+            }
+            if (!userset && loaded) {
+              this.codeMirror.dispatch({
+                effects: vimCompartment.reconfigure([])
+              })
+            }
+          }
         }),
         orgmodeLivePreview(
           this.codeMirror,
@@ -269,14 +288,9 @@ class OrgView extends TextFileView {
           }
         }),
       ]
-    // @ts-expect-error, not typed
-    if (this.app?.vault?.config?.vimMode) {
-      this.extensions.push(vim()),
-      // see https://github.com/replit/codemirror-vim/blob/ab5a5a42171573604e8ae74b8a720aecd53d9eb1/src/vim.js#L266
-      Vim.defineEx('write', 'w', () => {
+    Vim.defineEx('write', 'w', () => {
         this.save()
       });
-    }
   }
 
   getViewData = () => {
