@@ -402,6 +402,22 @@ test("text markup nested", () => {
   testTree(tree, spec)
 })
 
+test("text markup criss-cross, different from emacs to form a tree", () => {
+  const content = "*one _two three* four_"
+  const tree = parser.parse(content)
+  const spec = [
+    "Program(",
+    "    ZerothSection(",
+    "        TextBold,",  // *one _two three*
+    "    )",
+    ")",
+  ].join("\n")
+  console.log(printTree(tree, content))
+  parser.configure({strict: true}).parse(content)
+  testTree(tree, spec)
+})
+
+
 test("title text markup", () => {
   const content = [
     "* normal title",

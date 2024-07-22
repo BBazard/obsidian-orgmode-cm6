@@ -789,8 +789,7 @@ export const notStartOfComment_lookaround = new ExternalTokenizer((input, stack)
   return
 })
 
-function checkEndOfTextMarkup(input: InputStream, stack: Stack, marker: number, peek_distance: number = 0) {
-  const context: OrgContext = stack.context
+function checkValidEndOfTextMarkup(input: InputStream, stack: Stack, marker: number, peek_distance: number = 0) {
   const MARKER = marker
   const previous = input.peek(peek_distance - 1)
   const current = input.peek(peek_distance)
@@ -860,7 +859,7 @@ export const isEndOfTextMarkup_tokenizer = new ExternalTokenizer((input, stack) 
     log(`XX REFUSE isEndOfTextMarkup, MARKER=${MARKER} unknown ${inputStreamEndString(input, stack)}`)
     return
   }
-  if (checkEndOfTextMarkup(input, stack, MARKER)) {
+  if (checkValidEndOfTextMarkup(input, stack, MARKER)) {
     input.advance()
     log(`== ACCEPT isEndOfTextMarkup ${inputStreamAccept(input, stack)}`)
     input.acceptToken(termsByMarker.get(MARKER))
@@ -870,60 +869,52 @@ export const isEndOfTextMarkup_tokenizer = new ExternalTokenizer((input, stack) 
   return
 })
 
-function isStartOfTextMarkup(input: InputStream, stack: Stack, termsByMarker: Map<number, number>, noEndOfLine: boolean, orgLinkParameters: string[]) {
-  const context: OrgContext = stack.context
+function checkValidStartOfTextMarkup(input: InputStream, stack: Stack, termsByMarker: Map<number, number>) {
   const previous = input.peek(-1)
   log(`previous ${stringifyCodeLogString(previous)}`)
   if (!checkMarkupPRE(previous)) {
-    log(`XX REFUSE isStartOfTextMarkup, not preceded by PRE ${inputStreamEndString(input, stack)}`)
+    log(`XX REFUSE checkValidStartOfTextMarkup, not preceded by PRE ${inputStreamEndString(input, stack)}`)
     return
   }
   let peek_distance = 0
   let c = input.peek(peek_distance)
   log(stringifyCodeLogString(c))
   if (!termsByMarker.has(c)) {
-    log(`XX REFUSE isStartOfTextMarkup, not starting with a textmarkup marker ${inputStreamEndString(input, stack)}`)
+    log(`XX REFUSE checkValidStartOfTextMarkup, not starting with a textmarkup marker ${inputStreamEndString(input, stack)}`)
     return
   }
   const MARKER = c
-  const term = termsByMarker.get(MARKER)
-  if (isEndOfLine(previous) && c === STAR) {
-    let extra_peek_distance = 1
-    c = input.peek(peek_distance + extra_peek_distance)
-    while (c === STAR) {
-      extra_peek_distance += 1
-      c = input.peek(peek_distance + extra_peek_distance)
-    }
-    if (isWhiteSpace(c)) {
-      log(`XX REFUSE isStartOfTextMarkup, start of heading ${inputStreamEndString(input, stack)}`)
-      return
-    }
+  if (checkStartOfHeading(input)) {
+    log(`XX REFUSE checkValidStartOfTextMarkup, start of heading ${inputStreamEndString(input, stack)}`)
+    return
   }
   peek_distance += 1
   c = input.peek(peek_distance)
-  log(stringifyCodeLogString(c))
   if (isWhiteSpace(c)) {
-    log(`XX REFUSE isStartOfTextMarkup, ${stringifyCodeLogString(MARKER)} followed by whitespace ${inputStreamEndString(input, stack)}`)
+    log(`XX REFUSE checkValidStartOfTextMarkup, ${stringifyCodeLogString(MARKER)} followed by whitespace ${inputStreamEndString(input, stack)}`)
     return
   } else if (isEndOfLine(c)) {
-    log(`XX REFUSE isStartOfTextMarkup, ${stringifyCodeLogString(MARKER)} followed by endofline ${inputStreamEndString(input, stack)}`)
+    log(`XX REFUSE checkValidStartOfTextMarkup, ${stringifyCodeLogString(MARKER)} followed by endofline ${inputStreamEndString(input, stack)}`)
     return
-  } else if (c === MARKER && checkEndOfTextMarkup(input, stack, MARKER, peek_distance)) {
-      log(`== REFUSE isStartOfTextMarkup double marker ${inputStreamEndString(input, stack)}`)
-      return
+  } else if (c === MARKER && checkValidEndOfTextMarkup(input, stack, MARKER, peek_distance)) {
+    log(`== REFUSE checkValidStartOfTextMarkup double marker ${inputStreamEndString(input, stack)}`)
+    return
   }
+  return true
+}
+
+function isStartOfTextMarkup(input: InputStream, stack: Stack, termsByMarker: Map<number, number>, noEndOfLine: boolean, orgLinkParameters: string[]) {
+  const context: OrgContext = stack.context
+  if (!checkValidStartOfTextMarkup(input, stack, termsByMarker)) {
+    log(`XX REFUSE isStartOfTextMarkup, not valid start ${inputStreamEndString(input, stack)}`)
+    return
+  }
+  let peek_distance = 0
+  const MARKER = input.peek(peek_distance)
+  const term = termsByMarker.get(MARKER)
+  peek_distance += 1
+  let c = input.peek(peek_distance)
   while (true) {
-    while (
-      c !== MARKER &&
-      !isEndOfLine(c) &&
-      !(context.parentObjects.includes(ParentObject.RegularLink) && matchWords(input, ["]]"], peek_distance)) &&
-      !(!context.parentObjects.includes(ParentObject.RegularLink) && checkRegularLink(input, stack, orgLinkParameters, peek_distance)) &&
-      !(context.parentObjects.includes(ParentObject.AngleLink) && matchWords(input, [">"], peek_distance)) &&
-      !(!context.parentObjects.includes(ParentObject.AngleLink) && checkAngleLink(input, stack, orgLinkParameters, peek_distance))
-    ) {
-      peek_distance += 1
-      c = input.peek(peek_distance)
-    }
     if (context.parentObjects.includes(ParentObject.RegularLink) && matchWords(input, ["]]"], peek_distance)) {
       log(`== REFUSE isStartOfTextMarkup unfinished markup before end of link ]] ${inputStreamEndString(input, stack)}`)
       return
@@ -949,13 +940,32 @@ function isStartOfTextMarkup(input: InputStream, stack: Stack, termsByMarker: Ma
         c = input.peek(peek_distance)
         log(stringifyCodeLogString(c))
       }
-      if (checkEndOfTextMarkup(input, stack, MARKER, peek_distance)) {
+      if (checkValidEndOfTextMarkup(input, stack, MARKER, peek_distance)) {
         peek_distance += 1
         c = input.peek(peek_distance)
         log(`== ACCEPT isStartOfTextMarkup ${inputStreamAccept(input, stack)}`)
         return term
       }
-    } else {  // NEWLINE
+    // Check end of markup started earlier
+    } else if (context.parentObjects.includes(ParentObject.TextBold) && checkValidEndOfTextMarkup(input, stack, STAR, peek_distance)) {
+        log(`XX REFUSE isStartOfTextMarkup, reached end of current TextBold ${inputStreamEndString(input, stack)}`)
+        return
+    } else if (context.parentObjects.includes(ParentObject.TextItalic) && checkValidEndOfTextMarkup(input, stack, '/'.charCodeAt(0), peek_distance)) {
+      log(`XX REFUSE isStartOfTextMarkup, reached end of current TextItalic ${inputStreamEndString(input, stack)}`)
+      return
+    } else if (context.parentObjects.includes(ParentObject.TextUnderline) && checkValidEndOfTextMarkup(input, stack, '_'.charCodeAt(0), peek_distance)) {
+      log(`XX REFUSE isStartOfTextMarkup, reached end of current TextUnderline ${inputStreamEndString(input, stack)}`)
+      return
+    } else if (context.parentObjects.includes(ParentObject.TextVerbatim) && checkValidEndOfTextMarkup(input, stack, '='.charCodeAt(0), peek_distance)) {
+      log(`XX REFUSE isStartOfTextMarkup, reached end of current TextVerbatim ${inputStreamEndString(input, stack)}`)
+      return
+    } else if (context.parentObjects.includes(ParentObject.TextCode) && checkValidEndOfTextMarkup(input, stack, '~'.charCodeAt(0), peek_distance)) {
+      log(`XX REFUSE isStartOfTextMarkup, reached end of current TextCode ${inputStreamEndString(input, stack)}`)
+      return
+    } else if (context.parentObjects.includes(ParentObject.TextStrikeThrough) && checkValidEndOfTextMarkup(input, stack, '+'.charCodeAt(0), peek_distance)) {
+      log(`XX REFUSE isStartOfTextMarkup, reached end of current TextStrikeThrough ${inputStreamEndString(input, stack)}`)
+      return
+    } else if (c === NEW_LINE) {
       if (noEndOfLine) {
         log(`XX REFUSE isStartOfTextMarkup reached endofline ${inputStreamEndString(input, stack)}`)
         return
@@ -1644,7 +1654,7 @@ export const object_tokenizer = (orgLinkParameters: string[]) => {
       ///// end of markup /////
       } else if (
         MARKER && c === MARKER &&
-        checkEndOfTextMarkup(input, stack, MARKER)
+        checkValidEndOfTextMarkup(input, stack, MARKER)
       ) {
         log(`== ACCEPT object_tokenizer innermostParent=${innerMostParent} before end of markup ${inputStreamAccept(input, stack)}`)
         input.acceptToken(objectToken)
