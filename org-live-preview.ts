@@ -38,30 +38,6 @@ class ImageWidget extends WidgetType {
   }
 }
 
-class BlockHeaderWidget extends WidgetType {
-  blockHeaderText: string
-  constructor(blockHeaderText: string) {
-    super()
-    this.blockHeaderText = blockHeaderText
-  }
-  eq(other: BlockHeaderWidget) {
-    return this.blockHeaderText == other.blockHeaderText
-  }
-  toDOM(view: EditorView): HTMLElement {
-    const span = document.createElement("span");
-    span.innerText = this.blockHeaderText
-    span.setCssStyles({
-      "fontSize": "var(--font-ui-smaller)",
-      "color": "var(--text-muted)",
-      "fontFamily": "var(--font-interface)",
-      "padding": "var(--size-4-1) var(--size-4-2)",
-      "position": "relative",
-      "top": "-0.2em",
-    });
-    return span
-  }
-}
-
 function isNodeSelected(selection: {from: number, to: number}, node: {from: number, to: number}) {
   return (
       // selection starts inside node
@@ -93,10 +69,8 @@ function loadDecorations(
         }
         const firstLineIsSelected = isNodeSelected(selectionPos, firstLine)
         if (!firstLineIsSelected) {
-          const blockHeaderText = state.doc.sliceString(firstLine.from, firstLine.to).slice("#+BEGIN_".length)
-          builderBuffer.push([firstLine.from, firstLine.to, Decoration.replace({
-            widget: new BlockHeaderWidget(blockHeaderText),
-          })])
+          builderBuffer.push([firstLine.from, firstLine.from+"#+BEGIN_".length, Decoration.replace({})])
+          builderBuffer.push([firstLine.from+"#+BEGIN_".length, firstLine.to, Decoration.mark({class: "org-block-header"})])
         }
         const lastLineIsSelected = isNodeSelected(selectionPos, lastLine)
         if (!lastLineIsSelected) {

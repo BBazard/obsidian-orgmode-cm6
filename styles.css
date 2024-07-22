@@ -176,3 +176,12 @@
 .theme-light .orgmode-view .org-block {
   background-color: #d2d2ed;
 }
+
+.orgmode-view .org-block-header {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  font-family: var(--font-interface);
+  padding: var(--size-4-1) var(--size-4-2);
+  position: relative;
+  top: -0.2em;
+}
