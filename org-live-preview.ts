@@ -62,6 +62,16 @@ class BlockHeaderWidget extends WidgetType {
   }
 }
 
+function isNodeSelected(selection: {from: number, to: number}, node: {from: number, to: number}) {
+  return (
+      // selection starts inside node
+      (selection.from >= node.from && selection.from <= node.to) ||
+      // selection ends inside node
+      (selection.to >= node.from && selection.to <= node.to) ||
+      // selection is bigger than node
+      (selection.from < node.from && selection.to > node.to))
+}
+
 function loadDecorations(
   state: EditorState,
   obsidianUtils: {
@@ -70,10 +80,10 @@ function loadDecorations(
     navigateToOrgId: (orgCustomId: string) => void,
 }) {
   const builderBuffer = new Array<[number, number, Decoration]>
-  const cursorPos = state.selection.main.head
+  const selectionPos = state.selection.main
   syntaxTree(state).iterate({
     enter(node) {
-      const isCursorInsideDecoration = (cursorPos >= node.from && cursorPos <= node.to)
+      const nodeIsSelected = isNodeSelected(selectionPos, node)
       if (node.type.id === TOKEN.Block) {
         const firstLine = state.doc.lineAt(node.from)
         const lastLine = state.doc.lineAt(node.to-1)
@@ -81,15 +91,15 @@ function loadDecorations(
           const line = state.doc.line(i)
           builderBuffer.push([line.from, line.from, Decoration.line({class: nodeTypeClass(node.type.id)})])
         }
-        const isCursorInsideFirstLine = (cursorPos >= firstLine.from && cursorPos <= firstLine.to)
-        if (!isCursorInsideFirstLine) {
+        const firstLineIsSelected = isNodeSelected(selectionPos, firstLine)
+        if (!firstLineIsSelected) {
           const blockHeaderText = state.doc.sliceString(firstLine.from, firstLine.to).slice("#+BEGIN_".length)
           builderBuffer.push([firstLine.from, firstLine.to, Decoration.replace({
             widget: new BlockHeaderWidget(blockHeaderText),
           })])
         }
-        const isCursorInsideLastLine = (cursorPos >= lastLine.from && cursorPos <= lastLine.to)
-        if (!isCursorInsideLastLine) {
+        const lastLineIsSelected = isNodeSelected(selectionPos, lastLine)
+        if (!lastLineIsSelected) {
           builderBuffer.push([lastLine.from, lastLine.to, Decoration.replace({})])
         }
       } else if (
@@ -100,7 +110,7 @@ function loadDecorations(
         const linkText = state.doc.sliceString(node.from, node.to)
         const [linkPath, displayText, linkHandler, displayTextFromOffset] = extractLinkFromNode(node.type.id, linkText)
         if (linkHandler === "internal-inline-image") {
-          if (isCursorInsideDecoration) {
+          if (nodeIsSelected) {
             builderBuffer.push([node.from, node.to, Decoration.mark({class: nodeTypeClass(node.type.id)})])
             builderBuffer.push([
               node.to,
@@ -119,7 +129,7 @@ function loadDecorations(
               })
             ])
           }
-        } else if (!isCursorInsideDecoration) {
+        } else if (!nodeIsSelected) {
           if (node.type.id === TOKEN.RegularLink && linkPath !== displayText) {
             builderBuffer.push([node.from, node.from+displayTextFromOffset, Decoration.replace({})])
             builderBuffer.push([
@@ -153,11 +163,11 @@ function loadDecorations(
         node.type.id === TOKEN.TextCode ||
         node.type.id === TOKEN.TextStrikeThrough
       ) {
-        if (!isCursorInsideDecoration) {
+        if (!nodeIsSelected) {
           builderBuffer.push([node.from, node.from+1, Decoration.replace({})])
         }
         builderBuffer.push([node.from, node.to, Decoration.mark({class: nodeTypeClass(node.type.id)})])
-        if (!isCursorInsideDecoration) {
+        if (!nodeIsSelected) {
           builderBuffer.push([node.to-1, node.to, Decoration.replace({})])
         }
       } else if (
