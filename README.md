@@ -4,18 +4,6 @@
 
 ![Screenshot](./screenshot.png)
 
-This plugin is using a separate [codemirror 6](https://codemirror.net) instance with a custom [lezer](https://lezer.codemirror.net) grammar (not [everything](https://orgmode.org/worg/org-syntax.html) is implemented).
-Inspired by https://github.com/ryanpcmcquen/obsidian-org-mode and https://github.com/nothingislost/obsidian-cm6-attributes.
-
-## Features
-
-- collapsable headings
-- customizable todo keywords in the settings
-- customizable colors via css (use the [styles.css](./styles.css) as a [css snippet](https://help.obsidian.md/Extending+Obsidian/CSS+snippets) and tweak it)
-- text markup (bold, italic, underline, strike-through)
-- links (url, vault file, a link to an image is rendered)
-- show orgmode tasks in markdown files (unstable feature, see the [dedicated section](#show-orgmode-tasks-in-markdown-files))
-
 ## Usage
 
 By default org files are not shown in the sidebar.
@@ -23,9 +11,7 @@ To display them you need to go into the obsidian settings, section `Files and li
 
 ![detect-all-file-extensions](https://github.com/BBazard/obsidian-orgmode-cm6/assets/10139245/e6a91e66-295d-4057-bf80-e43dcdb8e3e7)
 
-
-
-To create an org file in your vault, you currently have to create outside obsidian as obsidian doesn't allow to create a non-markdown file.
+To create an org file in your vault, you currently have to create it outside obsidian, as obsidian doesn't allow to create a non-markdown file.
 
 If you don't already have an org file, try to create a file called `todo.org` with the following content:
 
@@ -46,6 +32,55 @@ SCHEDULED: <2023-12-08 Fri 11:13>
 
 a [[https://github.com/BBazard/obsidian-orgmode-cm6][link]]
 ```
+
+## Supported features
+
+### Orgmode Editor
+
+- Live Preview
+- Syntax highlighting (with overridable css classes)
+- Customizable Todo Keywords in settings
+- Folding (click in the gutter on the first line of the element to fold it)
+- Wiki links (`[[unicorn]]` will open the file unicorn.org anywhere in the vault or fallback to unicorn.md)
+- Inline images (`[[myimage.png]]` will display the image if it exists in the vault)
+- ID links (`[[id:12345]]` will redirect to the heading with the matching :ID: in a property drawer located in any org file in the vault)
+- Vim support (if activated in Obsidian)
+
+### Orgmode Parser (syntax highlighting)
+
+Following [Org Syntax](https://orgmode.org/worg/org-syntax.html)
+
+- [x] Heading (nested, no support for COMMENT heading)
+- [x] Section (including zeroth section)
+- [x] Text markup (bold, italic, underline, etc...)
+- [x] Link (regular link, angle link, plain link)
+- [x] Combination of markup and link
+- [x] Comment line
+- [x] Keyword line
+- [x] Planning line
+- [x] Property Drawer
+- [x] Lesser Block (all unformatted currently)
+- [ ] Dynamic Block
+- [ ] Drawer
+- [ ] List and Checkbox
+- [ ] Horizontal rule
+- [ ] Timestamp
+- [ ] Clock
+- [ ] Diary Sexp
+- [ ] Footnote
+- [ ] Table
+- [ ] Latex
+- [ ] : Fixed-width line (you can use a Block instead)
+
+## Implementation details
+
+- The orgmode files are handled with a [codemirror 6](https://codemirror.net) instance which is separate from the one used by the markdown files. That means the plugin has to re-implement all features working for markdown files.
+
+- The parser reads an orgmode file and builds a tree of syntax nodes by using a [lezer](https://lezer.codemirror.net) grammar with custom tokenizers. This approach allows to match tokens more precisely than the regex-based approach of Emacs. For example, planning lines are only matched after a heading and not in the middle of a section.
+
+- Overlapping tokens are not considered valid. Take for example: `*one _two three* four_`. Emacs, using regexes would have `*one _two three*` as bold and `_two three* four_` as underline. The lezer parser is instead considering `*one _two three*` as bold and ` four_` as normal text, it makes it possible to have the text markup range as its own syntax node.
+
+- There is no limits to the level of headings (so no Inlinetask) or the number of lines of a text markup.
 
 ## Show orgmode tasks in markdown files
 
