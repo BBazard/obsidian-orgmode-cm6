@@ -1,3 +1,7 @@
+.orgmode-view div.cm-line {
+  font-family: var(--font-text);
+}
+
 .cm-line:has(.org-heading) {
   font-size: 1.05em;
 }
@@ -171,16 +175,17 @@
 
 .theme-dark .orgmode-view .org-block {
   background-color: #1a1a20;
+  font-family: var(--font-monospace);
 }
 
 .theme-light .orgmode-view .org-block {
   background-color: #d2d2ed;
+  font-family: var(--font-monospace);
 }
 
 .orgmode-view .org-block-header {
   font-size: var(--font-ui-smaller);
   color: var(--text-muted);
-  font-family: var(--font-interface);
   padding: var(--size-4-1) var(--size-4-2);
   position: relative;
   top: -0.2em;
