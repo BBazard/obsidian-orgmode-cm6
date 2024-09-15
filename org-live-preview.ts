@@ -144,8 +144,14 @@ function loadDecorations(
         if (!nodeIsSelected) {
           builderBuffer.push([node.to-1, node.to, Decoration.replace({})])
         }
+      } else if (node.type.id === TOKEN.Heading) {
+        const headingLine = state.doc.lineAt(node.from).text
+        const headingLevel = headingLine.match(/^\*+/)[0].length
+        const headingClass = nodeTypeClass(node.type.id)
+        builderBuffer.push([node.from, node.to, Decoration.mark({
+          class: `${headingClass} ${headingClass}-${headingLevel}`
+        })])
       } else if (
-        node.type.id === TOKEN.Heading ||
         node.type.id === TOKEN.Title ||
         node.type.id === TOKEN.PlanningDeadline ||
         node.type.id === TOKEN.PlanningScheduled ||
