@@ -14,6 +14,7 @@ import {
 import { syntaxTree } from "@codemirror/language";
 import { TOKEN } from 'codemirror-lang-orgmode';
 import { extractLinkFromNode, nodeTypeClass } from 'language-extensions';
+import { OrgmodePluginSettings } from "settings";
 
 class ImageWidget extends WidgetType {
   path: string
@@ -50,6 +51,7 @@ function isNodeSelected(selection: {from: number, to: number}, node: {from: numb
 
 function loadDecorations(
   state: EditorState,
+  settings: OrgmodePluginSettings,
   obsidianUtils: {
     navigateToFile: (filePath: string) => void,
     getImageUri: (linkPath: string) => string,
@@ -148,8 +150,16 @@ function loadDecorations(
         const headingLine = state.doc.lineAt(node.from)
         const headingLevel = headingLine.text.match(/^\*+/)[0].length
         const headingClass = nodeTypeClass(node.type.id)
+        const starsPos = {from: headingLine.from, to: headingLine.from+headingLevel+1}
+        const nodeStarsIsSelected = isNodeSelected(selectionPos, starsPos)
+        if (settings.hideStars && !nodeStarsIsSelected) {
+          builderBuffer.push([headingLine.from, headingLine.from+headingLevel+1, Decoration.replace({})])
+          builderBuffer.push([headingLine.from, headingLine.to, Decoration.mark({
+            class: `${headingClass} ${headingClass}-${headingLevel}`
+          })])
+        }
         builderBuffer.push([headingLine.from, headingLine.to, Decoration.mark({
-          class: `${headingClass} ${headingClass}-${headingLevel}`
+          class: `${headingClass}`
         })])
         const section = node.node.getChild(TOKEN.Section)
         if (section) {
@@ -185,6 +195,7 @@ function loadDecorations(
 
 export const orgmodeLivePreview = (
   codeMirror: EditorView,
+  settings: OrgmodePluginSettings,
   obsidianUtils: {
     navigateToFile: (filePath: string) => void,
     getImageUri: (linkPath: string) => string,
@@ -192,10 +203,10 @@ export const orgmodeLivePreview = (
 }) => {
   return StateField.define<DecorationSet>({
     create(state: EditorState): DecorationSet {
-      return loadDecorations(state, obsidianUtils)
+      return loadDecorations(state, settings, obsidianUtils)
     },
     update(oldState: DecorationSet, transaction: Transaction): DecorationSet {
-      return loadDecorations(transaction.state, obsidianUtils)
+      return loadDecorations(transaction.state, settings, obsidianUtils)
     },
     provide(field: StateField<DecorationSet>): Extension {
       return [

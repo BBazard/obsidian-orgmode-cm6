@@ -9,6 +9,7 @@ import { OrgmodePluginSettings } from 'settings';
 const settings: OrgmodePluginSettings = {
   todoKeywords: ["TODO"],
   doneKeywords: ["DONE"],
+  hideStars: false,
 };
 const words = [...settings.todoKeywords, ...settings.doneKeywords]
 const parser: LRParser = OrgmodeParser(words)

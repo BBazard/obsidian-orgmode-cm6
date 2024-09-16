@@ -53,6 +53,16 @@ export class OrgmodeSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           })
       })
+    new Setting(containerEl)
+      .setName('Hide heading stars')
+      .setDesc('Hiding the stars is useful when using CSS to replace them')
+      .addToggle((toggle) => {
+        toggle.setValue(this.plugin.settings.hideStars)
+          .onChange(async (value) => {
+            this.plugin.settings.hideStars = value
+            await this.plugin.saveSettings();
+          })
+      })
   }
 }
 
@@ -81,7 +91,7 @@ export default class OrgmodePlugin extends Plugin {
   }
 
   orgViewCreator = (leaf: WorkspaceLeaf) => {
-    return new OrgView(leaf, this.orgmodeParser);
+    return new OrgView(leaf, this.orgmodeParser, this.settings);
   };
 
   async onload() {
@@ -159,7 +169,7 @@ class OrgView extends TextFileView {
   codeMirror: EditorView;
   extensions: Extension[];
 
-  constructor(leaf: WorkspaceLeaf, orgmodeParser: LRParser) {
+  constructor(leaf: WorkspaceLeaf, orgmodeParser: LRParser, settings: OrgmodePluginSettings) {
     super(leaf);
     this.codeMirror = new EditorView({
       parent: this.contentEl
@@ -241,6 +251,7 @@ class OrgView extends TextFileView {
         }),
         orgmodeLivePreview(
           this.codeMirror,
+          settings,
           {
           navigateToFile: (filePath: string) => {
             try {
