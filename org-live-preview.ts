@@ -145,12 +145,18 @@ function loadDecorations(
           builderBuffer.push([node.to-1, node.to, Decoration.replace({})])
         }
       } else if (node.type.id === TOKEN.Heading) {
-        const headingLine = state.doc.lineAt(node.from).text
-        const headingLevel = headingLine.match(/^\*+/)[0].length
+        const headingLine = state.doc.lineAt(node.from)
+        const headingLevel = headingLine.text.match(/^\*+/)[0].length
         const headingClass = nodeTypeClass(node.type.id)
-        builderBuffer.push([node.from, node.to, Decoration.mark({
+        builderBuffer.push([headingLine.from, headingLine.to, Decoration.mark({
           class: `${headingClass} ${headingClass}-${headingLevel}`
         })])
+        const section = node.node.getChild(TOKEN.Section)
+        if (section) {
+          builderBuffer.push([section.from, section.to, Decoration.mark({
+            class: `${headingClass}-${headingLevel}`
+          })])
+        }
       } else if (
         node.type.id === TOKEN.Title ||
         node.type.id === TOKEN.PlanningDeadline ||
