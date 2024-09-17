@@ -157,10 +157,11 @@ function loadDecorations(
           builderBuffer.push([headingLine.from, headingLine.to, Decoration.mark({
             class: `${headingClass} ${headingClass}-${headingLevel}`
           })])
+        } else {
+          builderBuffer.push([headingLine.from, headingLine.to, Decoration.mark({
+            class: `${headingClass} ${headingClass}-${headingLevel}`
+          })])
         }
-        builderBuffer.push([headingLine.from, headingLine.to, Decoration.mark({
-          class: `${headingClass}`
-        })])
         const section = node.node.getChild(TOKEN.Section)
         if (section) {
           builderBuffer.push([section.from, section.to, Decoration.mark({
