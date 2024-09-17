@@ -1,3 +1,6 @@
+.orgmode-view {
+  font-size: var(--font-text-size);
+}
 .orgmode-view div.cm-line {
   font-family: var(--font-text);
 }
