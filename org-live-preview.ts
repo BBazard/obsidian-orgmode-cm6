@@ -2,7 +2,7 @@ import {
   Extension,
   StateField,
   Transaction,
-  RangeSetBuilder,
+  RangeSet,
   EditorState,
 } from "@codemirror/state";
 import {
@@ -186,12 +186,11 @@ function loadDecorations(
       }
     },
   })
-  builderBuffer.sort(([from, to, x], [from2, to2, x2]) => from - from2)
-  const builder = new RangeSetBuilder<Decoration>();
+  const decorationRanges = []
   for (const [from, to, decoration] of builderBuffer) {
-    builder.add(from, to, decoration)
+    decorationRanges.push(decoration.range(from, to))
   }
-  return builder.finish();
+  return RangeSet.of(decorationRanges, true)
 }
 
 export const orgmodeLivePreview = (
