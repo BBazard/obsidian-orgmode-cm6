@@ -9,7 +9,6 @@
 	},
 	"devDependencies": {
 		"@codemirror/commands": "^6.0.0",
-		"@codemirror/highlight": "^0.19.8",
 		"@codemirror/language": "^6.0.0",
 		"@codemirror/search": "^6.0.0",
 		"@codemirror/state": "^6.0.0",
