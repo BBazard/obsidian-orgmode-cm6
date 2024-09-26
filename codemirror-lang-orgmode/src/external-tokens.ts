@@ -1,8 +1,6 @@
 import { ExternalTokenizer, InputStream, Stack, ContextTracker } from '@lezer/lr';
 import {
   stars, TodoKeyword, Priority, Title, endofline,
-  Block,
-  notStartOfABlock,
   startOfComment,
   startOfKeywordComment,
   PropertyDrawer,
@@ -36,6 +34,18 @@ import {
   PlanningValue,
   isStartOfPlanningLine,
   objectToken,
+  notStartOfABlock,
+  BlockContentCenter,
+  BlockContentQuote,
+  BlockContentSpecial,
+  BlockContentComment,
+  BlockContentExample,
+  BlockContentExport,
+  BlockContentSrc,
+  BlockContentVerse,
+  BlockContentDynamic,
+  BlockFooter,
+  BlockHeader
 } from './parser.terms';
 
 const NEW_LINE = '\n'.charCodeAt(0);
@@ -240,118 +250,131 @@ function checkTags(input: InputStream, advanceInput: boolean) {
   }
 }
 
-type BlockType = "COMMENT" | "EXAMPLE" | "EXPORT" | "SRC" | "VERSE"
-const getBlockType = (s: string): BlockType => {
-  if (
-    s === "COMMENT" || s=== "EXAMPLE" || s === "EXPORT" || s === "SRC" || s === "VERSE"
-  ) {
-    return s
+const getBlockContentTerm = (s: string): number => {
+  s = s.toLowerCase()
+  if (s === ":") {
+    return BlockContentDynamic
+  } else if (s === "_center") {
+    return BlockContentCenter
+  } else if (s === "_quote") {
+    return BlockContentQuote
+  } else if (s === "_comment") {
+    return BlockContentComment
+  } else if (s === "_example") {
+    return BlockContentExample
+  } else if (s === "_export") {
+    return BlockContentExport
+  } else if (s === "_src") {
+    return BlockContentSrc
+  } else if (s === "_verse") {
+    return BlockContentVerse
+  } else if (s.startsWith("_") && s.length > 1) {
+    return BlockContentSpecial
   }
   return null
 }
 
-function checkBlockStart(input: InputStream, stack: Stack, lookaround: boolean): BlockType {
+function checkBlockStart(input: InputStream, stack: Stack): [number, string] {
   log(`start checkBlockStart ${inputStreamBeginString(input)}`)
   let previous = input.peek(-1)
   if (!isEndOfLine(previous)) {
     log(`XX REFUSE checkBlockStart, previous not sof or newline ${inputStreamAccept(input, stack)}`)
-    return null
+    return [0, null]
   }
   let peek_distance = 0
   let c = input.peek(peek_distance)
-  let s = String.fromCharCode(c)
-  for (let i = 0; i < "#+BEGIN_".length-1; ++i) {
+  let blockPrefix = String.fromCharCode(c)
+  for (let i = 0; i < "#+BEGIN".length-1; ++i) {
     peek_distance += 1
     c = input.peek(peek_distance)
-    s += String.fromCharCode(c)
+    blockPrefix += String.fromCharCode(c)
   }
-  if (s.toUpperCase() !== "#+BEGIN_") {
-    log(`XX REFUSE checkBlockStart, line not starting with #+BEGIN_ ${inputStreamEndString(input, stack)}`)
-    return null
+  if (blockPrefix.toUpperCase() !== "#+BEGIN") {
+    log(`XX REFUSE checkBlockStart, line not starting with #+BEGIN ${inputStreamEndString(input, stack)}`)
+    return [0, null]
   }
   peek_distance += 1
   c = input.peek(peek_distance)
-  s = String.fromCharCode(c)
-  while (!isEndOfLine(c) && s.length < 7) {
+  let blockSuffix = String.fromCharCode(c)
+  while (!isEndOfLine(c) && !isWhiteSpace(c)) {
     peek_distance += 1
     c = input.peek(peek_distance)
-    s += String.fromCharCode(c)
-    if (
-      s.toUpperCase() === "COMMENT" ||
-      s.toUpperCase() === "EXAMPLE" ||
-      s.toUpperCase() === "EXPORT" ||
-      s.toUpperCase() === "SRC" ||
-      s.toUpperCase() === "VERSE"
-    ) {
-      if (!lookaround) {
-        input.advance(peek_distance)
-        while (!isEndOfLine(c)) {
-          c = input.advance()
-        }
-      }
-      return getBlockType(s.toUpperCase())
+    if (!isEndOfLine(c) && !isWhiteSpace(c)) {
+      blockSuffix += String.fromCharCode(c)
     }
   }
+  const term = getBlockContentTerm(blockSuffix)
+  if (term) {
+    input.peek(peek_distance)
+    while (!isEndOfLine(c)) {
+      peek_distance += 1
+      c = input.peek(peek_distance)
+    }
+    if (c === NEW_LINE) {
+      peek_distance += 1
+    }
+    return [peek_distance, blockSuffix]
+  }
   log(`XX REFUSE checkBlockStart, reached endofline or 7 chars ${inputStreamEndString(input, stack)}`)
-  return null
+  return [0, null]
 }
 
-function checkBlockEnd(input: InputStream, stack: Stack, lookaround: boolean, blockType: BlockType, start_peek_distance: number = 0): boolean {
+function checkBlockEnd(input: InputStream, stack: Stack, blockSuffix: string, start_peek_distance: number = 0): number {
   log(`start checkBlockEnd ${inputStreamBeginString(input)} + ${start_peek_distance}`)
   let peek_distance = start_peek_distance
   let previous = input.peek(peek_distance - 1)
   if (!isEndOfLine(previous)) {
     log(`XX REFUSE checkBlockEnd, previous not sof or newline ${inputStreamAccept(input, stack)}`)
-    return false
+    return null
   }
   let c = input.peek(peek_distance)
-  let s = String.fromCharCode(c)
-  for (let i = 0; i < "#+END_".length-1; ++i) {
+  let blockPrefix = String.fromCharCode(c)
+  for (let i = 0; i < "#+END".length-1; ++i) {
     peek_distance += 1
     c = input.peek(peek_distance)
-    s += String.fromCharCode(c)
+    blockPrefix += String.fromCharCode(c)
   }
-  if (s.toUpperCase() !== "#+END_") {
+  if (blockPrefix.toUpperCase() !== "#+END") {
     log(`XX REFUSE checkBlockEnd, line not starting with #+END_ ${inputStreamEndString(input, stack)}`)
-    return false
+    return null
   }
   peek_distance += 1
   c = input.peek(peek_distance)
-  s = String.fromCharCode(c)
-  while (!isEndOfLine(c) && s.length < 7) {
+  let blockSuffixCandidate = String.fromCharCode(c)
+  while (!isEndOfLine(c) && blockSuffixCandidate.length <= blockSuffix.length) {
     peek_distance += 1
     c = input.peek(peek_distance)
-    s += String.fromCharCode(c)
-    if (s.toUpperCase() === blockType) {
-      if (!lookaround) {
-        input.advance(peek_distance)
-        while (!isEndOfLine(c)) {
-          c = input.advance()
-        }
+    blockSuffixCandidate += String.fromCharCode(c)
+    if (blockSuffixCandidate.toLowerCase() === blockSuffix.toLowerCase()) {
+      while (!isEndOfLine(c)) {
+        peek_distance += 1
+        c = input.peek(peek_distance)
       }
-      return true
+      if (c === NEW_LINE) {
+        peek_distance += 1
+      }
+      return peek_distance
     }
   }
   log(`XX REFUSE checkBlockEnd, reaching endofline or char 7 ${inputStreamEndString(input, stack)}`)
-  return false
+  return null
 }
 
-function checkBlock(input: InputStream, stack: Stack, lookaround: boolean, peek_distance: number = 0): boolean {
-  const blockType = checkBlockStart(input, stack, lookaround)
-  if (!blockType) {
-    log(`XX REFUSE checkBlock, checkBlockStart failed ${inputStreamEndString(input, stack)}`)
+function checkMatchingBlockFooter(input: InputStream, stack: Stack, blockSuffix: string, peek_distance: number = 0): boolean {
+  if (!blockSuffix) {
+    log(`XX REFUSE checkMatchingBlockFooter, checkBlockStart failed ${inputStreamEndString(input, stack)}`)
     return false
   }
   let c = input.peek(peek_distance)
   if (c === EOF) {
-    log(`XX REFUSE checkBlock, reached EOF ${inputStreamEndString(input, stack)}`)
+    log(`XX REFUSE checkMatchingBlockFooter, reached EOF ${inputStreamEndString(input, stack)}`)
     return false
   }
   while (true) {
     peek_distance += 1
     c = input.peek(peek_distance)
-    if (checkBlockEnd(input, stack, lookaround, blockType, peek_distance)) {
-      peek_distance = 0
+    const peek_distance_block_end = checkBlockEnd(input, stack, blockSuffix, peek_distance)
+    if (peek_distance_block_end) {
       return true
     }
     while (!isEndOfLine(c)) {
@@ -359,29 +382,84 @@ function checkBlock(input: InputStream, stack: Stack, lookaround: boolean, peek_
       c = input.peek(peek_distance)
     }
     if (c === EOF) {
-      log(`XX REFUSE checkBlock, reached EOF ${inputStreamEndString(input, stack)}`)
+      log(`XX REFUSE checkMatchingBlockFooter, reached EOF ${inputStreamEndString(input, stack)}`)
       return false
     }
   }
 }
 
+function checkBlock(input: InputStream, stack: Stack): boolean {
+  let [peek_distance, blockSuffix] = checkBlockStart(input, stack)
+  if (!blockSuffix) {
+    log(`XX REFUSE checkBlock, checkBlockStart failed ${inputStreamEndString(input, stack)}`)
+    return false
+  }
+  if (checkMatchingBlockFooter(input, stack, blockSuffix, peek_distance)) {
+    log(`== ACCEPT checkBlock ${inputStreamAccept(input, stack)}`)
+    return true
+  }
+  log(`XX REFUSE checkBlock, no matching block footer ${inputStreamEndString(input, stack)}`)
+  return false
+}
+
 export const block_tokenizer = new ExternalTokenizer((input, stack) => {
   log(`-- START block_tokenizer ${inputStreamBeginString(input)}`)
+  const context: OrgContext = stack.context
   let previous = input.peek(-1)
   if (!isEndOfLine(previous)) {
     log(`XX REFUSE block_tokenizer, not start of a line ${inputStreamEndString(input, stack)}`)
     return
   }
-  if (checkBlock(input, stack, false)) {
-    if (input.peek(0) !== EOF) {
-      input.advance()
+  if (!context.parentObjects.includes(ParentObject.Block)) {
+    let [peek_distance, blockSuffix] = checkBlockStart(input, stack)
+    if (blockSuffix) {
+      context.currentBlockContext = blockSuffix
+      const term = getBlockContentTerm(blockSuffix)
+      if (checkMatchingBlockFooter(input, stack, blockSuffix, peek_distance)) {
+        log(`== ACCEPT BlockHeader term=${term} ${inputStreamAccept(input, stack)}`)
+        input.acceptToken(BlockHeader, peek_distance)
+        return
+      }
     }
-    log(`== ACCEPT Block ${inputStreamAccept(input, stack)}`)
-    input.acceptToken(Block)
+    log(`== ACCEPT notStartOfABlock ${inputStreamAccept(input, stack)}`)
+    input.acceptToken(notStartOfABlock, -(input.pos-stack.pos))
     return
   }
-  log(`== ACCEPT notStartOfABlock ${inputStreamAccept(input, stack)}`)
-  input.acceptToken(notStartOfABlock, -(input.pos-stack.pos))
+  if (context.parentObjects.includes(ParentObject.Block)) {
+    const peek_distance_block_end = checkBlockEnd(input, stack, context.currentBlockContext)
+    if (peek_distance_block_end) {
+      input.advance(peek_distance_block_end)
+      log(`== ACCEPT BlockFooter ${inputStreamAccept(input, stack)}`)
+      input.acceptToken(BlockFooter)
+      return
+    }
+  }
+  log(`XX REFUSE block_tokenizer, still inside content ${inputStreamEndString(input, stack)}`)
+  return
+})
+
+export const blockContent_tokenizer = new ExternalTokenizer((input, stack) => {
+  log(`start blockContent_tokenizer ${inputStreamBeginString(input)}`)
+  const context: OrgContext = stack.context
+  let previous = input.peek(-1)
+  if (!isEndOfLine(previous)) {
+    log(`XX REFUSE blockContent_tokenizer, previous not sof or newline ${inputStreamAccept(input, stack)}`)
+    return
+  }
+  let c = input.peek(0)
+  while (c !== EOF) {
+    if (checkBlockEnd(input, stack, context.currentBlockContext)) {
+      const term = getBlockContentTerm(context.currentBlockContext)
+      log(`== ACCEPT blockContent_tokenizer term=${term} ${inputStreamAccept(input, stack)}`)
+      input.acceptToken(term)
+      return
+    }
+    while (!isEndOfLine(c)) {
+      c = input.advance()
+    }
+    c = input.advance()
+  }
+  log(`XX REFUSE blockContent_tokenizer, reached EOF ${inputStreamAccept(input, stack)}`)
   return
 })
 
@@ -432,7 +510,18 @@ function checkKeywordComment(input: InputStream, stack: Stack) {
     log(`XX REFUSE checkKeywordComment, not starting with #+ ${inputStreamEndString(input, stack)}`)
     return
   }
-  return true
+  let peek_distance = 2
+  let c = input.peek(peek_distance)
+  while (true) {
+    if (isEndOfLine(c) || c === SPACE) {
+      log(`XX REFUSE checkKeywordComment, keyword stops without : ${inputStreamEndString(input, stack)}`)
+      return
+    } else if (c === COLON) {
+      return true
+    }
+    peek_distance += 1
+    c = input.peek(peek_distance)
+  }
 }
 
 export const startOfKeywordComment_lookaround = new ExternalTokenizer((input, stack) => {
@@ -624,7 +713,7 @@ export const notStartOfPlanning_lookaround = new ExternalTokenizer((input, stack
       return
   } else if (c === COLON) {
     planning_word = ''
-  } else if (c === HASH && !checkBlock(input, stack, true)) {
+  } else if (c === HASH && !checkBlock(input, stack)) {
     log(`XX REFUSE notStartOfPlanning, start of comment ${inputStreamEndString(input, stack)}`)
     return
   } else if (c === STAR) {
@@ -640,7 +729,7 @@ export const notStartOfPlanning_lookaround = new ExternalTokenizer((input, stack
       return // start of HEADING
     }
   }
-  if (c === HASH && !checkBlock(input, stack, true)) {
+  if (c === HASH && !checkBlock(input, stack)) {
     log(`XX REFUSE notStartOfPlanning, start of comment ${inputStreamEndString(input, stack)}`)
     return
   }
@@ -763,24 +852,11 @@ export const propertydrawer_tokenizer = new ExternalTokenizer((input, stack) => 
 
 export const notStartOfComment_lookaround = new ExternalTokenizer((input, stack) => {
   log(`-- START notStartOfComment_lookaround ${inputStreamBeginString(input)}`)
-  const previous = input.peek(-1)
-  log(`previous ${stringifyCodeLogString(previous)}`)
-  if (!isEndOfLine(previous)) {
-    log(`XX REFUSE notStartOfComment_lookaround, previous not endofline ${inputStreamEndString(input, stack)}`)
-    return
-  }
-  let first = input.peek(0)
-  if (first !== HASH) {
-    log(`== ACCEPT notStartOfComment_lookaround ${inputStreamAccept(input, stack)}`)
-    input.acceptToken(notStartOfComment)
-    return
-  }
-  let second = input.peek(1)
-  if (second === SPACE || isEndOfLine(second)) {
+  if (checkComment(input, stack)) {
     log(`XX REFUSE notStartOfComment_lookaround, start of comment ${inputStreamEndString(input, stack)}`)
     return
   }
-  if (second === "+".charCodeAt(0)) {
+  if (checkKeywordComment(input, stack)) {
     log(`XX REFUSE notStartOfComment_lookaround, start of keyword comment ${inputStreamEndString(input, stack)}`)
     return
   }
@@ -1615,7 +1691,7 @@ export const object_tokenizer = (orgLinkParameters: string[]) => {
         input.acceptToken(objectToken)
         return
       ///// start of block /////
-      } else if (checkBlock(input, stack, true)) {
+      } else if (checkBlock(input, stack)) {
         log(`== ACCEPT object_tokenizer innermostParent=${innerMostParent} before Block ${inputStreamAccept(input, stack)}`)
         input.acceptToken(objectToken)
         return
@@ -1787,6 +1863,7 @@ enum ParentObject {
   TextStrikeThrough,
   RegularLink,
   AngleLink,
+  Block,
 }
 
 class OrgContext {
@@ -1794,14 +1871,17 @@ class OrgContext {
   hash: number
   levelHeadingToPush: number
   parentObjects: ParentObject[]
+  currentBlockContext: string
   constructor(
     headingLevelStack: number[],
     levelHeadingToPush: number,
     parentObjects: ParentObject[],
+    currentBlockContext: string,
   ) {
     this.headingLevelStack = headingLevelStack
     this.levelHeadingToPush = levelHeadingToPush
     this.parentObjects = parentObjects
+    this.currentBlockContext = currentBlockContext,
     this.hash = this.hashCompute()
   }
   hashCompute() {
@@ -1814,16 +1894,22 @@ class OrgContext {
     for (let parent of this.parentObjects) {
       hash += (parent+1) << (bitmask=bitmask+10)
     }
+    if (this.currentBlockContext) {
+      for (let char of this.currentBlockContext) {
+        hash += char.charCodeAt(0) << (bitmask=bitmask+1)
+      }
+    }
     return hash
   }
 }
 
 export const context_tracker = new ContextTracker({
-  start: new OrgContext([], null, []),
+  start: new OrgContext([], null, [], null),
   shift(context: OrgContext, term: number, stack: Stack, input: InputStream) {
     let headingLevelStack = [...context.headingLevelStack]
     let levelHeadingToPush = context.levelHeadingToPush
     let parentObjects = [...context.parentObjects]
+    let currentBlockContext = context.currentBlockContext
     if (term === indentHeading) {
       const toPush = levelHeadingToPush
       levelHeadingToPush = null
@@ -1879,7 +1965,14 @@ export const context_tracker = new ContextTracker({
     if (term === endofline) {
       parentObjects.pop()
     }
-    return new OrgContext(headingLevelStack, levelHeadingToPush, parentObjects)
+    if (term === BlockHeader) {
+      parentObjects.push(ParentObject.Block)
+    }
+    if (term === BlockFooter) {
+      parentObjects.pop()
+      currentBlockContext = null
+    }
+    return new OrgContext(headingLevelStack, levelHeadingToPush, parentObjects, currentBlockContext)
   },
   hash: context => context.hash
 })

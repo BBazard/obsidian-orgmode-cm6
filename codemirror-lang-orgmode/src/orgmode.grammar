@@ -59,6 +59,22 @@ lesserElement {  // excluding Planning and Comment
   )
 }
 
+Block {
+  BlockHeader
+  (
+    BlockContentDynamic
+    | BlockContentCenter
+    | BlockContentQuote
+    | BlockContentComment
+    | BlockContentExample
+    | BlockContentExport
+    | BlockContentSrc
+    | BlockContentVerse
+    | BlockContentSpecial
+  )
+  BlockFooter
+}
+
 // https://orgmode.org/worg/org-syntax.html#Planning
 planningLine {
   ((PlanningDeadline | PlanningScheduled | PlanningClosed) PlanningValue)+
@@ -147,7 +163,23 @@ TextStrikeThrough {
   isEndOfTextStrikeThrough
 }
 
-@external tokens block_tokenizer from "./external-tokens" { Block, notStartOfABlock }
+@external tokens block_tokenizer from "./external-tokens" {
+  notStartOfABlock,
+  BlockHeader,
+  BlockFooter
+}
+
+@external tokens blockContent_tokenizer from "./external-tokens" {
+    BlockContentDynamic,
+    BlockContentCenter,
+    BlockContentQuote,
+    BlockContentComment,
+    BlockContentExample,
+    BlockContentExport,
+    BlockContentSrc,
+    BlockContentVerse,
+    BlockContentSpecial
+}
 
 @external tokens startOfComment_lookaround from "./external-tokens" { startOfComment }
 

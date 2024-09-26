@@ -328,9 +328,11 @@ test("block", () => {
   const spec = [
     "Program(",
     "    ZerothSection(",
-    "        Block,",
-    "        KeywordComment,",
-    "        KeywordComment,",
+    "        Block(",
+    "            BlockHeader,",
+    "            BlockContentComment,",
+    "            BlockFooter,",
+    "        ),",
     "    ),",
     ")",
   ].join("\n")
