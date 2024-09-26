@@ -19,7 +19,7 @@ ZerothSection {
 // https://orgmode.org/worg/org-syntax.html#Headings
 Heading {
   shouldIndentHeading indentHeading
-  stars TodoKeyword? Priority? Title Tags? endofline
+  stars TodoKeyword? Priority? Title? Tags? endofline
   Section?
   Heading*
   shouldDedentHeading dedentHeading

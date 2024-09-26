@@ -196,13 +196,11 @@ function checkTags(input: InputStream, advanceInput: boolean) {
   if (c !== COLON) {
     return false
   }
-  let peek_distance = 1
-  c = input.peek(peek_distance)
-  log(`peeking a: ${stringifyCodeLogString(c)}`)
+  let peek_distance = 0
   while (true) {
     peek_distance += 1
     c = input.peek(peek_distance)
-    log(`peeking b: ${stringifyCodeLogString(c)}`)
+    log(`peeking a: ${stringifyCodeLogString(c)}`)
     if (isEndOfLine(c)) {
       log(`case 1`)
       // example ":eiofje\n" unfinished tag
@@ -672,7 +670,7 @@ export const endofline_tokenizer = new ExternalTokenizer((input, stack) => {
   log(`-- START endofline ${inputStreamBeginString(input)}`)
   let previous = input.peek(-1)
   if (isEndOfLine(previous)) {
-    log(`XX REFUSE endofline, previous not endofline ${inputStreamEndString(input, stack)}`)
+    log(`XX REFUSE endofline, previous already endofline ${inputStreamEndString(input, stack)}`)
     return
   }
   let c = input.peek(0)
@@ -689,6 +687,9 @@ export const endofline_tokenizer = new ExternalTokenizer((input, stack) => {
       input.advance()
       log(`== ACCEPT endofline NEWLINE ${inputStreamAccept(input, stack)}`)
       input.acceptToken(endofline)
+      return
+    } else if (!isWhiteSpace(c)) {
+      log(`XX REFUSE endofline, not whitespace ${inputStreamEndString(input, stack)}`)
       return
     }
     c = input.advance()

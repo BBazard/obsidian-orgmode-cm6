@@ -23,6 +23,7 @@ test("simple case", () => {
     "content",
     "",
     "* TODO item 3",
+    "* TODO",
   ].join("\n")
   const tree = parser.parse(content)
   const spec = [
@@ -30,6 +31,7 @@ test("simple case", () => {
     "    Heading(TodoKeyword, Title, Section),",
     "    Heading(TodoKeyword, Title, Section),",
     "    Heading(TodoKeyword, Title),",
+    "    Heading(TodoKeyword),",
     ")",
   ].join("\n")
   console.log(printTree(tree, content))
@@ -196,7 +198,7 @@ test("Heading edge cases", () => {
     "    Heading(Priority, Title),",
     "    Heading(TodoKeyword, Title),",
     "    Heading(Title),",
-    "    Heading(Title, Section),",
+    "    Heading(Section),",
     ")",
   ].join("\n")
   console.log(printTree(tree, content))
@@ -267,6 +269,23 @@ test("no heading in a comment", () => {
   const spec = [
     "Program(",
     "    Heading(Title, Section(CommentLine)),",
+    ")",
+  ].join("\n")
+  console.log(printTree(tree, content))
+  parser.configure({strict: true}).parse(content)
+  testTree(tree, spec)
+})
+
+test("tags", () => {
+  const content = [
+    "* heading :tag:",
+    "* heading : notag:",
+  ].join("\n")
+  const tree = parser.parse(content)
+  const spec = [
+    "Program(",
+    "    Heading(Title, Tags),",
+    "    Heading(Title),",
     ")",
   ].join("\n")
   console.log(printTree(tree, content))
@@ -372,7 +391,7 @@ test("text markup", () => {
     "        TextBold,",  // *bold*
     "        TextBold,",  // ***
     "        TextBold),",  // *bold encompassing\ntwo lines*
-    "    Heading(Title, Section(",
+    "    Heading(Section(",
     "        TextBold,",  // *bold with a * inside*
     "        TextBold,",  // **bold***
     "        TextBold,",  // *start*inside*
