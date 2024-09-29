@@ -360,6 +360,35 @@ test("block", () => {
   testTree(tree, spec)
 })
 
+test("consecutive blocks", () => {
+  const content = [
+    "#+begin_src lang",
+    "#+end_src",
+    "#+begin_src lang",
+    "#+end_src",
+  ].join("\n")
+  const tree = parser.parse(content)
+  const spec = [
+    "Program(",
+    "    ZerothSection(",
+    "        Block(",
+    "            BlockHeader,",
+    "            BlockContentSrc,",
+    "            BlockFooter,",
+    "        ),",
+    "        Block(",
+    "            BlockHeader,",
+    "            BlockContentSrc,",
+    "            BlockFooter,",
+    "        ),",
+    "    ),",
+    ")",
+  ].join("\n")
+  console.log(printTree(tree, content))
+  parser.configure({strict: true}).parse(content)
+  testTree(tree, spec)
+})
+
 test("text markup", () => {
   const content = [
     "my *bold* word",

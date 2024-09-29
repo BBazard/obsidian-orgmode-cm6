@@ -369,8 +369,6 @@ function checkMatchingBlockFooter(input: InputStream, stack: Stack, blockSuffix:
     return false
   }
   while (true) {
-    peek_distance += 1
-    c = input.peek(peek_distance)
     const peek_distance_block_end = checkBlockEnd(input, stack, blockSuffix, peek_distance)
     if (peek_distance_block_end) {
       return true
@@ -383,6 +381,8 @@ function checkMatchingBlockFooter(input: InputStream, stack: Stack, blockSuffix:
       log(`XX REFUSE checkMatchingBlockFooter, reached EOF ${inputStreamEndString(input, stack)}`)
       return false
     }
+    peek_distance += 1
+    c = input.peek(peek_distance)
   }
 }
 
