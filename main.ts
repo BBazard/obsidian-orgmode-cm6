@@ -1,6 +1,6 @@
 import { EditorView, keymap } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands"
-import { foldGutter, LanguageSupport } from "@codemirror/language"
+import { foldGutter } from "@codemirror/language"
 import { EditorState, Extension, Compartment } from "@codemirror/state";
 import { LRParser } from "@lezer/lr";
 import { vim, Vim } from "@replit/codemirror-vim"
@@ -86,7 +86,7 @@ export default class OrgmodePlugin extends Plugin {
     const words = [...this.settings.todoKeywords, ...this.settings.doneKeywords]
     this.orgmodeParser = OrgmodeParser(words)
     view.codeMirror.dispatch({
-      effects: todoKeywordsReloader.reconfigure(new LanguageSupport(OrgmodeLanguage(this.orgmodeParser)))
+      effects: todoKeywordsReloader.reconfigure(OrgmodeLanguage(this.orgmodeParser))
     })
   }
 
@@ -164,6 +164,8 @@ export default class OrgmodePlugin extends Plugin {
       li.createSpan({ cls: "tasks-list-text" }).createSpan({ cls: "task-description" }).createSpan({ text: orgmode_task.description })
   }
 }
+
+
 class OrgView extends TextFileView {
   // Internal code mirror instance:
   codeMirror: EditorView;
@@ -179,7 +181,7 @@ class OrgView extends TextFileView {
         // @ts-expect-error, not typed
         vimCompartment.of((this.app.vault.getConfig("vimMode")) ? vim() : []),
         keymap.of([...defaultKeymap, ...historyKeymap]),
-        todoKeywordsReloader.of(new LanguageSupport(OrgmodeLanguage(orgmodeParser))),
+        todoKeywordsReloader.of(OrgmodeLanguage(orgmodeParser)),
         EditorView.lineWrapping,
         makeHeadingsFoldable,
         foldGutter({

@@ -1,7 +1,8 @@
-import { LRLanguage } from "@codemirror/language"
-import { styleTags, tags } from "@lezer/highlight"
+import { LanguageSupport, LRLanguage, syntaxHighlighting, HighlightStyle } from "@codemirror/language"
 import { BuildOptions, buildParser } from '@lezer/generator';
 import { LRParser } from "@lezer/lr";
+import { parseMixed, SyntaxNodeRef, Input } from "@lezer/common"
+import { tags } from "@lezer/highlight";
 import {
   title_tokenizer, todokeyword_tokenizer, plainLink_tokenizer,
   isStartOfRegularLink_lookaround, isStartOfAngleLink_lookaround,
@@ -10,6 +11,8 @@ import {
   context_tracker } from "./external-tokens"
 import * as ExtToken from "./external-tokens"
 import { grammarFile } from "./generated_grammar";
+import { TOKEN } from 'codemirror-lang-orgmode';
+import { getInnerParser } from "./inner-parsers"
 
 export const orgLinkParameters = [
   // "shell",
@@ -52,46 +55,65 @@ const configurableExternalTokenizer = (words: string[]) => {
   }
 }
 
+
 export const OrgmodeParser = (words: string[]) => {
   const options: BuildOptions = {
     externalTokenizer: configurableExternalTokenizer(words),
     contextTracker: context_tracker,
-  }
-  return buildParser(grammarFile.toString(), options)
-}
+  };
+  return buildParser(grammarFile.toString(), options).configure({
+    wrap: parseMixed((node: SyntaxNodeRef, input: Input) => {
+      if (node.type.id === TOKEN.BlockContentSrc) {
+        const header = node.node.prevSibling
+        let headerText = input.read(header.from, header.to)
+        headerText = headerText.toLowerCase().replace(/^(\#\+begin_src)\s+/,"");
+        headerText = headerText.replace(/\n/, "")
+        const langStr = headerText.replace(/\s+.*/, "")
+        return getInnerParser(langStr)
+      }
+      return null
+    }),
+  });
+};
+
+
+const srcBlocksHighlightStyle = HighlightStyle.define([
+  // try to match obsidian classes
+  { tag: tags.angleBracket, class: "cm-bracket" },
+  { tag: tags.arithmeticOperator, class: "cm-operator" },
+  { tag: tags.atom, class: "cm-atom" },
+  { tag: tags.attributeName, class: "cm-attribute" },
+  { tag: tags.attributeValue, class: "cm-attribute" },
+  { tag: tags.bitwiseOperator, class: "cm-operator" },
+  { tag: tags.blockComment, class: "cm-comment" },
+  { tag: tags.brace, class: "cm-bracket" },
+  { tag: tags.bracket, class: "cm-bracket" },
+  { tag: tags.comment, class: "cm-comment" },
+  { tag: tags.controlKeyword, class: "cm-keyword" },
+  { tag: tags.definitionKeyword, class: "cm-def" },
+  { tag: tags.docComment, class: "cm-comment" },
+  { tag: tags.keyword, class: "cm-keyword" },
+  { tag: tags.lineComment, class: "cm-comment" },
+  { tag: tags.link, class: "cm-link" },
+  { tag: tags.moduleKeyword, class: "cm-keyword" },
+  { tag: tags.number, class: "cm-number" },
+  { tag: tags.operator, class: "cm-operator" },
+  { tag: tags.operatorKeyword, class: "cm-operator" },
+  { tag: tags.propertyName, class: "cm-property" },
+  { tag: tags.squareBracket, class: "cm-bracket" },
+  { tag: tags.string, class: "cm-string" },
+  { tag: tags.tagName, class: "cm-tag" },
+  { tag: tags.variableName, class: "cm-variable" },
+]);
 
 export const OrgmodeLanguage = (parser: LRParser) => {
-  return LRLanguage.define({
-    parser: parser.configure({
-      props: [
-        styleTags({
-          "Heading": tags.heading,
-          "PlanningDeadline": tags.annotation,
-          "PlanningClosed": tags.annotation,
-          "PlanningScheduled": tags.annotation,
-          "PropertyDrawer": tags.meta,
-          "ZerothSection": tags.content,
-          "Section": tags.content,
-          "CommentLine": tags.lineComment,
-          "KeywordComment": tags.lineComment,
-          "TodoKeyword": tags.keyword,
-          "Title": tags.contentSeparator,
-          "Priority": tags.unit,
-          "Tags": tags.tagName,
-          "TextBold": tags.strong,
-          "TextItalic": tags.emphasis,
-          "TextUnderline": tags.modifier,
-          "TextVerbatim": tags.literal,
-          "TextCode": tags.monospace,
-          "TextStrikeThrough": tags.strikethrough,
-          "PlainLink": tags.link,
-          "RegularLink": tags.link,
-          "AngleLink": tags.link,
-        })
-      ]
+  return new LanguageSupport(
+    LRLanguage.define({
+      parser: parser,
+      languageData: {
+        commentTokens: { line: "#" },
+      },
     }),
-    languageData: {
-      commentTokens: { line: "#" }
-    }
-  })
-}
+    syntaxHighlighting(srcBlocksHighlightStyle),
+  );
+};

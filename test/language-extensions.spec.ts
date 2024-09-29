@@ -1,7 +1,6 @@
 import { expect, test } from 'vitest'
 import { LRParser } from '@lezer/lr'
 import { EditorState } from "@codemirror/state";
-import { LanguageSupport, syntaxTree } from "@codemirror/language"
 
 import { OrgmodeLanguage, OrgmodeParser, TOKEN } from 'codemirror-lang-orgmode';
 
@@ -22,7 +21,7 @@ const foldRangeFromContent = (content: string, from: number, to: number) => {
     doc: content,
     extensions: [
       makeHeadingsFoldable,
-      new LanguageSupport(OrgmodeLanguage(orgmodeParser))
+      OrgmodeLanguage(orgmodeParser)
     ],
   })
   return OrgFoldCompute(state, from, to)

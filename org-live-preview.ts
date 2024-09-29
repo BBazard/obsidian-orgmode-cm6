@@ -15,6 +15,7 @@ import { syntaxTree } from "@codemirror/language";
 import { TOKEN } from 'codemirror-lang-orgmode';
 import { extractLinkFromNode, nodeTypeClass } from 'language-extensions';
 import { OrgmodePluginSettings } from "settings";
+import { SyntaxNode } from "@lezer/common"
 
 class ImageWidget extends WidgetType {
   path: string
@@ -37,6 +38,42 @@ class ImageWidget extends WidgetType {
     }
     return image
   }
+}
+
+function isNodeOrgLanguage(node: SyntaxNode) {
+  // A token id like TOKEN.Block could match a token of a sublanguage
+  if (node.type.id === TOKEN.Block &&
+      node.parent &&
+    (
+      node.parent.type.id === TOKEN.Section ||
+      node.parent.type.id === TOKEN.ZerothSection
+  )) {
+    return true
+  }
+  if ((
+      node.type.id === TOKEN.BlockHeader ||
+      node.type.id === TOKEN.BlockContentDynamic ||
+      node.type.id === TOKEN.BlockContentCenter ||
+      node.type.id === TOKEN.BlockContentQuote ||
+      node.type.id === TOKEN.BlockContentComment ||
+      node.type.id === TOKEN.BlockContentExample ||
+      node.type.id === TOKEN.BlockContentExport ||
+      node.type.id === TOKEN.BlockContentSrc ||
+      node.type.id === TOKEN.BlockContentVerse ||
+      node.type.id === TOKEN.BlockContentSpecial ||
+      node.type.id === TOKEN.BlockFooter
+    ) && node.parent && node.parent.type.id === TOKEN.Block
+  ) {
+    return true
+  }
+
+  while (node) {
+    if (node.type.id === TOKEN.Block) {
+      return false
+    }
+    node = node.parent
+  }
+  return true
 }
 
 function isNodeSelected(selection: {from: number, to: number}, node: {from: number, to: number}) {
@@ -62,7 +99,8 @@ function loadDecorations(
   syntaxTree(state).iterate({
     enter(node) {
       const nodeIsSelected = isNodeSelected(selectionPos, node)
-      if (node.type.id === TOKEN.Block) {
+      const nodeIsOrgLang = isNodeOrgLanguage(node.node)
+      if (nodeIsOrgLang && node.type.id === TOKEN.Block) {
         const firstLine = state.doc.lineAt(node.from)
         const lastLine = state.doc.lineAt(node.to-1)
         for (let i = firstLine.number; i <= lastLine.number; ++i) {
@@ -79,9 +117,11 @@ function loadDecorations(
           builderBuffer.push([lastLine.from, lastLine.to, Decoration.replace({})])
         }
       } else if (
-        node.type.id === TOKEN.PlainLink ||
-        node.type.id === TOKEN.RegularLink ||
-        node.type.id === TOKEN.AngleLink
+        nodeIsOrgLang && (
+          node.type.id === TOKEN.PlainLink ||
+          node.type.id === TOKEN.RegularLink ||
+          node.type.id === TOKEN.AngleLink
+        )
       ) {
         const linkText = state.doc.sliceString(node.from, node.to)
         const [linkPath, displayText, linkHandler, displayTextFromOffset] = extractLinkFromNode(node.type.id, linkText)
@@ -132,12 +172,14 @@ function loadDecorations(
           builderBuffer.push([node.from, node.to, Decoration.mark({class: nodeTypeClass(node.type.id)})])
         }
       } else if (
-        node.type.id === TOKEN.TextBold ||
-        node.type.id === TOKEN.TextItalic ||
-        node.type.id === TOKEN.TextUnderline ||
-        node.type.id === TOKEN.TextVerbatim ||
-        node.type.id === TOKEN.TextCode ||
-        node.type.id === TOKEN.TextStrikeThrough
+        nodeIsOrgLang && (
+          node.type.id === TOKEN.TextBold ||
+          node.type.id === TOKEN.TextItalic ||
+          node.type.id === TOKEN.TextUnderline ||
+          node.type.id === TOKEN.TextVerbatim ||
+          node.type.id === TOKEN.TextCode ||
+          node.type.id === TOKEN.TextStrikeThrough
+        )
       ) {
         if (!nodeIsSelected) {
           builderBuffer.push([node.from, node.from+1, Decoration.replace({})])
@@ -146,7 +188,7 @@ function loadDecorations(
         if (!nodeIsSelected) {
           builderBuffer.push([node.to-1, node.to, Decoration.replace({})])
         }
-      } else if (node.type.id === TOKEN.Heading) {
+      } else if (nodeIsOrgLang && node.type.id === TOKEN.Heading) {
         const headingLine = state.doc.lineAt(node.from)
         const headingLevel = headingLine.text.match(/^\*+/)[0].length
         const headingClass = nodeTypeClass(node.type.id)
@@ -169,18 +211,20 @@ function loadDecorations(
           })])
         }
       } else if (
-        node.type.id === TOKEN.Title ||
-        node.type.id === TOKEN.PlanningDeadline ||
-        node.type.id === TOKEN.PlanningScheduled ||
-        node.type.id === TOKEN.PlanningClosed ||
-        node.type.id === TOKEN.PropertyDrawer ||
-        node.type.id === TOKEN.ZerothSection ||
-        node.type.id === TOKEN.Section ||
-        node.type.id === TOKEN.CommentLine ||
-        node.type.id === TOKEN.KeywordComment ||
-        node.type.id === TOKEN.TodoKeyword ||
-        node.type.id === TOKEN.Priority ||
-        node.type.id === TOKEN.Tags
+        nodeIsOrgLang && (
+          node.type.id === TOKEN.Title ||
+          node.type.id === TOKEN.PlanningDeadline ||
+          node.type.id === TOKEN.PlanningScheduled ||
+          node.type.id === TOKEN.PlanningClosed ||
+          node.type.id === TOKEN.PropertyDrawer ||
+          node.type.id === TOKEN.ZerothSection ||
+          node.type.id === TOKEN.Section ||
+          node.type.id === TOKEN.CommentLine ||
+          node.type.id === TOKEN.KeywordComment ||
+          node.type.id === TOKEN.TodoKeyword ||
+          node.type.id === TOKEN.Priority ||
+          node.type.id === TOKEN.Tags
+        )
       ) {
         builderBuffer.push([node.from, node.to, Decoration.mark({class: nodeTypeClass(node.type.id)})])
       }
