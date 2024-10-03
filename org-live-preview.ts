@@ -4,6 +4,7 @@ import {
   Transaction,
   RangeSet,
   EditorState,
+  Range,
 } from "@codemirror/state";
 import {
   Decoration,
@@ -76,6 +77,32 @@ function isNodeOrgLanguage(node: SyntaxNode) {
   return true
 }
 
+function tokenStartSide(node_type_id: number) {
+  // bigger startSide decorations are nested inside
+  // lower startSide decorations
+  switch(node_type_id) {
+    case TOKEN.Heading:
+      return 35
+    case TOKEN.Section:
+    case TOKEN.ZerothSection:
+      return 40
+    case TOKEN.Block:
+      return 45
+    default:
+      return 50
+  }
+}
+
+function buildRange(
+  from: number,
+  to: number,
+  decoration: Decoration,
+  startSide: number,
+): Range<Decoration> {
+  decoration.startSide = startSide
+  return decoration.range(from, to)
+}
+
 function isNodeSelected(selection: {from: number, to: number}, node: {from: number, to: number}) {
   return (
       // selection starts inside node
@@ -94,7 +121,7 @@ function loadDecorations(
     getImageUri: (linkPath: string) => string,
     navigateToOrgId: (orgCustomId: string) => void,
 }) {
-  const builderBuffer = new Array<[number, number, Decoration]>
+  const builderBuffer = new Array<Range<Decoration>>
   const selectionPos = state.selection.main
   syntaxTree(state).iterate({
     enter(node) {
@@ -105,16 +132,44 @@ function loadDecorations(
         const lastLine = state.doc.lineAt(node.to-1)
         for (let i = firstLine.number; i <= lastLine.number; ++i) {
           const line = state.doc.line(i)
-          builderBuffer.push([line.from, line.from, Decoration.line({class: nodeTypeClass(node.type.id)})])
+          builderBuffer.push(
+            buildRange(
+              line.from,
+              line.from,
+              Decoration.line({class: nodeTypeClass(node.type.id)}),
+              tokenStartSide(node.type.id),
+            )
+          )
         }
         const firstLineIsSelected = isNodeSelected(selectionPos, firstLine)
         if (!firstLineIsSelected) {
-          builderBuffer.push([firstLine.from, firstLine.from+"#+BEGIN_".length, Decoration.replace({})])
-          builderBuffer.push([firstLine.from+"#+BEGIN_".length, firstLine.to, Decoration.mark({class: "org-block-header"})])
+          builderBuffer.push(
+            buildRange(
+              firstLine.from,
+              firstLine.from+"#+BEGIN_".length,
+              Decoration.replace({}),
+              tokenStartSide(node.type.id),
+            )
+          )
+          builderBuffer.push(
+            buildRange(
+              firstLine.from+"#+BEGIN_".length,
+              firstLine.to,
+              Decoration.mark({class: "org-block-header"}),
+              tokenStartSide(node.type.id),
+            )
+          )
         }
         const lastLineIsSelected = isNodeSelected(selectionPos, lastLine)
         if (!lastLineIsSelected) {
-          builderBuffer.push([lastLine.from, lastLine.to, Decoration.replace({})])
+          builderBuffer.push(
+            buildRange(
+              lastLine.from,
+              lastLine.to,
+              Decoration.replace({}),
+              tokenStartSide(node.type.id),
+            )
+          )
         }
       } else if (
         nodeIsOrgLang && (
@@ -127,49 +182,123 @@ function loadDecorations(
         const [linkPath, displayText, linkHandler, displayTextFromOffset] = extractLinkFromNode(node.type.id, linkText)
         if (linkHandler === "internal-inline-image") {
           if (nodeIsSelected) {
-            builderBuffer.push([node.from, node.to, Decoration.mark({class: nodeTypeClass(node.type.id)})])
-            builderBuffer.push([
-              node.to,
-              node.to,
-              Decoration.widget({
-                widget: new ImageWidget(linkPath, obsidianUtils.getImageUri),
-                block: true,
-              })
-            ])
+            builderBuffer.push(
+              buildRange(
+                node.from,
+                node.to,
+                Decoration.mark({class: nodeTypeClass(node.type.id)}),
+                tokenStartSide(node.type.id),
+              )
+            )
+            builderBuffer.push(
+              buildRange(
+                node.to,
+                node.to,
+                Decoration.widget({
+                  widget: new ImageWidget(linkPath, obsidianUtils.getImageUri),
+                  block: true,
+                }),
+                tokenStartSide(node.type.id),
+              )
+            )
           } else {
-            builderBuffer.push([
-              node.from,
-              node.to,
-              Decoration.replace({
-                widget: new ImageWidget(linkPath, obsidianUtils.getImageUri),
-              })
-            ])
+            builderBuffer.push(
+              buildRange(
+                node.from,
+                node.to,
+                Decoration.replace({
+                  widget: new ImageWidget(linkPath, obsidianUtils.getImageUri),
+                }),
+                tokenStartSide(node.type.id),
+              )
+            )
           }
         } else if (!nodeIsSelected) {
           if (node.type.id === TOKEN.RegularLink && linkPath !== displayText) {
-            builderBuffer.push([node.from, node.from+displayTextFromOffset, Decoration.replace({})])
-            builderBuffer.push([
-              node.from+displayTextFromOffset, node.to-2,
-              Decoration.mark({tagName: "a", attributes: { href: "#" }}),
-            ])
-            builderBuffer.push([node.to-2, node.to, Decoration.replace({})])
+            builderBuffer.push(
+              buildRange(
+                node.from,
+                node.from+displayTextFromOffset,
+                Decoration.replace({}),
+                tokenStartSide(node.type.id),
+              )
+            )
+            builderBuffer.push(
+              buildRange(
+                node.from+displayTextFromOffset,
+                node.to-2,
+                Decoration.mark({tagName: "a", attributes: { href: "#" }}),
+                tokenStartSide(node.type.id),
+              )
+            )
+            builderBuffer.push(
+              buildRange(
+                node.to-2,
+                node.to,
+                Decoration.replace({}),
+                tokenStartSide(node.type.id),
+              )
+            )
           } else if (node.type.id === TOKEN.RegularLink) {
-            builderBuffer.push([node.from, node.from+2, Decoration.replace({})])
-            builderBuffer.push([
-              node.from+2, node.to-2,
-              Decoration.mark({tagName: "a", attributes: { href: "#" }}),
-            ])
-            builderBuffer.push([node.to-2, node.to, Decoration.replace({})])
+            builderBuffer.push(
+              buildRange(
+                node.from,
+                node.from+2,
+                Decoration.replace({}),
+                tokenStartSide(node.type.id),
+              )
+            )
+            builderBuffer.push(
+              buildRange(
+                node.from+2,
+                node.to-2,
+                Decoration.mark({tagName: "a", attributes: { href: "#" }}),
+                tokenStartSide(node.type.id),
+              )
+            )
+            builderBuffer.push(
+              buildRange(
+                node.to-2,
+                node.to,
+                Decoration.replace({}),
+                tokenStartSide(node.type.id),
+              )
+            )
           } else if (node.type.id === TOKEN.AngleLink) {
-            builderBuffer.push([node.from, node.from+1, Decoration.replace({})])
-            builderBuffer.push([
-              node.from+1, node.to-1,
-              Decoration.mark({tagName: "a", attributes: { href: "#" }}),
-            ])
-            builderBuffer.push([node.to-1, node.to, Decoration.replace({})])
+            builderBuffer.push(
+              buildRange(
+                node.from,
+                node.from+1,
+                Decoration.replace({}),
+                tokenStartSide(node.type.id),
+              )
+            )
+            builderBuffer.push(
+              buildRange(
+                node.from+1,
+                node.to-1,
+                Decoration.mark({tagName: "a", attributes: { href: "#" }}),
+                tokenStartSide(node.type.id),
+              )
+            )
+            builderBuffer.push(
+              buildRange(
+                node.to-1,
+                node.to,
+                Decoration.replace({}),
+                tokenStartSide(node.type.id),
+              )
+            )
           }
         } else {
-          builderBuffer.push([node.from, node.to, Decoration.mark({class: nodeTypeClass(node.type.id)})])
+          builderBuffer.push(
+            buildRange(
+              node.from,
+              node.to,
+              Decoration.mark({class: nodeTypeClass(node.type.id)}),
+              tokenStartSide(node.type.id),
+            )
+          )
         }
       } else if (
         nodeIsOrgLang && (
@@ -182,11 +311,32 @@ function loadDecorations(
         )
       ) {
         if (!nodeIsSelected) {
-          builderBuffer.push([node.from, node.from+1, Decoration.replace({})])
+          builderBuffer.push(
+            buildRange(
+              node.from,
+              node.from+1,
+              Decoration.replace({}),
+              tokenStartSide(node.type.id),
+            )
+          )
         }
-        builderBuffer.push([node.from, node.to, Decoration.mark({class: nodeTypeClass(node.type.id)})])
+        builderBuffer.push(
+          buildRange(
+            node.from,
+            node.to,
+            Decoration.mark({class: nodeTypeClass(node.type.id)}),
+            tokenStartSide(node.type.id),
+          )
+        )
         if (!nodeIsSelected) {
-          builderBuffer.push([node.to-1, node.to, Decoration.replace({})])
+          builderBuffer.push(
+            buildRange(
+              node.to-1,
+              node.to,
+              Decoration.replace({}),
+              tokenStartSide(node.type.id),
+            )
+          )
         }
       } else if (nodeIsOrgLang && node.type.id === TOKEN.Heading) {
         const headingLine = state.doc.lineAt(node.from)
@@ -195,20 +345,44 @@ function loadDecorations(
         const starsPos = {from: headingLine.from, to: headingLine.from+headingLevel+1}
         const nodeStarsIsSelected = isNodeSelected(selectionPos, starsPos)
         if (settings.hideStars && !nodeStarsIsSelected) {
-          builderBuffer.push([headingLine.from, headingLine.from+headingLevel+1, Decoration.replace({})])
-          builderBuffer.push([headingLine.from, headingLine.to, Decoration.mark({
-            class: `${headingClass} ${headingClass}-${headingLevel}`
-          })])
+          builderBuffer.push(
+            buildRange(
+              headingLine.from,
+              headingLine.from+headingLevel+1,
+              Decoration.replace({}),
+              tokenStartSide(node.type.id),
+            )
+          )
+          builderBuffer.push(
+            buildRange(
+              headingLine.from,
+              headingLine.to,
+              Decoration.mark({class: `${headingClass} ${headingClass}-${headingLevel}`}),
+              tokenStartSide(node.type.id),
+            )
+          )
         } else {
-          builderBuffer.push([headingLine.from, headingLine.to, Decoration.mark({
-            class: `${headingClass} ${headingClass}-${headingLevel}`
-          })])
+          builderBuffer.push(
+            buildRange(
+              headingLine.from,
+              headingLine.to,
+              Decoration.mark({
+                class: `${headingClass} ${headingClass}-${headingLevel}`
+              }),
+              tokenStartSide(node.type.id),
+            )
+          )
         }
         const section = node.node.getChild(TOKEN.Section)
         if (section) {
-          builderBuffer.push([section.from, section.to, Decoration.mark({
-            class: `${headingClass}-${headingLevel}`
-          })])
+          builderBuffer.push(
+            buildRange(
+              section.from,
+              section.to,
+              Decoration.mark({class: `${headingClass}-${headingLevel}`}),
+              tokenStartSide(node.type.id),
+            )
+          )
         }
       } else if (
         nodeIsOrgLang && (
@@ -226,15 +400,18 @@ function loadDecorations(
           node.type.id === TOKEN.Tags
         )
       ) {
-        builderBuffer.push([node.from, node.to, Decoration.mark({class: nodeTypeClass(node.type.id)})])
+        builderBuffer.push(
+          buildRange(
+            node.from,
+            node.to,
+            Decoration.mark({class: nodeTypeClass(node.type.id)}),
+            tokenStartSide(node.type.id),
+          )
+        )
       }
     },
   })
-  const decorationRanges = []
-  for (const [from, to, decoration] of builderBuffer) {
-    decorationRanges.push(decoration.range(from, to))
-  }
-  return RangeSet.of(decorationRanges, true)
+  return RangeSet.of(builderBuffer, true)
 }
 
 export const orgmodeLivePreview = (
