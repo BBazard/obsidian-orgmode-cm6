@@ -177,12 +177,12 @@
 }
 
 .theme-dark .orgmode-view .org-block {
-  background-color: #1a1a20;
+  background-color: var(--code-background);
   font-family: var(--font-monospace);
 }
 
 .theme-light .orgmode-view .org-block {
-  background-color: #d2d2ed;
+  background-color: var(--code-background);
   font-family: var(--font-monospace);
 }
 
