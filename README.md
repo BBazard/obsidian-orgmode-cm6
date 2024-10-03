@@ -31,6 +31,10 @@ SCHEDULED: <2023-12-08 Fri 11:13>
 :END:
 
 a [[https://github.com/BBazard/obsidian-orgmode-cm6][link]]
+
+#+begin_src javascript
+const block = "highlighted"
+#+end_src
 ```
 
 ## Supported features
@@ -45,6 +49,7 @@ a [[https://github.com/BBazard/obsidian-orgmode-cm6][link]]
 - Inline images (`[[myimage.png]]` will display the image if it exists in the vault)
 - ID links (`[[id:12345]]` will redirect to the heading with the matching :ID: in a property drawer located in any org file in the vault)
 - Vim support (if activated in Obsidian)
+- Source blocks highlighting (supported: c, c++, css, html, java, javascript, json, php, python, rust, sass, xml)
 
 ### Orgmode Parser (syntax highlighting)
 
@@ -59,7 +64,7 @@ Following [Org Syntax](https://orgmode.org/worg/org-syntax.html)
 - [x] Keyword line
 - [x] Planning line
 - [x] Property Drawer
-- [x] Lesser Block (all unformatted currently)
+- [x] Lesser Block (unformatted except source blocks)
 - [ ] Dynamic Block
 - [ ] Drawer
 - [ ] List and Checkbox
