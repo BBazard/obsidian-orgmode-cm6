@@ -11,6 +11,9 @@ export enum StatusType {
 export class OrgmodeTaskLocation {
   status: number[]
   priority: number[]
+  scheduled: number[]
+  closed: number[]
+  deadline: number[]
 }
 
 export class OrgmodeHeading {
@@ -19,6 +22,9 @@ export class OrgmodeHeading {
   description: string
   taskLocation: OrgmodeTaskLocation
   priority: string
+  scheduled: string
+  deadline: string
+  closed: string
   children: OrgmodeHeading[]
 }
 
@@ -27,6 +33,9 @@ export class OrgmodeTask {
   statusType: StatusType
   description: string
   taskLocation: OrgmodeTaskLocation
+  scheduled: string
+  deadline: string
+  closed: string
   priority: string
 }
 
@@ -54,6 +63,9 @@ function iterateTasks(heading: OrgmodeHeading): OrgmodeTask[] {
       statusType: heading.statusType,
       description: heading.description,
       taskLocation: heading.taskLocation,
+      scheduled: heading.scheduled,
+      deadline: heading.deadline,
+      closed: heading.closed,
       priority: heading.priority,
     }
     return [task, ...heading.children.map(x=>iterateTasks(x)).flat()]
@@ -84,6 +96,36 @@ function extractOrgHeadingFromHeadingNode(headingNode: SyntaxNode, orgmode_conte
   const TodoKeywordNode = headingNode.getChild(TOKEN.TodoKeyword)
   const TitleNode = headingNode.getChild(TOKEN.Title)
   const PriorityNode = headingNode.getChild(TOKEN.Priority)
+  const SectionNode = headingNode.getChild(TOKEN.Section)
+  if (SectionNode) {
+    const PlanningScheduled = SectionNode.getChild(TOKEN.PlanningScheduled)
+    if (PlanningScheduled) {
+      const scheduledValueNode = PlanningScheduled.nextSibling
+      if (scheduledValueNode && scheduledValueNode.type.id == TOKEN.PlanningValue) {
+        const scheduledValue = orgmode_content.slice(scheduledValueNode.from, scheduledValueNode.to).trim()
+        item.set('scheduled', scheduledValue)
+        item.get('taskLocation').set('scheduled', [scheduledValueNode.from, scheduledValueNode.to])
+      }
+    }
+    const PlanningClosed = SectionNode.getChild(TOKEN.PlanningClosed)
+    if (PlanningClosed) {
+      const closedValueNode = PlanningClosed.nextSibling
+      if (closedValueNode && closedValueNode.type.id == TOKEN.PlanningValue) {
+        const closedValue = orgmode_content.slice(closedValueNode.from, closedValueNode.to).trim()
+        item.set('closed', closedValue)
+        item.get('taskLocation').set('closed', [closedValueNode.from, closedValueNode.to])
+      }
+    }
+    const PlanningDeadline = SectionNode.getChild(TOKEN.PlanningDeadline)
+    if (PlanningDeadline) {
+      const deadlineValueNode = PlanningDeadline.nextSibling
+      if (deadlineValueNode && deadlineValueNode.type.id == TOKEN.PlanningValue) {
+        const deadlineValue = orgmode_content.slice(deadlineValueNode.from, deadlineValueNode.to).trim()
+        item.set('deadline', deadlineValue)
+        item.get('taskLocation').set('deadline', [deadlineValueNode.from, deadlineValueNode.to])
+      }
+    }
+  }
   if (TodoKeywordNode) {
     item.set('status', orgmode_content.slice(TodoKeywordNode.from, TodoKeywordNode.to))
     item.get('taskLocation').set('status', [TodoKeywordNode.from, TodoKeywordNode.to])
@@ -99,6 +141,9 @@ function extractOrgHeadingFromHeadingNode(headingNode: SyntaxNode, orgmode_conte
   const taskLocation: OrgmodeTaskLocation = {
     status: item.get('taskLocation').get('status') ?? null,
     priority: item.get('taskLocation').get('priority') ?? null,
+    scheduled: item.get('taskLocation').get('scheduled') ?? null,
+    closed: item.get('taskLocation').get('closed') ?? null,
+    deadline: item.get('taskLocation').get('deadline') ?? null,
   }
   const status = item.get("status") ?? null
   const statusType = settings.doneKeywords.includes(status) ? StatusType.DONE : StatusType.TODO
@@ -108,6 +153,9 @@ function extractOrgHeadingFromHeadingNode(headingNode: SyntaxNode, orgmode_conte
     description: item.get("description"),
     priority: item.get("priority") ?? null,
     taskLocation: taskLocation,
+    scheduled: item.get("scheduled") ?? null,
+    deadline: item.get("deadline") ?? null,
+    closed: item.get("closed") ?? null,
     children: [],  // will be set later
   }
   return task

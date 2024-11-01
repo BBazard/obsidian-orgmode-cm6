@@ -24,8 +24,14 @@ test('Parsing orgmode tasks', async () => {
     priority: null,
     taskLocation: {
       priority: null,
-      status: [2, 6]
+      status: [2, 6],
+      closed: null,
+      deadline: null,
+      scheduled: null,
     },
+    closed: null,
+    deadline: null,
+    scheduled: null,
   })
   const new_content = cycleOrgmodeTaskStatusContent(tasks[0], content)
   expect(new_content).toBe("* DONE task description\n")
@@ -37,8 +43,39 @@ test('Parsing orgmode tasks', async () => {
     priority: null,
     taskLocation: {
       priority: null,
-      status: [2, 6]
+      status: [2, 6],
+      closed: null,
+      deadline: null,
+      scheduled: null,
     },
+    closed: null,
+    deadline: null,
+    scheduled: null,
+  })
+})
+
+test('Parsing orgmode tasks planning lines', async () => {
+  const content = [
+    "* TODO task description\n",
+    "SCHEDULED: <2023-12-08 Fri 11:13> CLOSED: <2023-12-09 Sat 08:07> DEADLINE: <2023-12-10 Sun 13:28>\n",
+  ].join("")
+  const tasks = parseOrgmodeTasks(content, settings, orgmodeParser)
+  console.log(tasks[0])
+  expect(tasks[0]).toStrictEqual({
+    status: 'TODO',
+    statusType: 'TODO',
+    description: 'task description',
+    priority: null,
+    taskLocation: {
+      priority: null,
+      status: [2, 6],
+      closed: [66, 89],
+      deadline: [99, 122],
+      scheduled: [35, 58],
+    },
+    closed: "<2023-12-09 Sat 08:07>",
+    deadline: "<2023-12-10 Sun 13:28>",
+    scheduled: "<2023-12-08 Fri 11:13>",
   })
 })
 
@@ -56,9 +93,15 @@ test('nested orgmode tasks', async () => {
       statusType: 'TODO',
       description: 'task description 1',
       priority: null,
+      closed: null,
+      deadline: null,
+      scheduled: null,
       taskLocation: {
         priority: null,
-        status: [2, 6]
+        status: [2, 6],
+        closed: null,
+        deadline: null,
+        scheduled: null,
       },
     },
     {
@@ -66,9 +109,15 @@ test('nested orgmode tasks', async () => {
       statusType: 'TODO',
       description: 'task description 3',
       priority: null,
+      closed: null,
+      deadline: null,
+      scheduled: null,
       taskLocation: {
         priority: null,
-        status: [47, 51]
+        status: [47, 51],
+        closed: null,
+        deadline: null,
+        scheduled: null,
       },
     }
   ])
@@ -86,9 +135,15 @@ test('nested orgmode tasks', async () => {
       statusType: 'DONE',
       description: 'task description 3',
       priority: null,
+      closed: null,
+      deadline: null,
+      scheduled: null,
       taskLocation: {
         priority: null,
-        status: [47, 51]
+        status: [47, 51],
+        closed: null,
+        deadline: null,
+        scheduled: null,
       },
     },
   )
