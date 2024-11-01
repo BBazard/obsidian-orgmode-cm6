@@ -34,11 +34,11 @@ Section {
   ((startOfComment CommentLine) | (isStartOfPlanningLine planningLine))*
   PropertyDrawer?
   (
-    notStartOfPlanning notStartOfPropertyDrawer
+    notStartOfPropertyDrawer
     (
       notStartOfHeading
       lesserElement
-    )+
+    )*
   )?
 }
 
@@ -58,6 +58,13 @@ lesserElement {  // excluding Planning and Comment
     )
   )
 }
+
+PropertyDrawer {
+  propertyDrawerHeader
+  PropertyDrawerContent?
+  propertyDrawerFooter
+}
+
 
 Block {
   BlockHeader
@@ -198,16 +205,16 @@ TextStrikeThrough {
   isStartOfTextStrikeThrough
 }
 
-// https://orgmode.org/worg/org-syntax.html#Property_Drawers
-@external tokens propertydrawer_tokenizer from "./external-tokens" { PropertyDrawer }
 
 @external tokens todokeyword_tokenizer from "./external-tokens" { TodoKeyword }
 @external tokens priority_tokenizer from "./external-tokens" { Priority }
 
 
 @external tokens isStartOfPlanningLine_lookaround from "./external-tokens" { isStartOfPlanningLine }
-@external tokens notStartOfPlanning_lookaround from "./external-tokens" { notStartOfPlanning }
-@external tokens notStartOfPropertyDrawer_lookaround from "./external-tokens" { notStartOfPropertyDrawer }
+
+// https://orgmode.org/worg/org-syntax.html#Property_Drawers
+@external tokens propertyDrawerContent_tokenizer from "./external-tokens" { PropertyDrawerContent }
+@external tokens propertyDrawer_tokenizer from "./external-tokens" { notStartOfPropertyDrawer, propertyDrawerHeader, propertyDrawerFooter }
 
 @external tokens notStartOfComment_lookaround from "./external-tokens" { notStartOfComment }
 

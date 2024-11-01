@@ -97,7 +97,7 @@ test("zeroth PropertyDrawer possible", () => {
   ].join("\n")
   const tree = parser.parse(content)
   const spec = [
-    "Program(ZerothSection(PropertyDrawer))",
+    "Program(ZerothSection(PropertyDrawer(PropertyDrawerContent)))",
   ].join("\n")
   console.log(printTree(tree, content))
   parser.configure({strict: true}).parse(content)
@@ -130,7 +130,7 @@ test("planning", () => {
     "            PlanningScheduled, PlanningValue",
     "            PlanningScheduled, PlanningValue",
     "            PlanningScheduled, PlanningValue",
-    "            PropertyDrawer",
+    "            PropertyDrawer(PropertyDrawerContent)",
     "            )",
     "        ),",
     "    Heading(TodoKeyword, Title),",
@@ -153,7 +153,7 @@ test("PropertyDrawer trailing characters", () => {
   const tree = parser.parse(content)
   const spec = [
     "Program(",
-    "    Heading(TodoKeyword, Title, Section(PropertyDrawer)),",
+    "    Heading(TodoKeyword, Title, Section(PropertyDrawer(PropertyDrawerContent))),",
     ")",
   ].join("\n")
   console.log(printTree(tree, content))

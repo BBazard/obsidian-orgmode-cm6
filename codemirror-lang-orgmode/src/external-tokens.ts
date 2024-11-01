@@ -3,8 +3,7 @@ import {
   stars, TodoKeyword, Priority, Title, endofline,
   startOfComment,
   startOfKeywordComment,
-  PropertyDrawer,
-  notStartOfPlanning, notStartOfPropertyDrawer,
+  notStartOfPropertyDrawer,
   notStartOfHeading, notStartOfComment,
   isStartOfTextBold,
   isStartOfTextItalic,
@@ -45,7 +44,10 @@ import {
   BlockContentVerse,
   BlockContentDynamic,
   BlockFooter,
-  BlockHeader
+  BlockHeader,
+  propertyDrawerHeader,
+  PropertyDrawerContent,
+  propertyDrawerFooter,
 } from './parser.terms';
 
 const NEW_LINE = '\n'.charCodeAt(0);
@@ -697,80 +699,6 @@ export const endofline_tokenizer = new ExternalTokenizer((input, stack) => {
   }
 });
 
-export const notStartOfPlanning_lookaround = new ExternalTokenizer((input, stack) => {
-  log(`-- START notStartOfPlanning ${inputStreamBeginString(input)}`)
-  // sectionLineStart { ( ("*"+ ![ \t*]) | ![#*] ) }
-  const previous = input.peek(-1)
-  log(`previous ${stringifyCodeLogString(previous)}`)
-  if (!isEndOfLine(previous)) {
-    log(`XX REFUSE notStartOfPlanning, previous not endofline ${inputStreamEndString(input, stack)}`)
-    return
-  }
-  let c = input.peek(0)
-  let planning_word = String.fromCharCode(c)
-  log(stringifyCodeLogString(c))
-  if (c === EOF) {
-      log(`XX REFUSE notStartOfPlanning, only EOF left ${inputStreamEndString(input, stack)}`)
-      return
-  } else if (c === COLON) {
-    planning_word = ''
-  } else if (c === HASH && !checkBlock(input, stack)) {
-    log(`XX REFUSE notStartOfPlanning, start of comment ${inputStreamEndString(input, stack)}`)
-    return
-  } else if (c === STAR) {
-    // only start of heading if it matches the stars token { "*"+ $[ \t]+ }
-    let peek_distance = 1
-    let peek_c = input.peek(peek_distance)
-    while (peek_c == STAR) {
-      peek_distance += 1
-      peek_c = input.peek(peek_distance)
-    }
-    if (isWhiteSpace(peek_c)) {
-      log(`XX REFUSE notStartOfPlanning, start of heading ${inputStreamEndString(input, stack)}`)
-      return // start of HEADING
-    }
-  }
-  if (c === HASH && !checkBlock(input, stack)) {
-    log(`XX REFUSE notStartOfPlanning, start of comment ${inputStreamEndString(input, stack)}`)
-    return
-  }
-  let primary_peek_distance = 0
-  while (!isEndOfLine(c)) {
-    primary_peek_distance += 1
-    c = input.peek(primary_peek_distance)
-    log(stringifyCodeLogString(c))
-    if (c === COLON) {
-      if (
-        planning_word.toUpperCase() === 'DEADLINE' ||
-        planning_word.toUpperCase() === 'SCHEDULED' ||
-        planning_word.toUpperCase() === 'CLOSED') {
-        log(`XX REFUSE notStartOfPlanning, start of Planning ${inputStreamEndString(input, stack)}`)
-        return
-      }
-    }
-    planning_word += String.fromCharCode(c)
-    log(`word [${planning_word}]`)
-  }
-  if (c === EOF) {
-    log(`== ACCEPT notStartOfPlanning before eof ${inputStreamAccept(input, stack)}`)
-    input.acceptToken(notStartOfPlanning)
-    return
-  } else if (c === NEW_LINE && input.peek(primary_peek_distance + 1) === EOF) {
-    primary_peek_distance += 1
-    input.acceptToken(notStartOfPlanning)
-    log(`== ACCEPT last notStartOfPlanning before EOF with a trailing newline ${inputStreamAccept(input, stack)}`)
-    return
-  } else if (c === NEW_LINE) {
-    primary_peek_distance += 1
-    log(`== ACCEPT notStartOfPlanning before newline ${inputStreamAccept(input, stack)}`)
-    input.acceptToken(notStartOfPlanning)
-    return
-  }
-  log(`== ACCEPT notStartOfPlanning by default ${inputStreamAccept(input, stack)}`)
-  input.acceptToken(notStartOfPlanning)
-  return
-})
-
 function checkPropertyDrawer(input: InputStream, stack: Stack, peek_distance: number = 0) {
   log(`-- START checkPropertyDrawer ${inputStreamBeginString(input)}`)
   const previous = input.peek(-1)
@@ -813,7 +741,7 @@ function checkPropertyDrawer(input: InputStream, stack: Stack, peek_distance: nu
         c = input.peek(peek_distance)
       }
       peek_distance += 1
-      log(`== ACCEPT checkPropertyDrawer by default ${inputStreamAccept(input, stack)}`)
+      log(`checkPropertyDrawer true ${peek_distance}`)
       return peek_distance
     }
   }
@@ -821,33 +749,92 @@ function checkPropertyDrawer(input: InputStream, stack: Stack, peek_distance: nu
   return
 }
 
-export const notStartOfPropertyDrawer_lookaround = new ExternalTokenizer((input, stack) => {
-  log(`-- START notStartOfPropertyDrawer ${inputStreamBeginString(input)}`)
+export const propertyDrawer_tokenizer = new ExternalTokenizer((input, stack) => {
+  log(`-- START propertyDrawer_tokenizer ${inputStreamBeginString(input)}`)
+  const context: OrgContext = stack.context
   const previous = input.peek(-1)
-  log(`previous ${stringifyCodeLogString(previous)}`)
   if (!isEndOfLine(previous)) {
-    log(`XX REFUSE notStartOfPropertyDrawer, previous not endofline ${inputStreamEndString(input, stack)}`)
+    log(`XX REFUSE PropertyDrawer_tokenizer, not start of a line ${inputStreamEndString(input, stack)}`)
     return
   }
-  if (checkPropertyDrawer(input, stack)) {
-    log(`XX REFUSE notStartOfPropertyDrawer, start of PropertyDrawer ${inputStreamEndString(input, stack)}`)
+  if (!context.parentObjects.includes(ParentObject.PropertyDrawer)) {
+    if (!checkPropertyDrawer(input, stack)) {
+      log(`== ACCEPT notStartOfPropertyDrawer ${inputStreamAccept(input, stack)}`)
+      input.acceptToken(notStartOfPropertyDrawer)//, -(input.pos-stack.pos))
+      return
+    }
+    let peek_distance = 0
+    let c = input.peek(peek_distance)
+    while (!isEndOfLine(c)) {
+      peek_distance += 1
+      c = input.peek(peek_distance)
+    }
+    peek_distance += 1
+    input.advance(peek_distance)
+    log(`== ACCEPT propertyDrawerHeader ${inputStreamAccept(input, stack)}`)
+    input.acceptToken(propertyDrawerHeader)
     return
   }
-  log(`== ACCEPT notStartOfPropertyDrawer ${inputStreamAccept(input, stack)}`)
-  input.acceptToken(notStartOfPropertyDrawer)
+  if (context.parentObjects.includes(ParentObject.PropertyDrawer)) {
+    let matchedPropertiesEnd = matchWords(input, [":END:"], 0)
+    if (matchedPropertiesEnd) {
+      let peek_distance = 0
+      peek_distance += matchedPropertiesEnd.length
+      let c = input.peek(peek_distance)
+      while (!isEndOfLine(c)) {
+        peek_distance += 1
+        c = input.peek(peek_distance)
+      }
+      if (c === NEW_LINE) {
+        peek_distance += 1
+      }
+      log(`== ACCEPT propertyDrawerFooter by default ${inputStreamAccept(input, stack)}`)
+      input.acceptToken(propertyDrawerFooter, peek_distance)
+      return
+    }
+    matchedPropertiesEnd = matchWords(input, [":END:"], 0)
+    if (matchedPropertiesEnd) {
+      input.advance(matchedPropertiesEnd.length)
+      log(`== ACCEPT propertyDrawerFooter ${inputStreamAccept(input, stack)}`)
+      input.acceptToken(propertyDrawerFooter)
+      return
+    }
+  }
+  log(`XX REFUSE propertyDrawer_tokenizer, still inside content ${inputStreamEndString(input, stack)}`)
   return
 })
 
-export const propertydrawer_tokenizer = new ExternalTokenizer((input, stack) => {
-  log(`-- START PropertyDrawer ${inputStreamBeginString(input)}`)
-  let peek_distance = checkPropertyDrawer(input, stack)
-  if (peek_distance) {
-    input.advance(peek_distance)
-    log(`== ACCEPT PropertyDrawer ${inputStreamAccept(input, stack)}`)
-    input.acceptToken(PropertyDrawer)
+export const propertyDrawerContent_tokenizer = new ExternalTokenizer((input, stack) => {
+  log(`-- START propertyDrawerContent_tokenizer ${inputStreamBeginString(input)}`)
+  const context: OrgContext = stack.context
+  const previous = input.peek(-1)
+  if (!isEndOfLine(previous)) {
+    log(`XX REFUSE propertyDrawerContent_tokenizer, not start of a line ${inputStreamEndString(input, stack)}`)
     return
   }
-  log(`XX REFUSE PropertyDrawer ${inputStreamEndString(input, stack)}`)
+  if (!context.parentObjects.includes(ParentObject.PropertyDrawer)) {
+    log(`XX REFUSE propertyDrawerContent_tokenizer, not inside PropertyDrawer ${inputStreamEndString(input, stack)}`)
+    return
+  }
+  let peek_distance = 0
+  let c = input.peek(peek_distance)
+  while (!matchWords(input, [":END:"], peek_distance) && c != EOF) {
+    while (!isEndOfLine(c)) {
+      peek_distance++
+      c = input.peek(peek_distance)
+    }
+    while (isEndOfLine(c) && c != EOF) {
+      peek_distance++
+      c = input.peek(peek_distance)
+    }
+  }
+  const matchedPropertiesEnd = matchWords(input, [":END:"], peek_distance)
+  if (matchedPropertiesEnd) {
+    log(`== ACCEPT PropertyDrawerContent by default ${inputStreamAccept(input, stack)}`)
+    input.acceptToken(PropertyDrawerContent, peek_distance)
+    return
+  }
+  log(`XX REFUSE propertyDrawerContent_tokenizer, didn't find footer ${inputStreamEndString(input, stack)}`)
   return
 })
 
@@ -1865,6 +1852,7 @@ enum ParentObject {
   RegularLink,
   AngleLink,
   Block,
+  PropertyDrawer,
 }
 
 class OrgContext {
@@ -1972,6 +1960,12 @@ export const context_tracker = new ContextTracker({
     if (term === BlockFooter) {
       parentObjects.pop()
       currentBlockContext = null
+    }
+    if (term === propertyDrawerHeader) {
+      parentObjects.push(ParentObject.PropertyDrawer)
+    }
+    if (term === propertyDrawerFooter) {
+      parentObjects.pop()
     }
     return new OrgContext(headingLevelStack, levelHeadingToPush, parentObjects, currentBlockContext)
   },
