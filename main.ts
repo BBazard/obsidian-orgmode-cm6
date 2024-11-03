@@ -14,12 +14,33 @@ import { OrgmodeTask, StatusType } from 'org-tasks';
 import { OrgTasksSync } from 'org-tasks-file-sync';
 import { makeHeadingsFoldable, iterateOrgIds } from 'language-extensions';
 import { orgmodeLivePreview } from "org-live-preview";
+import { computeQuery } from 'orgzly-search';
+import type { ConditionValue, ConditionResolver } from 'orgzly-search';
+import { moment } from 'obsidian';
 
 let todoKeywordsReloader = new Compartment
 let vimCompartment = new Compartment
 
 function parseKeywordTextArea(value: string): string[] {
   return value.replace(/\n/g, ",").split(',').map(x=>x.trim()).filter(x => x != "");
+}
+
+class ConditionResolverObsidian implements ConditionResolver {
+  now: number
+  constructor() {
+    this.now = moment().valueOf()
+  }
+  resolve(value: ConditionValue): string | number {
+    if ('date' in value) {
+      return moment(value['date']).startOf('day').valueOf()
+    }
+    if ('text' in value) {
+      return value['text']
+    }
+    if ('duration' in value) {
+      return moment(this.now).add(...value['duration'] as any).startOf('day').valueOf()
+    }
+  }
 }
 
 export class OrgmodeSettingTab extends PluginSettingTab {
@@ -113,6 +134,10 @@ export default class OrgmodePlugin extends Plugin {
         if (!tfile) {
           throw Error(`file not found: ${parameters.filepath}`)
         }
+        let query = "it.todo or it.done"  // backward compatibility
+        if (typeof parameters.query !== 'undefined') {
+          query = parameters.query
+        }
         const orgTasksSync = new OrgTasksSync(this.settings, this.orgmodeParser, this.app.vault)
         const rootEl = el.createEl("div");
         const renderChild = new MarkdownRenderChild(el)
@@ -124,8 +149,15 @@ export default class OrgmodePlugin extends Plugin {
           await orgTasksSync.updateTaskStatus(tfile, orgmode_task)
         }
         let orgmode_tasks: Array<OrgmodeTask> = await orgTasksSync.getTasks(tfile)
+        const resolver = new ConditionResolverObsidian()
+        if (query) {
+          orgmode_tasks = orgmode_tasks.filter(task => computeQuery(query, task, resolver, this.settings))
+        }
         this.render(orgmode_tasks, rootEl, onStatusChange)
         orgTasksSync.onmodified(tfile, (refreshed_tasks: OrgmodeTask[]) => {
+          if (query) {
+            refreshed_tasks = refreshed_tasks.filter(task => computeQuery(query, task, resolver, this.settings))
+          }
           this.render(refreshed_tasks, rootEl, onStatusChange)
         })
       } catch (e) {
@@ -137,30 +169,45 @@ export default class OrgmodePlugin extends Plugin {
 
   private render(orgmode_tasks: Array<OrgmodeTask>, rootEl: HTMLElement, onStatusChange: (orgmode_task: OrgmodeTask) => void) {
     rootEl.innerHTML = ""
-    var list = rootEl.createEl("ul", { cls: "contains-task-list plugin-tasks-query-result tasks-layout-hide-urgency tasks-layout-hide-edit-button" });
+    if (orgmode_tasks.length == 0) {
+      const list = rootEl.createEl("ul", { cls: "contains-task-list plugin-tasks-query-result tasks-layout-hide-urgency tasks-layout-hide-edit-button" });
+      list.createSpan({ cls: "tasks-list-text", text: 'Your search did not match any notes' })
+    }
+    const list = rootEl.createEl("ul", { cls: "contains-task-list plugin-tasks-query-result tasks-layout-hide-urgency tasks-layout-hide-edit-button" });
     orgmode_tasks.forEach((orgmode_task, i) => {
       this.renderTask(orgmode_task, i, list, onStatusChange)
     })
   }
 
   private renderTask(orgmode_task: OrgmodeTask, i: number, list: HTMLElement, onStatusChange: (orgmode_task: OrgmodeTask) => void) {
-      const li = list.createEl("li", { cls: "task-list-item plugin-tasks-list-item" })
+      const li = list.createEl("li")
+      if (orgmode_task.statusType !== null) {
+        li.addClasses(["task-list-item", "plugin-tasks-list-item"])
+      }
       li.setAttribute("data-line", i.toString())
       li.setAttribute("data-task-priority", "normal")  // orgmode_task.priority
       li.setAttribute("data-task-status-type", orgmode_task.statusType)
       if (orgmode_task.statusType === StatusType.DONE) {
         li.setAttribute("data-task", "x")
         li.setAttribute("data-task-status-name", "Done")
-      } else {
+        const input = li.createEl("input", { cls: "task-list-item-checkbox", type: "checkbox" })
+        input.setAttribute("data-line", i.toString())
+        input.checked = true
+        input.addEventListener('click', e => {
+          onStatusChange(orgmode_task)
+        })
+      } else if (orgmode_task.statusType === StatusType.TODO) {
         li.setAttribute("data-task", "")
         li.setAttribute("data-task-status-name", "Todo")
+        const input = li.createEl("input", { cls: "task-list-item-checkbox", type: "checkbox" })
+        input.setAttribute("data-line", i.toString())
+        input.checked = false
+        input.addEventListener('click', e => {
+          onStatusChange(orgmode_task)
+        })
+      } else {
+        li.createSpan({ cls: "list-bullet" })
       }
-      const input = li.createEl("input", { cls: "task-list-item-checkbox", type: "checkbox" })
-      input.setAttribute("data-line", i.toString())
-      input.checked = orgmode_task.statusType === StatusType.DONE
-      input.addEventListener('click', e => {
-        onStatusChange(orgmode_task)
-      })
       li.createSpan({ cls: "tasks-list-text" }).createSpan({ cls: "task-description" }).createSpan({ text: orgmode_task.description })
   }
 }

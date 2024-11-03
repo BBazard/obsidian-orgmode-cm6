@@ -1,0 +1,27 @@
+@top Program { expression }
+
+@precedence {
+  andPrec @left,
+  implicitAndPrc @left,
+  orPrc @left
+}
+@skip { space }
+
+expression { Condition | And | Or }
+
+And {
+  expression !andPrec "&" expression |
+  expression !implicitAndPrc expression |
+  "(" expression !andPrec "&" expression ")" |
+  "(" expression !implicitAndPrc expression ")"
+}
+
+Or {
+  expression !orPrc "|" expression |
+  "(" expression !orPrc "|" expression ")"
+}
+
+@tokens {
+  Condition { ( @asciiLetter | "." | "-" | @digit+ )+ }
+  space { @whitespace+ }
+}

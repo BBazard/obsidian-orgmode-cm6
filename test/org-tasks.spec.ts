@@ -105,6 +105,22 @@ test('nested orgmode tasks', async () => {
       },
     },
     {
+      status: null,
+      statusType: null,
+      description: "description 2",
+      priority: null,
+      closed: null,
+      deadline: null,
+      scheduled: null,
+      taskLocation: {
+        priority: null,
+        status: null,
+        closed: null,
+        deadline: null,
+        scheduled: null,
+      },
+    },
+    {
       status: 'TODO',
       statusType: 'TODO',
       description: 'task description 3',
@@ -121,7 +137,7 @@ test('nested orgmode tasks', async () => {
       },
     }
   ])
-  const new_content = cycleOrgmodeTaskStatusContent(tasks[1], content)
+  const new_content = cycleOrgmodeTaskStatusContent(tasks[2], content)
   expect(new_content).toBe([
     "* TODO task description 1",
     "** description 2",
@@ -129,7 +145,7 @@ test('nested orgmode tasks', async () => {
     "",
   ].join("\n"))
   const new_tasks = parseOrgmodeTasks(new_content, settings, orgmodeParser)
-  expect(new_tasks[1]).toStrictEqual(
+  expect(new_tasks[2]).toStrictEqual(
     {
       status: 'DONE',
       statusType: 'DONE',

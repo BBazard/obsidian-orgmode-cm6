@@ -57,7 +57,7 @@ function parseOrgmodeHeading(headingNode: SyntaxNode, orgmode_content: string, s
 }
 
 function iterateTasks(heading: OrgmodeHeading): OrgmodeTask[] {
-  if (heading.status !== null) {
+  if (heading) {
     const task: OrgmodeTask = {
       status: heading.status,
       statusType: heading.statusType,
@@ -146,7 +146,12 @@ function extractOrgHeadingFromHeadingNode(headingNode: SyntaxNode, orgmode_conte
     deadline: item.get('taskLocation').get('deadline') ?? null,
   }
   const status = item.get("status") ?? null
-  const statusType = settings.doneKeywords.includes(status) ? StatusType.DONE : StatusType.TODO
+  let statusType = null
+  if (settings.doneKeywords.includes(status)) {
+    statusType = StatusType.DONE
+  } else if (settings.todoKeywords.includes(status)) {
+    statusType = StatusType.TODO
+  }
   const task: OrgmodeHeading = {
     status: status,
     statusType: statusType,
