@@ -152,19 +152,15 @@ function computeExpression(node: SyntaxNode, content: string, task: OrgmodeTask,
     if (neg === 'not') {
       computation = !computation
     }
-    console.log("condition", condition, computation)
     return computation
   }
-  console.log("expression")
   const leftSide = computeExpression(node.firstChild, content, task, resolver, settings)
   const rightSide = computeExpression(node.firstChild.nextSibling, content, task, resolver, settings)
   if (node.type.name === "And") {
     const result = leftSide && rightSide
-    console.log(`${content.slice(node.from, node.to)} ===> ${leftSide} and ${rightSide} = ${result}`)
     return result
   } else if (node.type.name === "Or") {
     const result = leftSide || rightSide
-    console.log(`${content.slice(node.from, node.to)} ===> ${leftSide} or ${rightSide} = ${result}`)
     return result
   }
   throw Error()

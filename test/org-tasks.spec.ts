@@ -60,7 +60,6 @@ test('Parsing orgmode tasks planning lines', async () => {
     "SCHEDULED: <2023-12-08 Fri 11:13> CLOSED: <2023-12-09 Sat 08:07> DEADLINE: <2023-12-10 Sun 13:28>\n",
   ].join("")
   const tasks = parseOrgmodeTasks(content, settings, orgmodeParser)
-  console.log(tasks[0])
   expect(tasks[0]).toStrictEqual({
     status: 'TODO',
     statusType: 'TODO',
