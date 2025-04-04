@@ -193,3 +193,30 @@
   position: relative;
   top: -0.2em;
 }
+
+/*
+ * Adapt @codemirror/autocomplete CSS to obsidian style
+ */
+.orgmode-view .cm-tooltip {
+  background-color: var(--background-primary);
+}
+.orgmode-view .cm-tooltip.cm-tooltip-autocomplete > ul {
+  font-family: unset; /* no monospace */
+}
+.orgmode-view .cm-tooltip.cm-tooltip-autocomplete > ul > li {
+  padding-top: 0.2em;
+  padding-bottom: 0.2em;
+  font-size: var(--font-ui-medium);
+  margin-bottom: 0.4em;
+}
+.orgmode-view .cm-tooltip-autocomplete ul li[aria-selected] {
+  background-color: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+.orgmode-view .cm-completionDetail {
+  display: block;
+  margin-left: 1.4em; /* align with the width of .cm-completionIcon */
+  color: var(--text-muted);
+  font-size: 0.8em;
+  font-style: unset; /* no italic */
+}

@@ -13,6 +13,7 @@
 		"@codemirror/search": "^6.0.0",
 		"@codemirror/state": "^6.0.0",
 		"@codemirror/view": "^6.0.0",
+		"@codemirror/autocomplete": "^6.0.0",
 		"@lezer/common": "^1.2.1",
 		"@lezer/generator": "^1.5.1",
 		"@lezer/highlight": "^1.2.0",

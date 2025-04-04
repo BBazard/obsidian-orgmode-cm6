@@ -17,6 +17,7 @@ import { TOKEN } from 'codemirror-lang-orgmode';
 import { extractLinkFromNode, nodeTypeClass } from 'language-extensions';
 import { OrgmodePluginSettings } from "settings";
 import { SyntaxNode } from "@lezer/common"
+import { CompletionContext, CompletionResult, autocompletion } from "@codemirror/autocomplete"
 
 class ImageWidget extends WidgetType {
   path: string
@@ -414,6 +415,59 @@ function loadDecorations(
   return RangeSet.of(builderBuffer, true)
 }
 
+async function orgIdLinkCompletions(
+  context: CompletionContext,
+  obsidianUtils: {
+    listOrgIds: () => Promise<string[][]>,
+  },
+): Promise<CompletionResult> {
+  const word = context.matchBefore(/\[\[id:$/)
+  if (!word) {
+    return null
+  }
+  const orgIds = await obsidianUtils.listOrgIds()
+  return {
+    from: word.to,
+    options: orgIds.map(([orgId, path]) => {
+      return {
+        label: orgId + "]]",
+        displayLabel: "id:" + orgId,
+        detail: path,
+      };
+    }),
+    validFor: /[^\]]*/,
+  };
+}
+
+function orgLinkCompletions(
+  context: CompletionContext,
+  obsidianUtils: {
+    getVaultFiles: () => string[][],
+  },
+): CompletionResult {
+  const word = context.matchBefore(/\[\[$/)
+  if (!word) {
+    return null
+  }
+  const vaultFiles = obsidianUtils.getVaultFiles()
+  return {
+    from: word.to,
+    options: vaultFiles.map(([name, path]) => {
+      if (path === name) {
+        path = null;
+      } else {
+        path = path.substring(0, path.lastIndexOf("/")) + "/";
+      }
+      return {
+        label: name + "]]",
+        displayLabel: name,
+        detail: path,
+      };
+    }),
+    validFor: /[^\]]*/,
+  };
+}
+
 export const orgmodeLivePreview = (
   codeMirror: EditorView,
   settings: OrgmodePluginSettings,
@@ -421,13 +475,15 @@ export const orgmodeLivePreview = (
     navigateToFile: (filePath: string) => void,
     getImageUri: (linkPath: string) => string,
     navigateToOrgId: (orgCustomId: string) => void,
+    getVaultFiles: () => string[][],
+    listOrgIds: () => Promise<string[][]>,
 }) => {
   return StateField.define<DecorationSet>({
     create(state: EditorState): DecorationSet {
-      return loadDecorations(state, settings, obsidianUtils)
+      return loadDecorations(state, settings, {...obsidianUtils})
     },
     update(oldState: DecorationSet, transaction: Transaction): DecorationSet {
-      return loadDecorations(transaction.state, settings, obsidianUtils)
+      return loadDecorations(transaction.state, settings, {...obsidianUtils})
     },
     provide(field: StateField<DecorationSet>): Extension {
       return [
@@ -469,6 +525,12 @@ export const orgmodeLivePreview = (
               }
             })
           }
+        }),
+        autocompletion({
+          override: [
+            (context: CompletionContext) => orgIdLinkCompletions(context, {...obsidianUtils}),
+            (context: CompletionContext) => orgLinkCompletions(context, {...obsidianUtils}),
+          ],
         }),
       ]
     },

@@ -345,7 +345,32 @@ class OrgView extends TextFileView {
               console.log(e)
               return
             }
-          }
+          },
+          getVaultFiles: () => {
+            try {
+              const orgFiles = this.app.vault.getFiles().map(x => [x.name, x.path])
+              return orgFiles
+            } catch (e) {
+              console.log(e)
+              return
+            }
+          },
+          listOrgIds: async () => {
+            try {
+              const orgFiles = this.app.vault.getFiles().filter(x => x.extension == 'org')
+              const orgIds = []
+              for (const orgFile of orgFiles) {
+                const orgContent = await this.app.vault.cachedRead(orgFile)
+                for (const orgid of Array.from(iterateOrgIds(orgmodeParser, orgContent)).map(x => x.orgId)) {
+                  orgIds.push([orgid, orgFile.path])
+                }
+              }
+              return orgIds
+            } catch (e) {
+              console.log(e)
+              return
+            }
+          },
         }),
       ]
     Vim.defineEx('write', 'w', () => {
