@@ -120,7 +120,7 @@ Currently only TODO and DONE are handled.
 
 https://github.com/BBazard/obsidian-orgmode-cm6/assets/10139245/b071b2c8-b56e-4050-8fcf-02a922fdd1c0
 
-To filter, [orgzly search expression](https://www.orgzly.com/docs#search) are supported (implemented: s, d, c, i, it).
+To filter, [orgzly search expression](https://www.orgzly.com/docs#search) are supported (implemented: s, d, c, i, it, ad).
 
 ```orgmode-tasks
 filepath: Orgmode/Orgmode file.org

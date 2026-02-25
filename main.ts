@@ -262,7 +262,19 @@ export default class OrgmodePlugin extends Plugin {
         this.renderTaskMainLine(taskMainLineDiv, orgmode_task, onStatusChange)
         const taskAttributeLineDiv = li.createDiv({ cls: "org-agenda-item-line" })
         taskAttributeLineDiv.createDiv({ cls: "org-agenda-item-gutter" })
-        taskAttributeLineDiv.createDiv({ cls: `org-agenda-item-date org-agenda-item-date-${sortKey}`, text: `${resolver.safeEval(`task.${sortKey}`, task)}` })
+        if (sortKey == 'scheduled') {
+          taskAttributeLineDiv.createDiv({
+            cls: `org-agenda-item-date org-agenda-item-date-scheduled`,
+            text: `${resolver.safeEval(`task.scheduled`, task)}`,
+            attr: {'aria-label': 'scheduled', 'data-tooltip-position': "left"},
+          })
+        } else if (sortKey == 'deadline') {
+          taskAttributeLineDiv.createDiv({
+            cls: `org-agenda-item-date org-agenda-item-date-deadline`,
+            text: `${resolver.safeEval(`task.deadline`, task)}`,
+            attr: {'aria-label': 'deadline', 'data-tooltip-position': "left"},
+          })
+        }
       })
     })
   }

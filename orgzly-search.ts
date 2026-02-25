@@ -367,8 +367,14 @@ export class Orgzly {
     dates.push(+this.resolver.resolve({"duration": [agenda, "d"]}, null))
     const maybeAddAgendaItem = (date: number, task: OrgmodeTask, dateType: "deadline" | "scheduled") => {
       const agendaGroupItem : AgendaGroupItem = {task: task, sortKey: dateType}
-      if (date < dates[0]) {
-        agendaIr.get("overdue").push(agendaGroupItem)
+      if (date < dates[0]) {  // `dates[0]` is today
+        if (dateType == "deadline") {
+          agendaIr.get("overdue").push(agendaGroupItem)
+        } else if (dateType == "scheduled") {
+          // scheduled tasks before today appears for today
+          // See https://github.com/orgzly-revived/orgzly-android-revived/pull/856
+          agendaIr.get(dates[0]).push(agendaGroupItem)
+        }
         return
       }
       for (let i = 1; i < dates.length; i++) {

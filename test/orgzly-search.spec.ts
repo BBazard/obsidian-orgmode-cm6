@@ -283,14 +283,9 @@ test("orgzly agenda", () => {
   const task4 = {...task, description: "task4", deadline: "<2023-11-03 Thu 15:02>"}
   expect(orgzly.createAgenda([task, task2, task3, task4], [], 3)).toEqual([
     {
-      date: "overdue",
-      tasks: [
-        { sortKey: "scheduled", task: task3 },
-      ]
-    },
-    {
       date: moment('2023-11-02').valueOf(),
       tasks: [
+        { sortKey: "scheduled", task: task3 },
         { sortKey: "scheduled", task: task2 },
       ]
     },

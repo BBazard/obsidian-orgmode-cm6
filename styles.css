@@ -238,7 +238,7 @@
   font-size: 1.2em;
 }
 .block-language-orgmode-tasks .org-agenda-item {
-  padding-bottom: 0.4em;
+  padding-bottom: 0.8em;
 }
 .markdown-rendered .block-language-orgmode-tasks ul > li {
   margin: 0px;  /* hide the list marker */
@@ -249,7 +249,6 @@
 }
 .org-agenda-item-gutter {
   display:flex;
-  height: 1lh;
   min-width: calc(var(--checkbox-size) + 0.4em); /* + margin-right */
 }
 
