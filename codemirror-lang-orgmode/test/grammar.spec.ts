@@ -11,7 +11,6 @@ const settings: OrgmodePluginSettings = {
   doneKeywords: ["DONE"],
   defaultPriority: 'B',
   hideStars: false,
-  dynamicBlockJsFilepath: ""
 };
 const words = [...settings.todoKeywords, ...settings.doneKeywords]
 const parser: LRParser = OrgmodeParser(words)
@@ -344,8 +343,6 @@ test("block", () => {
     "#+BEGIN_SRC",
     "mismatched block",
     "#+END_EXPORT",
-    "#+BEGIN: myfunc",
-    "#+END:",
   ].join("\n")
   const tree = parser.parse(content)
   const spec = [
@@ -354,11 +351,6 @@ test("block", () => {
     "        Block(",
     "            BlockHeader,",
     "            BlockContentComment,",
-    "            BlockFooter,",
-    "        ),",
-    "        Block(",
-    "            BlockHeader,",
-    "            BlockContentDynamic,",
     "            BlockFooter,",
     "        ),",
     "    ),",

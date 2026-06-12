@@ -65,7 +65,7 @@ Following [Org Syntax](https://orgmode.org/worg/org-syntax.html)
 - [x] Planning line
 - [x] Property Drawer
 - [x] Lesser Block (unformatted except source blocks)
-- [x] Dynamic Block (see the dedicated section further down this readme)
+- [ ] Dynamic Block (not possible as obsidian doesn't allow arbitrary execution in plugins)
 - [ ] Drawer
 - [ ] List and Checkbox
 - [ ] Horizontal rule
@@ -86,31 +86,6 @@ Following [Org Syntax](https://orgmode.org/worg/org-syntax.html)
 - Overlapping tokens are not considered valid. Take for example: `*one _two three* four_`. Emacs, using regexes would have `*one _two three*` as bold and `_two three* four_` as underline. The lezer parser is instead considering `*one _two three*` as bold and ` four_` as normal text, it makes it possible to have the text markup range as its own syntax node.
 
 - There is no limits to the level of headings (so no Inlinetask) or the number of lines of a text markup.
-
-## Dynamic Blocks
-
-Dynamic blocks call a user-defined function and show the function output.
-
-Only javascript functions without parameters are supported currently.
-
-Example of displaying the date with a dynamic block in an orgmode file:
-
-```org
-#+BEGIN: getDate
-#+END:
-```
-
-The function needs to be defined in the javascript definition file:
-
-```javascript
-function getDate() {
-  return new Date().toISOString()
-}
-```
-
-The javascript definition file is a file in your vault that contains the functions you can call from dynamic blocks. Its filepath must be specified in the plugin settings.
-
-The content of your orgmode files are never modified by the execution of dynamic blocks.
 
 ## Show orgmode tasks in markdown files
 

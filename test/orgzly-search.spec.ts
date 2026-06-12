@@ -13,7 +13,6 @@ const settings: OrgmodePluginSettings = {
   doneKeywords: ["DONE"],
   defaultPriority: 'B',
   hideStars: false,
-  dynamicBlockJsFilepath: ""
 };
 
 class ConditionResolverNode implements ConditionResolver {

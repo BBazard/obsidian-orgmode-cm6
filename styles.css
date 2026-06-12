@@ -194,16 +194,6 @@
   top: -0.2em;
 }
 
-.orgmode-view .org-block-header-dynamic::before {
-  content: "λ";
-}
-
-.orgmode-view .org-block-dynamic-content {
-    border: 1px solid #9e9e9e;
-    border-radius: 8px;
-    padding: 8px;
-}
-
 /*
  * Adapt @codemirror/autocomplete CSS to obsidian style
  */

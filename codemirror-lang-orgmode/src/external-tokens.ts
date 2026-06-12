@@ -342,6 +342,9 @@ function checkBlockEnd(input: InputStream, stack: Stack, blockSuffix: string, st
   c = input.peek(peek_distance)
   let blockSuffixCandidate = String.fromCharCode(c)
   while (!isEndOfLine(c) && blockSuffixCandidate.length <= blockSuffix.length) {
+    peek_distance += 1
+    c = input.peek(peek_distance)
+    blockSuffixCandidate += String.fromCharCode(c)
     if (blockSuffixCandidate.toLowerCase() === blockSuffix.toLowerCase()) {
       while (!isEndOfLine(c)) {
         peek_distance += 1
@@ -352,9 +355,6 @@ function checkBlockEnd(input: InputStream, stack: Stack, blockSuffix: string, st
       }
       return peek_distance
     }
-    peek_distance += 1
-    c = input.peek(peek_distance)
-    blockSuffixCandidate += String.fromCharCode(c)
   }
   log(`XX REFUSE checkBlockEnd, reaching endofline or char 7 ${inputStreamEndString(input, stack)}`)
   return null

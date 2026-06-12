@@ -3,7 +3,6 @@ export interface OrgmodePluginSettings {
   doneKeywords: string[];
   defaultPriority: string;
   hideStars: boolean;
-  dynamicBlockJsFilepath: string
 }
 
 export const DEFAULT_SETTINGS: OrgmodePluginSettings = {
@@ -11,5 +10,4 @@ export const DEFAULT_SETTINGS: OrgmodePluginSettings = {
   doneKeywords: ["DONE", "CANCELLED", "CANCELED", "CANCEL", "REJECTED", "STOP", "STOPPED"],
   defaultPriority: 'B',
   hideStars: false,
-  dynamicBlockJsFilepath: "",
 };

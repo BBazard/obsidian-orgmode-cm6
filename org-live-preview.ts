@@ -42,54 +42,6 @@ class ImageWidget extends WidgetType {
   }
 }
 
-class DynamicBlockWidget extends WidgetType {
-  dynamicBlockParams: string
-  dynamicBlockJsFilepath: string
-  readFileContent: (filePath: string) => Promise<any>
-  constructor(
-    dynamicBlockParams: string,
-    dynamicBlockJsFilepath: string,
-    readFileContent: (filePath: string) => Promise<any>,
-  ) {
-    super()
-    this.dynamicBlockParams = dynamicBlockParams
-    this.dynamicBlockJsFilepath = dynamicBlockJsFilepath
-    this.readFileContent = readFileContent
-  }
-  eq(other: DynamicBlockWidget) {
-    return this.dynamicBlockParams == other.dynamicBlockParams
-  }
-  toDOM(view: EditorView): HTMLElement {
-    const functionName = this.dynamicBlockParams.split(' ')[0]
-    const block = document.createElement('div')
-    block.textContent = `Loading...`
-    block.contentEditable = "false"
-    block.addClass("org-block")
-    block.addClass("org-block-dynamic-content")
-    if (!this.dynamicBlockJsFilepath) {
-      block.textContent = "Error: 'Dynamic block javascript definition file' is not set in the Orgmode (cm6) plugin settings"
-      return block
-    }
-    if (!this.dynamicBlockParams) {
-      block.textContent = "Error: No params provided after '#+BEGIN:'"
-      return block
-    }
-    this.readFileContent(this.dynamicBlockJsFilepath).then(jsFileContent => {
-      let content = ''
-      try {
-        // Execute the function from the js file
-        content = (new Function(`${jsFileContent}\nreturn ${functionName}()`))()
-      } catch {
-        content = `Error: Failed to load function ${functionName} from ${this.dynamicBlockJsFilepath}`
-      }
-      block.textContent = content
-    }).catch(error => {
-      block.textContent = error
-    })
-    return block;
-  }
-}
-
 function isNodeOrgLanguage(node: SyntaxNode) {
   // A token id like TOKEN.Block could match a token of a sublanguage
   if (node.type.id === TOKEN.Block &&
@@ -169,7 +121,6 @@ function loadDecorations(
     navigateToFile: (filePath: string) => void,
     getImageUri: (linkPath: string) => string,
     navigateToOrgId: (orgCustomId: string) => void,
-    readFileContent: (filePath: string) => Promise<any>
 }) {
   const builderBuffer = new Array<Range<Decoration>>
   const selectionPos = state.selection.main
@@ -191,8 +142,6 @@ function loadDecorations(
             )
           )
         }
-        const blockFirstLine = state.doc.sliceString(firstLine.from, firstLine.to).trim()
-        const isDynamicBlock = blockFirstLine.toUpperCase().startsWith("#+BEGIN:")
         const firstLineIsSelected = isNodeSelected(selectionPos, firstLine)
         if (!firstLineIsSelected) {
           builderBuffer.push(
@@ -203,26 +152,14 @@ function loadDecorations(
               tokenStartSide(node.type.id),
             )
           )
-          if (firstLine.from+"#+BEGIN_".length != firstLine.to) {
-            builderBuffer.push(
-              buildRange(
-                firstLine.from+"#+BEGIN_".length,
-                firstLine.to,
-                Decoration.mark({class: "org-block-header"}),
-                tokenStartSide(node.type.id),
-              )
+          builderBuffer.push(
+            buildRange(
+              firstLine.from+"#+BEGIN_".length,
+              firstLine.to,
+              Decoration.mark({class: "org-block-header"}),
+              tokenStartSide(node.type.id),
             )
-            if (isDynamicBlock) {
-              builderBuffer.push(
-                buildRange(
-                  firstLine.from+"#+BEGIN_".length,
-                  firstLine.to,
-                  Decoration.mark({class: "org-block-header-dynamic"}),
-                  tokenStartSide(node.type.id),
-                )
-              )
-            }
-          }
+          )
         }
         const lastLineIsSelected = isNodeSelected(selectionPos, lastLine)
         if (!lastLineIsSelected) {
@@ -231,24 +168,6 @@ function loadDecorations(
               lastLine.from,
               lastLine.to,
               Decoration.replace({}),
-              tokenStartSide(node.type.id),
-            )
-          )
-        }
-        if (isDynamicBlock && !firstLineIsSelected) {
-          const dynamicBlockParams = blockFirstLine.slice("#+BEGIN:".length).trim()
-          builderBuffer.push(
-            buildRange(
-              firstLine.to,
-              firstLine.to,
-              Decoration.widget({
-                widget: new DynamicBlockWidget(
-                  dynamicBlockParams,
-                  settings.dynamicBlockJsFilepath,
-                  obsidianUtils.readFileContent,
-                ),
-                block: false,
-              }),
               tokenStartSide(node.type.id),
             )
           )
@@ -558,7 +477,6 @@ export const orgmodeLivePreview = (
     navigateToOrgId: (orgCustomId: string) => void,
     getVaultFiles: () => string[][],
     listOrgIds: () => Promise<string[][]>,
-    readFileContent: (filePath: string) => Promise<any>
 }) => {
   return StateField.define<DecorationSet>({
     create(state: EditorState): DecorationSet {

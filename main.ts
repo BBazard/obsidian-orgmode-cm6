@@ -127,17 +127,6 @@ export class OrgmodeSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           })
       })
-    new Setting(containerEl)
-      .setName("Dynamic block javascript definition file")
-      .setDesc('Filepath of the javascript file which contains the custom functions executed in orgmode dynamic blocks')
-      .addText((text) => {
-        text.setValue(this.plugin.settings.dynamicBlockJsFilepath)
-          .setPlaceholder("path/in/vault/to/file.js")
-          .onChange(async (value) => {
-            this.plugin.settings.dynamicBlockJsFilepath = value
-            await this.plugin.saveSettings();
-          })
-      })
   }
 }
 
@@ -459,13 +448,6 @@ class OrgView extends TextFileView {
               return
             }
           },
-          readFileContent: async (filePath: string) => {
-            const tfile = this.app.vault.getFileByPath(filePath)
-            if (!tfile) {
-                throw Error(`File not found: ${filePath}`)
-            }
-            return await this.app.vault.read(tfile)
-          }
         }),
       ]
     Vim.defineEx('write', 'w', () => {
