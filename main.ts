@@ -325,9 +325,9 @@ class OrgView extends TextFileView {
         foldGutter({
           markerDOM: (open) => {
             // icon copied from obsidian minimal theme
-            const foldIcon = document.createElement("div");
-            const foldIcon_svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-            const foldIcon_svg_path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            const foldIcon = activeDocument.createElement("div");
+            const foldIcon_svg = activeDocument.createElementNS("http://www.w3.org/2000/svg", "svg");
+            const foldIcon_svg_path = activeDocument.createElementNS("http://www.w3.org/2000/svg", "path");
             foldIcon_svg.setAttributeNS(null, "width", "24");
             foldIcon_svg.setAttributeNS(null, "height", "24");
             foldIcon_svg.setAttributeNS(null, "viewBox", "0 0 24 24");

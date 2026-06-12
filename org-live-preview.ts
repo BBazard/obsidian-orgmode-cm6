@@ -31,7 +31,7 @@ class ImageWidget extends WidgetType {
     return this.path == other.path
   }
   toDOM(view: EditorView): HTMLElement {
-    const image = document.createElement("img");
+    const image = activeDocument.createElement("img");
     const obsidianPath = this.getImageUri(this.path)
     if (obsidianPath) {
       image.src = this.getImageUri(this.path)

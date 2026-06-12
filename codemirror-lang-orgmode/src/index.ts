@@ -66,7 +66,7 @@ export const OrgmodeParser = (words: string[]) => {
       if (node.type.id === TOKEN.BlockContentSrc) {
         const header = node.node.prevSibling
         let headerText = input.read(header.from, header.to)
-        headerText = headerText.toLowerCase().replace(/^(\#\+begin_src)\s+/,"");
+        headerText = headerText.toLowerCase().replace(/^(\#\+begin_src)\s+/,"")
         headerText = headerText.replace(/\n/, "")
         const langStr = headerText.replace(/\s+.*/, "")
         return getInnerParser(langStr)

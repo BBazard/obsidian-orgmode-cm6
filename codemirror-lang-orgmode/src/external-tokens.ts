@@ -1057,7 +1057,7 @@ function isStartOfTextMarkup(input: InputStream, stack: Stack, termsByMarker: Ma
       } else if (input.peek(peek_distance + 1) == HASH) {
           log(`XX REFUSE isStartOfTextMarkup, start of comment ${inputStreamEndString(input, stack)}`)
           return
-      } else { }  // regular newline
+      } // else regular newline
     }
     peek_distance += 1
     c = input.peek(peek_distance)
@@ -1870,7 +1870,7 @@ class OrgContext {
     this.headingLevelStack = headingLevelStack
     this.levelHeadingToPush = levelHeadingToPush
     this.parentObjects = parentObjects
-    this.currentBlockContext = currentBlockContext,
+    this.currentBlockContext = currentBlockContext
     this.hash = this.hashCompute()
   }
   hashCompute() {
