@@ -32,10 +32,24 @@ class ConditionResolverObsidian implements ConditionResolver {
     this.now = moment().valueOf()
   }
   public safeEval(toEval: string, task: OrgmodeTask) {
-      // equivalent of "return eval(toEval)"
-      // but only using "task" as context
-      // for example toEval="task.scheduled"
-      return (new Function('task', `return ${toEval}`))(task)
+    if (toEval === 'task.status') {
+      return task.status
+    } else if (toEval === 'task.statusType') {
+      return task.statusType
+    } else if (toEval === 'task.description') {
+      return task.description
+    } else if (toEval === 'task.taskLocation') {
+      return task.taskLocation
+    } else if (toEval === 'task.scheduled') {
+      return task.scheduled
+    } else if (toEval === 'task.deadline') {
+      return task.deadline
+    } else if (toEval === 'task.closed') {
+      return task.closed
+    } else if (toEval === 'task.priority') {
+      return task.priority
+    }
+    throw Error(`Unexpected safeEval param '${toEval}'`)
   }
   resolve(value: ConditionValue, task: OrgmodeTask): string | number {
     if ('text' in value) {
