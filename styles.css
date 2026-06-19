@@ -130,6 +130,12 @@
 .orgmode-view .cm-line.cm-line {
   caret-color: var(--caret-color) !important;
 }
+.orgmode-view .cm-content {
+  caret-color: var(--caret-color) !important;
+}
+.orgmode-view .cm-cursor {
+  border-left-color: var(--caret-color) !important;
+}
 
 .theme-dark .orgmode-view .cm-fat-cursor {
   background-color: var(--text-accent) !important;
